@@ -10,6 +10,13 @@
 !.yarn/releases
 !.yarn/versions
 
+# Segredos
+serviceAccount.json
+*.env
+.env
+.env.local
+
+
 # testing
 /coverage
 

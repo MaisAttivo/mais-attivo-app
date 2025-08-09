@@ -1,314 +1,248 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { onAuthStateChanged, getAuth } from "firebase/auth";
-import { db } from "@/lib/firebase"; // <- ajusta este caminho ao teu projeto
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
-type WeeklyForm = {
+// ===== Helpers de datas (UTC) =====
+function isoWeekYear(date: Date) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  return d.getUTCFullYear();
+}
+function isoWeekNumber(date: Date) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+function yearWeekIdUTC(d = new Date()) {
+  const y = isoWeekYear(d);
+  const w = String(isoWeekNumber(d)).padStart(2, "0");
+  return `${y}-W${w}`;
+}
+
+function isWeekendUTC(date = new Date()) {
+  const dow = date.getUTCDay();
+  return dow === 0 || dow === 6;
+}
+
+type WeeklyData = {
+  weekEndDate: any;
   howWasTheWeek: string;
-  energyLevels: string;     // livre (podes mudar para number se quiseres 1-10)
+  energyLevels: string;
   sleepQuality: string;
   stressLevels: string;
   dietChallenges: string;
   workoutChallenges: string;
-  comments?: string;
-  weekEndDate: Date;        // será normalizada para Domingo 00:00 UTC
 };
 
-function toSundayMidnightUTC(d: Date): Date {
-  // Normaliza para Domingo 00:00:00 UTC da semana de "d"
-  const utcDay = d.getUTCDay(); // 0=Dom, 1=Seg, ...
-  const diffToSunday = utcDay;  // quantos dias desde Domingo
-  const sunday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
-  sunday.setUTCDate(sunday.getUTCDate() - diffToSunday);
-  return sunday; // Domingo 00:00 UTC
-}
-
-// --- ISO Week helpers (ano-semana) ---
-function isoWeekYear(date: Date): number {
-  const tmp = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  // quinta-feira define a semana ISO
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - ((tmp.getUTCDay() || 7)));
-  return tmp.getUTCFullYear();
-}
-
-function isoWeekNumber(date: Date): number {
-  const tmp = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  // quinta-feira define a semana ISO
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - ((tmp.getUTCDay() || 7)));
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return weekNo;
-}
-
-function yearWeekId(date: Date): string {
-  const y = isoWeekYear(date);
-  const w = String(isoWeekNumber(date)).padStart(2, "0");
-  return `${y}-W${w}`;
-}
-
-export default function WeeklyFeedbackPage() {
-  const auth = useMemo(() => getAuth(), []);
+export default function WeeklyPage() {
   const [uid, setUid] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [existsMsg, setExistsMsg] = useState<string | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // por defeito: semana corrente (Domingo 00:00 UTC)
-  const [form, setForm] = useState<WeeklyForm>(() => ({
+  const [form, setForm] = useState<WeeklyData>({
+    weekEndDate: new Date(),
     howWasTheWeek: "",
     energyLevels: "",
     sleepQuality: "",
     stressLevels: "",
     dietChallenges: "",
     workoutChallenges: "",
-    comments: "",
-    weekEndDate: toSundayMidnightUTC(new Date()),
-  }));
+  });
+  const [loadingDoc, setLoadingDoc] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const canFillThisWeekend = useMemo(() => isWeekendUTC(new Date()), []);
+  const thisWeekId = useMemo(() => yearWeekIdUTC(new Date()), []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUid(u ? u.uid : null);
-      setLoading(false);
+      setLoadingAuth(false);
     });
     return () => unsub();
-  }, [auth]);
+  }, []);
 
-  const docId = useMemo(() => yearWeekId(form.weekEndDate), [form.weekEndDate]);
-
-  // Verifica se já existe feedback desta semana (para bloquear UI logo)
   useEffect(() => {
-    if (!uid) return;
-    let isMounted = true;
     (async () => {
+      if (!uid) return;
+      setLoadingDoc(true);
       try {
-        const ref = doc(db, `users/${uid}/weeklyFeedback/${docId}`);
+        const ref = doc(db, `users/${uid}/weeklyFeedback/${thisWeekId}`);
         const snap = await getDoc(ref);
-        if (!isMounted) return;
-        setExistsMsg(snap.exists() ? "Já existe feedback submetido para esta semana." : null);
+        if (snap.exists()) {
+          const d: any = snap.data();
+          setForm({
+            weekEndDate: d.weekEndDate?.toDate?.() || new Date(),
+            howWasTheWeek: d.howWasTheWeek || "",
+            energyLevels: d.energyLevels || "",
+            sleepQuality: d.sleepQuality || "",
+            stressLevels: d.stressLevels || "",
+            dietChallenges: d.dietChallenges || "",
+            workoutChallenges: d.workoutChallenges || "",
+          });
+        } else {
+          setForm((f) => ({ ...f, weekEndDate: new Date() }));
+        }
       } catch (e) {
-        // ignora
+        console.error(e);
+        setToast({ type: "error", msg: "Erro ao carregar o weekly." });
+      } finally {
+        setLoadingDoc(false);
       }
     })();
-    return () => { isMounted = false; };
-  }, [uid, docId]);
+  }, [uid, thisWeekId]);
 
-  const handleChange =
-    (field: keyof WeeklyForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setForm((f) => ({ ...f, [field]: e.target.value }));
-    };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value; // yyyy-mm-dd
-    const d = new Date(value + "T00:00:00Z");
-    setForm((f) => ({ ...f, weekEndDate: toSundayMidnightUTC(d) }));
-  };
-
-  const submit = async () => {
-    if (!uid) {
-      setError("Precisas de iniciar sessão.");
+  async function handleSubmit() {
+    if (!uid) return;
+    if (!canFillThisWeekend) {
+      setToast({ type: "error", msg: "O weekly só pode ser preenchido ao fim-de-semana (UTC)." });
       return;
     }
-    setError(null);
-    setSubmitting(true);
+    setSaving(true);
     try {
-      const sundayUTC = toSundayMidnightUTC(form.weekEndDate);
-      const id = yearWeekId(sundayUTC);
-      const ref = doc(db, `users/${uid}/weeklyFeedback/${id}`);
-
-      // Tenta criar sem merge; se já existir, o setDoc falha no client?
-      // O Firestore permite overwrite por defeito. Para respeitar as regras,
-      // confia nas regras do backend; aqui validamos previamente.
-      const payload = {
-        howWasTheWeek: form.howWasTheWeek.trim(),
-        energyLevels: form.energyLevels.trim(),
-        sleepQuality: form.sleepQuality.trim(),
-        stressLevels: form.stressLevels.trim(),
-        dietChallenges: form.dietChallenges.trim(),
-        workoutChallenges: form.workoutChallenges.trim(),
-        comments: (form.comments || "").trim(),
-        weekEndDate: new Date(sundayUTC), // guardado como Timestamp automaticamente
-        createdAt: serverTimestamp(),
-      };
-
-      // validação simples
-      const required = [
-        "howWasTheWeek","energyLevels","sleepQuality",
-        "stressLevels","dietChallenges","workoutChallenges"
-      ] as const;
-      for (const k of required) {
-        // @ts-ignore
-        if (!payload[k] || (typeof payload[k] === "string" && !payload[k].length)) {
-          throw new Error("Por favor preenche todos os campos obrigatórios.");
-        }
-      }
-
-      // Para evitar overwrite acidental, confirmamos se existe
-      const existing = await getDoc(ref);
-      if (existing.exists()) {
-        setExistsMsg("Já existe feedback submetido para esta semana.");
-        setSubmitting(false);
-        return;
-      }
-
-      await setDoc(ref, payload, { merge: false });
-      setExistsMsg("Feedback semanal guardado com sucesso ✅");
+      const ref = doc(db, `users/${uid}/weeklyFeedback/${thisWeekId}`);
+      await setDoc(
+        ref,
+        {
+          weekEndDate: form.weekEndDate instanceof Date ? form.weekEndDate : new Date(),
+          howWasTheWeek: form.howWasTheWeek.trim(),
+          energyLevels: form.energyLevels.trim(),
+          sleepQuality: form.sleepQuality.trim(),
+          stressLevels: form.stressLevels.trim(),
+          dietChallenges: form.dietChallenges.trim(),
+          workoutChallenges: form.workoutChallenges.trim(),
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setToast({ type: "success", msg: "Weekly guardado." });
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || "Ocorreu um erro ao gravar.");
+      setToast({ type: "error", msg: e?.message || "Erro ao guardar." });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
+      setTimeout(() => setToast(null), 3000);
     }
-  };
-
-  if (loading) {
-    return <div className="p-6">A carregar…</div>;
   }
 
-  if (!uid) {
-    return <div className="p-6">Inicia sessão para preencher o feedback semanal.</div>;
-  }
+  if (loadingAuth) return <div className="p-4">A carregar…</div>;
+  if (!uid) return <div className="p-4">Inicia sessão para preencher o weekly.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Feedback Semanal</h1>
-        <p className="text-sm opacity-80">
-          Um registo por semana. O documento será criado com o ID <code>{docId}</code>.
-        </p>
-      </header>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="col-span-1">
-          <label className="block text-sm mb-1">Semana (qualquer dia dessa semana)</label>
-          <input
-            type="date"
-            className="w-full border rounded-xl px-3 py-2"
-            onChange={handleDateChange}
-            // mostra a data atual do form em YYYY-MM-DD (UTC)
-            value={new Date(form.weekEndDate).toISOString().slice(0,10)}
-          />
-          <p className="text-xs mt-1 opacity-70">
-            Será normalizado para <b>Domingo 00:00 UTC</b> ({docId}).
-          </p>
-        </div>
-
-        <div className="col-span-1">
-          <label className="block text-sm mb-1">Como correu a semana?</label>
-          <input
-            type="text"
-            className="w-full border rounded-xl px-3 py-2"
-            placeholder="Correu bem / correu assim-assim…"
-            value={form.howWasTheWeek}
-            onChange={handleChange("howWasTheWeek")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Níveis de energia</label>
-          <input
-            type="text"
-            className="w-full border rounded-xl px-3 py-2"
-            placeholder="Ex.: 8/10; Senti-me com energia…"
-            value={form.energyLevels}
-            onChange={handleChange("energyLevels")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Qualidade do sono</label>
-          <input
-            type="text"
-            className="w-full border rounded-xl px-3 py-2"
-            placeholder="Dormi bem a semana toda…"
-            value={form.sleepQuality}
-            onChange={handleChange("sleepQuality")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Níveis de stress</label>
-          <input
-            type="text"
-            className="w-full border rounded-xl px-3 py-2"
-            placeholder="Pouco stress / muito trabalho…"
-            value={form.stressLevels}
-            onChange={handleChange("stressLevels")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Desafios na dieta</label>
-          <textarea
-            className="w-full border rounded-xl px-3 py-2 min-h-[88px]"
-            placeholder="Não me consegui organizar a meio da semana…"
-            value={form.dietChallenges}
-            onChange={handleChange("dietChallenges")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Desafios no treino</label>
-          <textarea
-            className="w-full border rounded-xl px-3 py-2 min-h-[88px]"
-            placeholder="Senti que não estava a focar bem no treino de peito…"
-            value={form.workoutChallenges}
-            onChange={handleChange("workoutChallenges")}
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm mb-1">Comentários (opcional)</label>
-          <textarea
-            className="w-full border rounded-xl px-3 py-2 min-h-[88px]"
-            placeholder="Algo mais que queiras partilhar?"
-            value={form.comments}
-            onChange={handleChange("comments")}
-          />
-        </div>
-      </div>
-
-      {existsMsg && (
-        <div className="rounded-xl border px-3 py-2 text-sm">
-          {existsMsg}
-        </div>
-      )}
-      {error && (
-        <div className="rounded-xl border border-red-500 text-red-600 px-3 py-2 text-sm">
-          {error}
+    <div className="max-w-2xl mx-auto p-4 space-y-6">
+      {toast && (
+        <div
+          className={`fixed right-4 top-4 z-50 px-4 py-2 rounded-xl text-white shadow ${
+            toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"
+          }`}
+        >
+          {toast.msg}
         </div>
       )}
 
-      <div className="flex gap-3">
-        <button
-          onClick={submit}
-          disabled={submitting || !!existsMsg}
-          className="px-4 py-2 rounded-xl border shadow disabled:opacity-50"
-        >
-          {submitting ? "A gravar…" : "Guardar feedback"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setForm((f) => ({
-              ...f,
-              howWasTheWeek: "",
-              energyLevels: "",
-              sleepQuality: "",
-              stressLevels: "",
-              dietChallenges: "",
-              workoutChallenges: "",
-              comments: "",
-            }));
-            setError(null);
-          }}
-          className="px-4 py-2 rounded-xl border"
-        >
-          Limpar
-        </button>
-      </div>
+      <h1 className="text-2xl font-semibold">Weekly feedback</h1>
+
+      {!canFillThisWeekend && (
+        <div className="border border-amber-300 bg-amber-50 text-amber-800 rounded-xl p-3 text-sm">
+          O semanal só pode ser preenchido ao fim-de-semana (UTC). Tenta no Sábado ou Domingo.
+        </div>
+      )}
+
+      {loadingDoc ? (
+        <div className="text-sm text-gray-500">A carregar…</div>
+      ) : (
+        <div className="space-y-4 border p-4 rounded-2xl">
+          <div>
+            <label className="block text-sm font-medium mb-1">Como correu a semana?</label>
+            <textarea
+              placeholder="Ex: Foi uma boa semana, consegui treinar 4 vezes e mantive a dieta."
+              value={form.howWasTheWeek}
+              onChange={(e) => setForm((f) => ({ ...f, howWasTheWeek: e.target.value }))}
+              className="border rounded-xl px-3 py-2 w-full min-h-[80px]"
+              disabled={!canFillThisWeekend}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Níveis de energia</label>
+              <input
+                placeholder="Ex: Energia alta durante a maior parte da semana"
+                type="text"
+                value={form.energyLevels}
+                onChange={(e) => setForm((f) => ({ ...f, energyLevels: e.target.value }))}
+                className="border rounded-xl px-3 py-2 w-full"
+                disabled={!canFillThisWeekend}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Qualidade do sono</label>
+              <input
+                placeholder="Ex: Dormi em média 7 horas por noite"
+                type="text"
+                value={form.sleepQuality}
+                onChange={(e) => setForm((f) => ({ ...f, sleepQuality: e.target.value }))}
+                className="border rounded-xl px-3 py-2 w-full"
+                disabled={!canFillThisWeekend}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Níveis de stress</label>
+              <input
+                placeholder="Ex: Stress moderado devido ao trabalho"
+                type="text"
+                value={form.stressLevels}
+                onChange={(e) => setForm((f) => ({ ...f, stressLevels: e.target.value }))}
+                className="border rounded-xl px-3 py-2 w-full"
+                disabled={!canFillThisWeekend}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Desafios na dieta</label>
+              <input
+                placeholder="Ex: Dificuldade em manter as refeições à noite"
+                type="text"
+                value={form.dietChallenges}
+                onChange={(e) => setForm((f) => ({ ...f, dietChallenges: e.target.value }))}
+                className="border rounded-xl px-3 py-2 w-full"
+                disabled={!canFillThisWeekend}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-1">Desafios nos treinos</label>
+              <input
+                placeholder="Ex: Faltei a um treino por motivo de viagem"
+                type="text"
+                value={form.workoutChallenges}
+                onChange={(e) => setForm((f) => ({ ...f, workoutChallenges: e.target.value }))}
+                className="border rounded-xl px-3 py-2 w-full"
+                disabled={!canFillThisWeekend}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubmit}
+              disabled={!canFillThisWeekend || saving}
+              className="px-4 py-2 rounded-xl border shadow disabled:opacity-50"
+            >
+              {saving ? "A guardar…" : "Guardar weekly"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

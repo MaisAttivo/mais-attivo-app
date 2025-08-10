@@ -1,7 +1,7 @@
 // setCoachByEmail.js
 const admin = require("firebase-admin");
 const sa = require("./serviceAccount.json");
-const EMAIL = "maisattivo.redes@gmail.com";
+const EMAIL = "maisattivo.redes@gmail.comnod";
 
 admin.initializeApp({ credential: admin.credential.cert(sa), projectId: sa.project_id });
 

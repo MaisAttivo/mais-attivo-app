@@ -3,73 +3,116 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { ensureUserDoc } from "@/lib/ensureUserDoc";
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const uid = cred.user.uid;
+    setMsg(null);
 
-      // Verifica se já existe questionário
-      const qSnap = await getDocs(collection(db, `users/${uid}/questionnaire`));
-      if (qSnap.empty) router.push("/onboarding");
-      else router.push("/client/dashboard");
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
+      // cria/normaliza o documento users/{uid} se não existir
+      await ensureUserDoc(cred.user, "client"); // muda para "coach" se este login for de coach
+      router.push("/dashboard");
     } catch (err: any) {
-      const msg =
-        err?.code === "auth/invalid-credential"
-          ? "Email ou password inválidos."
-          : "Não foi possível iniciar sessão.";
-      setError(msg);
       console.error(err);
+      const code = err?.code || "";
+      const pretty =
+        code === "auth/invalid-credential"
+          ? "Email ou palavra-passe inválidos."
+          : code === "auth/too-many-requests"
+          ? "Muitas tentativas. Tenta mais tarde."
+          : "Falha no login. Verifica os dados.";
+      setMsg(`❌ ${pretty}`);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-xl border p-6">
-        <h1 className="text-2xl font-semibold mb-4">Iniciar sessão</h1>
-        <form onSubmit={handleLogin} className="grid gap-3">
-          <input
-            className="border rounded px-3 py-2"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="border rounded px-3 py-2"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 rounded px-3 py-2 border hover:bg-gray-50 disabled:opacity-60"
-          >
-            {loading ? "A entrar..." : "Entrar"}
-          </button>
-        </form>
-        {error && <p className="text-red-600 mt-3">{error}</p>}
-        <p className="mt-4 text-sm">
-          Ainda não tens conta? <a className="underline" href="/register">Criar conta</a>
-        </p>
+    <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="w-full max-w-md p-6">
+        <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Entrar
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Usa o teu e-mail e palavra-passe para aceder.
+          </p>
+
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                placeholder="ex: joao@exemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Palavra-passe
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type={showPass ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  className="absolute inset-y-0 right-2 my-1 rounded-lg px-2 text-xs text-slate-600 hover:bg-slate-100"
+                  aria-label={showPass ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+                >
+                  {showPass ? "Ocultar" : "Mostrar"}
+                </button>
+              </div>
+            </div>
+
+            {msg && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {msg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "A entrar…" : "Entrar"}
+            </button>
+          </form>
+
+          <p className="mt-4 text-xs text-slate-500">
+            Dica: se o login falhar, confirma que o método Email/Password está
+            ativo no Firebase e que o utilizador existe.
+          </p>
+        </div>
       </div>
     </main>
   );

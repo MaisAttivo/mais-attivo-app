@@ -24,12 +24,14 @@ function startOfISOWeekUTC(date = new Date()) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay() || 7; // 1..7 (2ª=1,...,Dom=7)
   if (day !== 1) d.setUTCDate(d.getUTCDate() - (day - 1));
+  d.setUTCHours(0, 0, 0, 0);
   return d; // segunda-feira (00:00 UTC)
 }
 function endOfISOWeekUTC(date = new Date()) {
   const start = startOfISOWeekUTC(date);
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 6); // domingo
+  end.setUTCHours(23, 59, 59, 999);
   return end;
 }
 function addDaysUTC(d: Date, days: number) {
@@ -40,13 +42,29 @@ function addDaysUTC(d: Date, days: number) {
 function isSameOrBeforeUTC(ymdA: string, ymdB: string) {
   return ymdA <= ymdB; // lexicográfico funciona para YYYY-MM-DD
 }
+function toYMD(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  const dt =
+    typeof value.toDate === "function" ? value.toDate() :
+    value instanceof Date ? value : null;
+  return dt ? ymdUTC(dt) : null;
+}
+const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
 
 /** ===== Tipos ===== */
 type Daily = {
   id: string;
   date?: Date | null;
   createdAt?: Date | null;
-  treinou?: boolean;
+  // canónico
+  didWorkout?: boolean | null;
+  weight?: number | null;
+  waterLiters?: number | null;
+  steps?: number | null;
+  metaAgua?: number | null;
+  // legado
+  treinou?: boolean | null;
   peso?: number | null;
   aguaLitros?: number | null;
   passos?: number | null;
@@ -64,8 +82,14 @@ export default function ClientDashboardPage() {
   const [nextCheckin, setNextCheckin] = useState<string | null>(null);
   const [objetivoPeso, setObjetivoPeso] = useState<"ganho" | "perda" | null>(null);
 
+  // Nome e metas vindas do questionnaire
+  const [displayName, setDisplayName] = useState<string>("O meu painel");
+  const [workoutFrequency, setWorkoutFrequency] = useState<number>(0);
+  const [questionnaireMetaAgua, setQuestionnaireMetaAgua] = useState<number | null>(null);
+
   // daily/weekly
   const [todayDaily, setTodayDaily] = useState<Daily | null>(null);
+  const [lastDaily, setLastDaily] = useState<Daily | null>(null);
   const [weekly, setWeekly] = useState<WeeklyStatus>({ done: false });
 
   // KPIs
@@ -82,6 +106,9 @@ export default function ClientDashboardPage() {
   const [deltaMM, setDeltaMM] = useState<number | null>(null);      // massa muscular
   const [deltaMG, setDeltaMG] = useState<number | null>(null);      // massa gorda
   const [deltaPesoCI, setDeltaPesoCI] = useState<number | null>(null); // peso total (para a seta)
+
+  // Meta de água mais recente (global)
+  const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
   const todayId = useMemo(() => ymdUTC(new Date()), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
@@ -112,9 +139,25 @@ export default function ClientDashboardPage() {
       // users/{uid}
       const userSnap = await getDoc(doc(db, "users", uid));
       const udata: any = userSnap.data() || {};
-      setLastCheckin(udata.lastCheckinDate ?? null);
-      setNextCheckin(udata.nextCheckinDate ?? null);
+      setLastCheckin(toYMD(udata.lastCheckinDate));
+      setNextCheckin(toYMD(udata.nextCheckinDate));
       setObjetivoPeso(udata.objetivoPeso ?? null);
+
+      // questionnaire (último)
+      const qSnap = await getDocs(
+        query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
+      );
+      if (!qSnap.empty) {
+        const qd: any = qSnap.docs[0].data();
+        const name = (qd.fullName || udata.name || udata.email || "O meu painel").toString();
+        setDisplayName(name);
+        setWorkoutFrequency(num(qd.workoutFrequency) ?? 0);
+        setQuestionnaireMetaAgua(num(qd.metaAgua));
+      } else {
+        setDisplayName((udata.name || udata.email || "O meu painel").toString());
+        setWorkoutFrequency(0);
+        setQuestionnaireMetaAgua(null);
+      }
 
       // dailies (30)
       const dq = query(
@@ -130,14 +173,24 @@ export default function ClientDashboardPage() {
           id: docSnap.id,
           date: d.date?.toDate?.() || null,
           createdAt: d.createdAt?.toDate?.() || null,
-          treinou: !!d.treinou,
-          peso: typeof d.peso === "number" ? d.peso : d.peso ? Number(d.peso) : null,
-          aguaLitros:
-            typeof d.aguaLitros === "number" ? d.aguaLitros : d.aguaLitros ? Number(d.aguaLitros) : null,
-          passos: typeof d.passos === "number" ? d.passos : d.passos ? Number(d.passos) : null,
+          // canónico
+          didWorkout: d.didWorkout ?? null,
+          weight: num(d.weight),
+          waterLiters: num(d.waterLiters),
+          steps: num(d.steps),
+          metaAgua: num(d.metaAgua),
+          // legado
+          treinou: d.treinou ?? null,
+          peso: num(d.peso),
+          aguaLitros: num(d.aguaLitros),
+          passos: num(d.passos),
           alimentacao100: d.alimentacao100 ?? d.alimentacaoOk ?? null,
         });
       });
+
+      // último daily (desc)
+      const lastDailyDoc = dailies[0] || null;
+      setLastDaily(lastDailyDoc);
 
       // hoje
       const today = dailies.find((x) => x.id === todayId) || null;
@@ -154,8 +207,8 @@ export default function ClientDashboardPage() {
       const semanaAtualDocs = dailies.filter((d) => d.id >= startYMD && d.id <= endYMD);
       const semanaAnteriorDocs = dailies.filter((d) => d.id >= startPrevYMD && d.id <= endPrevYMD);
 
-      // treinos semana atual
-      setTreinosSemana(semanaAtualDocs.filter((d) => !!d.treinou).length);
+      // treinos semana atual (canónico ou legado)
+      setTreinosSemana(semanaAtualDocs.filter((d) => d.didWorkout === true || d.treinou === true).length);
 
       // streak alimentação 100% (contagem regressiva até hoje)
       let streak = 0;
@@ -170,34 +223,49 @@ export default function ClientDashboardPage() {
 
       // médias 7 dias água/passos
       const last7 = dailies.slice(0, 7).sort((a, b) => (a.id < b.id ? -1 : 1));
-      const aguaVals = last7.map((d) => (typeof d.aguaLitros === "number" ? d.aguaLitros : null)).filter((v): v is number => v !== null);
-      const passosVals = last7.map((d) => (typeof d.passos === "number" ? d.passos : null)).filter((v): v is number => v !== null);
+      const aguaVals = last7
+        .map((d) => num(d.waterLiters) ?? num(d.aguaLitros))
+        .filter((v): v is number => v !== null);
+      const passosVals = last7
+        .map((d) => num(d.steps) ?? num(d.passos))
+        .filter((v): v is number => v !== null);
       setAguaMedia7(aguaVals.length ? +(aguaVals.reduce((a, b) => a + b, 0) / aguaVals.length).toFixed(2) : null);
       setPassosMedia7(passosVals.length ? Math.round(passosVals.reduce((a, b) => a + b, 0) / passosVals.length) : null);
 
-      // pesos médios por semana
-      const pesosSemanaAtual = semanaAtualDocs.map((d) => (typeof d.peso === "number" ? d.peso : null)).filter((v): v is number => v !== null);
-      const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => (typeof d.peso === "number" ? d.peso : null)).filter((v): v is number => v !== null);
-      setPesoMedioSemanaAtual(pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null);
-      setPesoMedioSemanaAnterior(pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null);
-
-      // últimos 2 check-ins (para cor/seta)
-      const cq = query(
-        collection(db, `users/${uid}/checkins`),
-        orderBy("date", "desc"),
-        limit(2)
+      // pesos médios por semana (canónico/legado)
+      const pesosSemanaAtual = semanaAtualDocs
+        .map((d) => num(d.weight) ?? num(d.peso))
+        .filter((v): v is number => v !== null);
+      const pesosSemanaAnterior = semanaAnteriorDocs
+        .map((d) => num(d.weight) ?? num(d.peso))
+        .filter((v): v is number => v !== null);
+      setPesoMedioSemanaAtual(
+        pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null
       );
+      setPesoMedioSemanaAnterior(
+        pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null
+      );
+
+      // últimos 2 check-ins (para deltas e meta fallback/último/próximo)
+      const cq = query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(2));
       const cSnap = await getDocs(cq);
       const cis: any[] = [];
       cSnap.forEach((d) => cis.push({ id: d.id, ...d.data() }));
+
+      if (cis.length >= 1) {
+        // last/next em fallback, se users/{uid} ainda não tiver
+        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(cis[0].date));
+        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(cis[0].nextDate));
+      }
+
       if (cis.length >= 2) {
         const [c0, c1] = cis; // c0 = mais recente
-        const mm0 = typeof c0.massaMuscular === "number" ? c0.massaMuscular : null;
-        const mm1 = typeof c1.massaMuscular === "number" ? c1.massaMuscular : null;
-        const mg0 = typeof c0.massaGorda === "number" ? c0.massaGorda : null;
-        const mg1 = typeof c1.massaGorda === "number" ? c1.massaGorda : null;
-        const p0 = typeof c0.peso === "number" ? c0.peso : null;
-        const p1 = typeof c1.peso === "number" ? c1.peso : null;
+        const mm0 = num(c0.massaMuscular);
+        const mm1 = num(c1.massaMuscular);
+        const mg0 = num(c0.massaGorda);
+        const mg1 = num(c1.massaGorda);
+        const p0 = num(c0.weight) ?? num(c0.peso);
+        const p1 = num(c1.weight) ?? num(c1.peso);
 
         setDeltaMM(mm0 !== null && mm1 !== null ? +(mm0 - mm1).toFixed(1) : null);
         setDeltaMG(mg0 !== null && mg1 !== null ? +(mg0 - mg1).toFixed(1) : null);
@@ -208,7 +276,26 @@ export default function ClientDashboardPage() {
         setDeltaPesoCI(null);
       }
 
-      // weekly desta semana
+      // ===== Meta de água mais recente =====
+      // 1) metaAgua: daily → check-in → questionnaire
+      const metaDirect =
+        num(todayDaily?.metaAgua) ??
+        num(lastDailyDoc?.metaAgua) ??
+        num(cis[0]?.metaAgua) ??
+        questionnaireMetaAgua;
+
+      // 2) se nenhuma meta direta, calcular pelo peso mais recente: daily → check-in → questionnaire
+      const weightMostRecent =
+        num(todayDaily?.weight) ?? num(todayDaily?.peso) ??
+        num(lastDailyDoc?.weight) ?? num(lastDailyDoc?.peso) ??
+        num(cis[0]?.weight) ?? num(cis[0]?.peso) ??
+        num(qSnap?.docs?.[0]?.data()?.weight) ?? num(qSnap?.docs?.[0]?.data()?.peso);
+
+      const metaCalc = weightMostRecent ? Number((weightMostRecent * 0.05).toFixed(2)) : null;
+
+      setLatestMetaAgua(metaDirect ?? metaCalc ?? 3.0);
+
+      // weekly desta semana (só estado "feito?")
       const isoYear = isoStart.getUTCFullYear();
       const weekNumber = (() => {
         const d = startOfISOWeekUTC(new Date());
@@ -220,7 +307,7 @@ export default function ClientDashboardPage() {
       const wSnap = await getDoc(doc(db, `users/${uid}/weeklyFeedback/${weekId}`));
       setWeekly({ done: wSnap.exists() });
     })().catch((e) => console.error("Dashboard load error:", e));
-  }, [uid, todayId, isoStart, isoEnd]);
+  }, [uid, todayId, isoStart, isoEnd, questionnaireMetaAgua]);
 
   if (loading) return <div className="p-4">A carregar…</div>;
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
@@ -257,9 +344,14 @@ export default function ClientDashboardPage() {
     }
   })();
 
+  // Água — HOJE: litros do daily de hoje (ou último daily) + "de Meta"
+  const litrosHoje =
+    num(todayDaily?.waterLiters) ?? num(todayDaily?.aguaLitros) ??
+    num(lastDaily?.waterLiters) ?? num(lastDaily?.aguaLitros);
+
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-semibold">O meu painel</h1>
+      <h1 className="text-2xl font-semibold">{displayName}</h1>
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -297,15 +389,20 @@ export default function ClientDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="border rounded-2xl p-4">
           <div className="text-sm text-gray-500">Treinos feitos (semana)</div>
-          <div className="text-2xl font-semibold">{treinosSemana}</div>
+          <div className="text-2xl font-semibold">
+            {treinosSemana}{workoutFrequency ? ` de ${workoutFrequency}` : ""}
+          </div>
         </div>
         <div className="border rounded-2xl p-4">
           <div className="text-sm text-gray-500">Streak alimentação 100%</div>
           <div className="text-2xl font-semibold">{streakAlimentacao}</div>
         </div>
         <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Água — média 7 dias (L)</div>
-          <div className="text-2xl font-semibold">{aguaMedia7 ?? "—"}</div>
+          <div className="text-sm text-gray-500">Água — hoje</div>
+          <div className="text-2xl font-semibold">
+            {litrosHoje != null ? litrosHoje : "—"}
+            {latestMetaAgua != null ? ` de ${latestMetaAgua}` : ""}
+          </div>
         </div>
         <div className="border rounded-2xl p-4">
           <div className="text-sm text-gray-500">Passos — média 7 dias</div>
@@ -350,15 +447,10 @@ export default function ClientDashboardPage() {
             <Link
               href="/daily"
               className={`px-4 py-2 rounded-xl border hover:shadow ${
-                (!!todayDaily?.createdAt &&
-                  Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000))
-                  ? "" : "opacity-50 cursor-not-allowed"
+                canEditDaily ? "" : "opacity-50 cursor-not-allowed"
               }`}
               onClick={(e) => {
-                const canEdit =
-                  !!todayDaily?.createdAt &&
-                  Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
-                if (!canEdit) e.preventDefault();
+                if (!canEditDaily) e.preventDefault();
               }}
             >
               Editar

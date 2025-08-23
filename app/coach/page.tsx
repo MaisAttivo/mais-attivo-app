@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
   query,
-  where,
   Timestamp,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
@@ -15,7 +17,7 @@ import { db, auth } from "@/lib/firebase";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ChevronDown, Filter as FilterIcon, Search, RefreshCw } from "lucide-react";
@@ -31,16 +33,27 @@ import { cn } from "@/lib/utils";
 import CoachGuard from "@/components/ui/CoachGuard";
 
 /* ========= Tipos ========= */
-export type DailyFeedback = {
+type DailyFeedback = {
   id: string;
   date: Timestamp;
   didWorkout?: boolean | null;
   waterLiters?: number | null;
   alimentacao100?: boolean | null;
   weight?: number | null;
+  peso?: number | null;
+  metaAgua?: number | null;
 };
 
-export type Cliente = {
+type Questionnaire = {
+  id: string;
+  createdAt?: Timestamp | null;
+  fullName?: string | null;
+  metaAgua?: number | null;
+  weight?: number | null;
+  weightKg?: number | null;
+};
+
+type Cliente = {
   id: string;
   nome: string;
   email?: string;
@@ -53,12 +66,9 @@ export type Cliente = {
 };
 
 /* ========= Utils ========= */
-function daysBetween(a: Date, b: Date) {
-  return Math.floor(Math.abs(a.getTime() - b.getTime()) / 86400000);
-}
-function toDate(ts?: Timestamp | null) {
-  return ts ? ts.toDate() : null;
-}
+const toDate = (ts?: Timestamp | null) => (ts ? ts.toDate() : null);
+const daysBetween = (a: Date, b: Date) =>
+  Math.floor(Math.abs(a.getTime() - b.getTime()) / 86400000);
 
 /* ========= Auth helper ========= */
 function useAuthReady() {
@@ -66,15 +76,11 @@ function useAuthReady() {
     ready: false,
     uid: null,
   });
-  useEffect(() => {
-    return onAuthStateChanged(auth, (u) =>
-      setState({ ready: true, uid: u?.uid ?? null })
-    );
-  }, []);
+  useEffect(() => onAuthStateChanged(auth, (u) => setState({ ready: true, uid: u?.uid ?? null })), []);
   return state;
 }
 
-/* ========= Filtros e métricas ========= */
+/* ========= Filtros/derivadas ========= */
 export type FilterKey =
   | "inativos4d"
   | "semTreino5d"
@@ -82,22 +88,10 @@ export type FilterKey =
   | "agua3d"
   | "semFiltro";
 
-function getDerivedMetricsFromHistory(history: DailyFeedback[]) {
+function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number) {
   const now = new Date();
-
-  // meta de água: último weight * 0.05; se não houver, 3.0L
-  let metaAgua = 3.0;
-  for (const df of history) {
-    if (typeof df.weight === "number") {
-      metaAgua = df.weight * 0.05;
-      break;
-    }
-  }
-
   const last = history[0];
-  const diasDesdeUltimoDF = last?.date
-    ? daysBetween(now, toDate(last.date)!)
-    : Infinity;
+  const diasDesdeUltimoDF = last?.date ? daysBetween(now, toDate(last.date)!) : Infinity;
 
   let diasSemTreinar = Infinity;
   for (const df of history) {
@@ -117,21 +111,14 @@ function getDerivedMetricsFromHistory(history: DailyFeedback[]) {
 
   let diasSemAguaOK = Infinity;
   for (const df of history) {
-    const ok = (df.waterLiters ?? 0) >= metaAgua;
-    if (ok) {
+    const agua = df.waterLiters ?? 0;
+    if (agua >= metaAgua) {
       diasSemAguaOK = daysBetween(now, toDate(df.date)!);
       break;
     }
   }
 
-  return {
-    diasDesdeUltimoDF,
-    diasSemTreinar,
-    diasSemAlimentacaoOK,
-    diasSemAguaOK,
-    last,
-    metaAgua,
-  };
+  return { diasDesdeUltimoDF, diasSemTreinar, diasSemAlimentacaoOK, diasSemAguaOK, last };
 }
 
 const filterPredicates: Record<Exclude<FilterKey, "semFiltro">, (c: Cliente) => boolean> = {
@@ -140,6 +127,89 @@ const filterPredicates: Record<Exclude<FilterKey, "semFiltro">, (c: Cliente) => 
   semAlimentacao5d: (c) => (c.diasSemAlimentacaoOK ?? Infinity) >= 5,
   agua3d: (c) => (c.diasSemAguaOK ?? Infinity) >= 3,
 };
+
+/* ========= Helpers: nome + meta de água ========= */
+
+// Nome robusto: users.fullName → users.name → users.nome → questionnaire.fullName → email → uid
+async function resolveDisplayName(userId: string, userEmail?: string) {
+  try {
+    const us = await getDoc(doc(db, "users", userId));
+    if (us.exists()) {
+      const u = us.data() as any;
+      const fromUsers =
+        (u.fullName as string) ||
+        (u.name as string) ||
+        (u.nome as string) ||
+        "";
+      if (fromUsers && String(fromUsers).trim()) return String(fromUsers).trim();
+    }
+  } catch {}
+
+  try {
+    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+    let snap = await getDocs(qQ);
+    if (snap.empty) {
+      try {
+        qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("__name__", "desc"), limit(1));
+        snap = await getDocs(qQ);
+      } catch {}
+    }
+    if (!snap.empty) {
+      const fullName = (snap.docs[0].get("fullName") as string | undefined)?.trim();
+      if (fullName) return fullName;
+    }
+  } catch {}
+
+  if (userEmail && userEmail.trim()) return userEmail.trim();
+  return userId;
+}
+
+// Meta mais recente: daily → checkin → questionnaire → (peso × 0.05) → 3.0
+async function fetchLatestHydrationTarget(userId: string): Promise<number> {
+  // daily
+  try {
+    const qDaily = query(collection(db, `users/${userId}/dailyFeedback`), orderBy("date", "desc"), limit(1));
+    const s = await getDocs(qDaily);
+    if (!s.empty) {
+      const d = s.docs[0].data() as any;
+      const weight = (d.weight ?? d.peso) as number | undefined;
+      const meta = (d.metaAgua as number | undefined) ?? (typeof weight === "number" ? weight * 0.05 : undefined);
+      if (typeof meta === "number") return Number(meta.toFixed(2));
+    }
+  } catch {}
+
+  // checkin
+  try {
+    const qC = query(collection(db, `users/${userId}/checkins`), orderBy("date", "desc"), limit(1));
+    const s = await getDocs(qC);
+    if (!s.empty) {
+      const d = s.docs[0].data() as any;
+      const weight = (d.weight ?? d.peso) as number | undefined;
+      const meta = (d.metaAgua as number | undefined) ?? (typeof weight === "number" ? weight * 0.05 : undefined);
+      if (typeof meta === "number") return Number(meta.toFixed(2));
+    }
+  } catch {}
+
+  // questionnaire
+  try {
+    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+    let s = await getDocs(qQ);
+    if (s.empty) {
+      try {
+        qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("__name__", "desc"), limit(1));
+        s = await getDocs(qQ);
+      } catch {}
+    }
+    if (!s.empty) {
+      const d = s.docs[0].data() as Questionnaire;
+      const weight = (d.weight ?? d.weightKg) as number | undefined;
+      const meta = (d.metaAgua as number | undefined) ?? (typeof weight === "number" ? weight * 0.05 : undefined);
+      if (typeof meta === "number") return Number(meta.toFixed(2));
+    }
+  } catch {}
+
+  return 3.0;
+}
 
 /* ========= Página ========= */
 function CoachDashboard() {
@@ -159,69 +229,44 @@ function CoachDashboard() {
   async function fetchClientes() {
     setLoading(true);
     try {
-      const usersRef = collection(db, "users");
-
-      // Canon: role === "client"; fallback temporário para "cliente"
-      let snap = await getDocs(query(usersRef, where("role", "==", "client")));
-      if (snap.empty) {
-        const alt = await getDocs(query(usersRef, where("role", "==", "cliente")));
-        if (!alt.empty) snap = alt;
-      }
-
-      if (snap.empty) {
-        setClientes([]);
-        return;
-      }
-
-      const base = snap.docs.map((d) => ({
-        id: d.id,
-        nome: d.get("nome") ?? "Sem nome",
-        email: d.get("email") ?? undefined,
-      }));
+      // users (menos coaches)
+      const usersSnap = await getDocs(query(collection(db, "users"), orderBy("email", "asc")));
+      const base = usersSnap.docs
+        .filter((d) => (d.data() as any)?.role !== "coach")
+        .map((d) => ({
+          id: d.id,
+          email: d.get("email") ?? undefined,
+        }));
 
       const twoWeeksAgo = new Date();
       twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
       const enriched = await Promise.all(
-        base.map(async (c) => {
-          const dfRef = collection(db, `users/${c.id}/dailyFeedback`);
+        base.map(async (u) => {
+          const nomeFinal = await resolveDisplayName(u.id, u.email);
+          const metaAgua = await fetchLatestHydrationTarget(u.id);
+
           const qDF = query(
-            dfRef,
-            where("date", ">=", Timestamp.fromDate(twoWeeksAgo)),
+            collection(db, `users/${u.id}/dailyFeedback`),
             orderBy("date", "desc"),
             limit(30)
           );
           const dfSnap = await getDocs(qDF);
+          const history: DailyFeedback[] = dfSnap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as any) } as DailyFeedback))
+            .filter((d) => {
+              const dt = toDate(d.date);
+              return dt ? dt.getTime() >= twoWeeksAgo.getTime() : false;
+            });
 
-          const history: DailyFeedback[] = dfSnap.docs.map((d) => ({
-            id: d.id,
-            date: d.get("date"),
-            didWorkout: d.get("didWorkout") ?? null,
-            waterLiters: d.get("waterLiters") ?? null,
-            alimentacao100: d.get("alimentacao100") ?? null,
-            weight: d.get("weight") ?? null,
-          }));
+          const m = getDerivedMetricsFromHistory(history, metaAgua);
 
-          // fallback: se não houver nos últimos 14 dias, busca o último
-          if (history.length === 0) {
-            const lastSnap = await getDocs(query(dfRef, orderBy("date", "desc"), limit(1)));
-            lastSnap.forEach((d) =>
-              history.push({
-                id: d.id,
-                date: d.get("date"),
-                didWorkout: d.get("didWorkout") ?? null,
-                waterLiters: d.get("waterLiters") ?? null,
-                alimentacao100: d.get("alimentacao100") ?? null,
-                weight: d.get("weight") ?? null,
-              })
-            );
-          }
-
-          const m = getDerivedMetricsFromHistory(history);
           return {
-            ...c,
+            id: u.id,
+            nome: nomeFinal,
+            email: u.email,
             ultimoDF: m.last ?? null,
-            metaAguaLitros: m.metaAgua,
+            metaAguaLitros: metaAgua,
             diasDesdeUltimoDF: Number.isFinite(m.diasDesdeUltimoDF) ? m.diasDesdeUltimoDF : null,
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
@@ -271,12 +316,8 @@ function CoachDashboard() {
     });
   }
 
-  if (!ready) {
-    return <div className="p-6 text-sm text-muted-foreground">A iniciar sessão…</div>;
-  }
-  if (!uid) {
-    return <div className="p-6 text-sm text-destructive">Precisas de iniciar sessão para aceder.</div>;
-  }
+  if (!ready) return <div className="p-6 text-sm text-muted-foreground">A iniciar sessão…</div>;
+  if (!uid) return <div className="p-6 text-sm text-destructive">Precisas de iniciar sessão para aceder.</div>;
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -351,41 +392,47 @@ function CoachDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((c) => (
-          <Card key={c.id} className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="truncate pr-2">{c.nome}</span>
-                <div className="flex items-center gap-2">
-                  {c.diasDesdeUltimoDF != null && (
+          <Link key={c.id} href={`/coach/client/${c.id}`} className="group block cursor-pointer">
+            <Card className="shadow-sm hover:shadow-md transition">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="block truncate font-semibold group-hover:underline">
+                      {c.nome}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {c.email ?? "—"}
+                    </div>
+                  </div>
+                  {typeof c.diasDesdeUltimoDF === "number" && (
                     <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
                       Últ. registo: {c.diasDesdeUltimoDF}d
                     </Badge>
                   )}
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-muted-foreground truncate">
-                {c.email ?? "—"}
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <Metric label="Sem treino" valueDays={c.diasSemTreinar} warnAt={5} />
-                <Metric label="Sem alim. 100%" valueDays={c.diasSemAlimentacaoOK} warnAt={5} />
-                <Metric label="Sem água OK" valueDays={c.diasSemAguaOK} warnAt={3} />
-                <Metric label="Meta água (L)" value={c.metaAguaLitros.toFixed(2)} />
-              </div>
+              </CardHeader>
 
-              {c.ultimoDF && (
-                <div className="text-xs text-muted-foreground">
-                  Último DF: {toDate(c.ultimoDF.date)?.toLocaleDateString()} • Treinou: {String(c.ultimoDF.didWorkout ?? "?")}
-                  {typeof c.ultimoDF.waterLiters === "number" && ` • Água: ${c.ultimoDF.waterLiters}L`}
-                  {typeof c.ultimoDF.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF.alimentacao100 ? "Sim" : "Não"}`}
-                  {typeof c.ultimoDF.weight === "number" && ` • Peso: ${c.ultimoDF.weight}kg`}
+              <CardContent className="space-y-3">
+                <Separator />
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <Metric label="Sem treino" valueDays={c.diasSemTreinar} warnAt={5} />
+                  <Metric label="Sem alim. 100%" valueDays={c.diasSemAlimentacaoOK} warnAt={5} />
+                  <Metric label="Sem água OK" valueDays={c.diasSemAguaOK} warnAt={3} />
+                  <Metric label="Meta água (L)" value={c.metaAguaLitros.toFixed(2)} />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {c.ultimoDF && (
+                  <div className="text-xs text-muted-foreground">
+                    Último DF: {toDate(c.ultimoDF.date)?.toLocaleDateString()} • Treinou: {String(c.ultimoDF.didWorkout ?? "?")}
+                    {typeof c.ultimoDF.waterLiters === "number" && ` • Água: ${c.ultimoDF.waterLiters}L`}
+                    {typeof c.ultimoDF.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF.alimentacao100 ? "Sim" : "Não"}`}
+                    {(typeof c.ultimoDF.peso === "number" || typeof c.ultimoDF.weight === "number") &&
+                      ` • Peso: ${(c.ultimoDF.peso ?? c.ultimoDF.weight)}kg`}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

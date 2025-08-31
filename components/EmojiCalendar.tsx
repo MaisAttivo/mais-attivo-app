@@ -21,11 +21,8 @@ function getMonthStart(d: Date) {
 function getMonthEnd(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
 }
-function toLocalYMD(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+function toLisbonYMD(date: Date): string {
+  return lisbonYMD(date);
 }
 function addMonths(d: Date, months: number) {
   const nd = new Date(d);

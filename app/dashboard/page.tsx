@@ -342,16 +342,10 @@ export default function DashboardPage() {
       {/* KPIs semana + médias 7 dias */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Treinos na semana</div>
-          <div className="text-2xl font-semibold">
-            {treinosSemana} {workoutFrequency ? ` / ${workoutFrequency}` : ""}
-          </div>
+          <EmojiCalendar uid={uid!} mode="workout" />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Streak alimentação 100%</div>
-          <div className={`text-2xl font-semibold ${streakClass}`}>
-            {streakAlimentacao} {streakBadge}
-          </div>
+          <EmojiCalendar uid={uid!} mode="diet" />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Água — média 7 dias</div>
@@ -366,15 +360,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Calendários de streaks */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="workout" />
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="diet" />
-        </div>
-      </div>
 
       {/* Daily hoje */}
       <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">

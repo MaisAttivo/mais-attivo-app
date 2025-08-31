@@ -35,12 +35,8 @@ const toDateFlexible = (v: any): Date | null => {
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return new Date(`${v}T00:00:00Z`);
   return null;
 };
-const ymd = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "—");
-const todayUTC = () => {
-  const t = new Date();
-  t.setUTCHours(0, 0, 0, 0);
-  return t;
-};
+const ymd = (d: Date | null | undefined) => (d ? lisbonYMD(d) : "—");
+const todayLisbonYMD = () => lisbonTodayYMD();
 
 type Daily = {
   id: string;

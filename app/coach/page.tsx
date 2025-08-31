@@ -433,8 +433,7 @@ function CoachDashboard() {
           <Link key={c.id} href={`/coach/client/${c.id}`} className="group block cursor-pointer">
             <Card className={cn(
               "shadow-sm hover:shadow-md transition",
-              c.dueStatus === "overdue" && "border-destructive",
-              c.dueStatus === "today" && "border-primary"
+              (c.dueStatus === "overdue" || c.dueStatus === "today") && "bg-[#FFF4D1] ring-2 ring-[#706800] text-[#706800]"
             )}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">

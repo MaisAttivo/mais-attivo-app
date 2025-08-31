@@ -323,7 +323,7 @@ export default function CoachClientProfilePage(
                       const agua = num(d.waterLiters) ?? num(d.aguaLitros);
                       return (
                         <tr key={d.id} className="border-t">
-                          <td className="py-2 pr-4">{d.id}</td>
+                          <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
                           <td className="py-2 pr-4">{w != null ? w : "—"}</td>
                           <td className="py-2 pr-4">
                             {agua != null ? agua : "—"}

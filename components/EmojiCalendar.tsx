@@ -81,7 +81,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
           const data: any = doc.data();
           const dateVal = data.date?.toDate?.() as Date | undefined;
           if (!dateVal) return;
-          const id = toLocalYMD(dateVal);
+          const id = toLisbonYMD(dateVal);
           const has = mode === "workout" ? Boolean(data.treinou ?? data.didWorkout) : Boolean(data.alimentacao100);
           res[id] = { id, has };
         });

@@ -414,7 +414,22 @@ export default function CoachClientProfilePage(
                     <div className="text-sm">
                       <div className="font-medium">Data: {ymd(toDate(c.date ?? null))}</div>
                       <div className="text-muted-foreground">
-                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "—"}
+                        Próxima: {(() => {
+                          const nd = toDate(c.nextDate ?? null);
+                          const due = (() => {
+                            if (!nd) return false;
+                            const t = todayUTC();
+                            const nd0 = new Date(nd);
+                            nd0.setUTCHours(0, 0, 0, 0);
+                            return nd0.getTime() <= t.getTime();
+                          })();
+                          return (
+                            <>
+                              <span className={due ? "text-destructive font-semibold" : undefined}>{ymd(nd)}</span>
+                              {" "}• Tipo: {c.type ?? "—"}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

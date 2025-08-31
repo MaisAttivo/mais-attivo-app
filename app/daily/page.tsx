@@ -305,7 +305,7 @@ export default function DailyPage() {
           <button
             type="submit"
             disabled={submitting || (alreadySubmitted && !canEdit)}
-            className="flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-60"
+            className="flex-1 rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
           </button>
@@ -325,7 +325,7 @@ export default function DailyPage() {
         <div className="max-w-xl mx-auto">
           <Link
             href="/dashboard"
-            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             ⬅️ Voltar à dashboard
           </Link>

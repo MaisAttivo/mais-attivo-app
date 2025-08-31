@@ -307,6 +307,8 @@ function CoachDashboard() {
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
             diasSemAguaOK: Number.isFinite(m.diasSemAguaOK) ? m.diasSemAguaOK : null,
+            nextCheckinYMD,
+            dueStatus,
           } as Cliente;
         })
       );

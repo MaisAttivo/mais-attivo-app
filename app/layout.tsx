@@ -25,6 +25,7 @@ export default function RootLayout({
   const router = useRouter();
   const { uid, role, loading } = useSession();
   const showHeader = pathname !== "/login" && pathname !== "/register";
+  const clickableLogo = pathname !== "/onboarding";
 
   function handleLogoClick() {
     if (loading) return;
@@ -40,13 +41,21 @@ export default function RootLayout({
       >
         {showHeader && (
           <header className="w-full py-3">
-            <button type="button" onClick={handleLogoClick} className="block mx-auto">
+            {clickableLogo ? (
+              <button type="button" onClick={handleLogoClick} className="block mx-auto">
+                <img
+                  src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=600"
+                  alt="Mais Attivo"
+                  className="mx-auto h-12 sm:h-14 w-auto cursor-pointer"
+                />
+              </button>
+            ) : (
               <img
                 src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=600"
                 alt="Mais Attivo"
-                className="mx-auto h-12 sm:h-14 w-auto cursor-pointer"
+                className="mx-auto h-12 sm:h-14 w-auto"
               />
-            </button>
+            )}
           </header>
         )}
         {children}

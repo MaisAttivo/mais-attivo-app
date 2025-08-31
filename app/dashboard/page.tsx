@@ -72,6 +72,7 @@ type Daily = {
 type WeeklyStatus = { done: boolean };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -413,7 +414,7 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
             <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
-            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "�� Em falta"}</div>
+            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
           </div>
           <div className="flex gap-2">
             {todayDaily ? (

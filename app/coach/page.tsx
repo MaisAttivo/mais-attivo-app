@@ -66,6 +66,8 @@ type Cliente = {
   diasSemTreinar?: number | null;
   diasSemAlimentacaoOK?: number | null;
   diasSemAguaOK?: number | null;
+  nextCheckinYMD?: string | null;
+  dueStatus?: "today" | "overdue" | null;
 };
 
 /* ========= Utils ========= */

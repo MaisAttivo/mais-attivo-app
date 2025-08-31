@@ -268,11 +268,11 @@ export default function DashboardPage() {
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Último check-in</div>
           <div className="text-xl font-semibold">{lastCheckin ?? "—"}</div>
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-sm text-gray-500">Próximo check-in</div>
@@ -302,26 +302,26 @@ export default function DashboardPage() {
 
       {/* KPIs semana + médias 7 dias */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Treinos na semana</div>
           <div className="text-2xl font-semibold">
             {treinosSemana} {workoutFrequency ? ` / ${workoutFrequency}` : ""}
           </div>
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Streak alimentação 100%</div>
           <div className={`text-2xl font-semibold ${streakClass}`}>
             {streakAlimentacao} {streakBadge}
           </div>
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Água — média 7 dias</div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}
             {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
           </div>
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Passos — média 7 dias</div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
@@ -329,7 +329,7 @@ export default function DashboardPage() {
 
       {/* Pesos médios + alinhamento com objetivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">
             Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
           </div>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
           <div className="text-sm text-gray-500">Peso médio — semana anterior</div>
           <div className="text-2xl font-semibold">
             {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
@@ -351,7 +351,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Daily hoje */}
-      <div className="border rounded-2xl p-4 flex flex-wrap gap-3 items-center justify-between">
+      <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="text-sm text-gray-500">Daily de hoje ({todayId})</div>
           <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
@@ -360,13 +360,13 @@ export default function DashboardPage() {
           {todayDaily ? (
             <Link
               href="/daily"
-              className={`px-4 py-2 rounded-xl border hover:shadow ${canEditDaily ? "" : "opacity-50 cursor-not-allowed"}`}
+              className={`px-4 py-2 rounded-xl border-2 border-[#D4AF37] text-[#8C6A00] bg-white hover:bg-[#FFF4D1] hover:shadow ${canEditDaily ? "" : "opacity-60 cursor-not-allowed"}`}
               onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
             >
               Editar
             </Link>
           ) : (
-            <Link href="/daily" className="px-4 py-2 rounded-xl border hover:shadow">
+            <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
               Criar daily
             </Link>
           )}
@@ -374,7 +374,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Weekly */}
-      <div className="border rounded-2xl p-4 flex flex-wrap gap-3 items-center justify-between">
+      <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4 flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="text-sm text-gray-500">Weekly desta semana</div>
           <div className="text-lg">
@@ -382,7 +382,7 @@ export default function DashboardPage() {
           </div>
         </div>
         {!weekly.done && isWeekend && (
-          <Link href="/weekly" className="px-4 py-2 rounded-xl border hover:shadow">
+          <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
             Preencher semanal
           </Link>
         )}

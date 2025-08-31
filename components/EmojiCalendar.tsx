@@ -56,11 +56,11 @@ export default function EmojiCalendar({ uid, mode }: Props) {
   const [days, setDays] = useState<Record<string, DayInfo>>({});
 
   const title = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+    const fmt = new Intl.DateTimeFormat("pt-PT", { month: "long", year: "numeric", timeZone: "Europe/Lisbon" });
     return fmt.format(anchor);
   }, [anchor]);
 
-  const todayYMD = useMemo(() => toLocalYMD(new Date()), []);
+  const todayYMD = useMemo(() => toLisbonYMD(new Date()), []);
 
   useEffect(() => {
     let alive = true;

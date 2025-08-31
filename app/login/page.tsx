@@ -51,12 +51,12 @@ export default function LoginPage() {
   return (
     <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="w-full max-w-md p-6">
+        <img
+          src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fc8f64e36febe4c2391d98a7f535b326a?format=webp&width=800"
+          alt="Mais Attivo"
+          className="mx-auto mb-6 h-16 sm:h-20 w-auto"
+        />
         <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
-          <img
-            src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fc8f64e36febe4c2391d98a7f535b326a?format=webp&width=800"
-            alt="Mais Attivo"
-            className="mx-auto mb-4 h-10 w-auto"
-          />
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Entrar
           </h1>

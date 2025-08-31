@@ -10,12 +10,9 @@ import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
-// ID da data no fuso local do utilizador (YYYY-MM-DD)
+// ID da data no fuso de Portugal (YYYY-MM-DD)
 function getLocalDateId(d = new Date()) {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return lisbonYMD(d);
 }
 
 export default function DailyPage() {

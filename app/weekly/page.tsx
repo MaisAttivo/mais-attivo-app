@@ -277,9 +277,9 @@ export default function WeeklyPage() {
             <button
               onClick={handleSubmit}
               disabled={!canFillThisWeekend || saving}
-              className="flex-1 px-4 py-2 rounded-[20px] overflow-hidden border-[3px] border-[#b58c2c] text-[#8C6A00] bg-white hover:bg-[#FFF4D1] shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1] shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "A guardar��" : "Guardar weekly"}
+              {saving ? "A guardar…" : "Guardar weekly"}
             </button>
 
             {/* Voltar à dashboard (inline) */}

@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   collection,
   doc,
@@ -14,7 +15,7 @@ import {
   query,
   Timestamp,
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 
 import { Input } from "@/components/ui/input";
@@ -356,6 +357,12 @@ function CoachDashboard() {
   if (!ready) return <div className="p-6 text-sm text-muted-foreground">A iniciar sessão…</div>;
   if (!uid) return <div className="p-6 text-sm text-destructive">Precisas de iniciar sessão para aceder.</div>;
 
+  const router = useRouter();
+  async function doLogout() {
+    try { await signOut(auth); } catch {}
+    router.replace("/login");
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -364,6 +371,7 @@ function CoachDashboard() {
           <Button variant="outline" onClick={fetchClientes} disabled={loading}>
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Atualizar
           </Button>
+          <Button variant="secondary" onClick={doLogout}>Terminar sessão</Button>
         </div>
       </div>
 

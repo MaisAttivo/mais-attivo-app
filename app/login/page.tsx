@@ -52,6 +52,11 @@ export default function LoginPage() {
     <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="w-full max-w-md p-6">
         <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
+          <img
+            src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fc8f64e36febe4c2391d98a7f535b326a?format=webp&width=800"
+            alt="Mais Attivo"
+            className="mx-auto mb-4 h-10 w-auto"
+          />
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Entrar
           </h1>
@@ -71,7 +76,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] transition"
                 placeholder="ex: joao@exemplo.com"
               />
             </div>
@@ -87,7 +92,7 @@ export default function LoginPage() {
                   required
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] transition"
                   placeholder="••••••••"
                 />
                 <button
@@ -110,7 +115,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              className="w-full rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
               {loading ? "A entrar…" : "Entrar"}
             </button>

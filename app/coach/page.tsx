@@ -252,6 +252,36 @@ function CoachDashboard() {
           const nomeFinal = await resolveDisplayName(u.id, u.email);
           const metaAgua = await fetchLatestHydrationTarget(u.id);
 
+          let nextCheckinYMD: string | null = null;
+          try {
+            const us = await getDoc(doc(db, "users", u.id));
+            if (us.exists()) {
+              const data: any = us.data();
+              const nd: Date | null = data.nextCheckinDate?.toDate?.() ?? null;
+              if (nd) nextCheckinYMD = lisbonYMD(nd);
+              else if (typeof data.nextCheckinText === "string") nextCheckinYMD = data.nextCheckinText;
+            }
+          } catch {}
+          if (!nextCheckinYMD) {
+            try {
+              const qC = query(collection(db, `users/${u.id}/checkins`), orderBy("date", "desc"), limit(1));
+              const sC = await getDocs(qC);
+              if (!sC.empty) {
+                const d: any = sC.docs[0].data();
+                const nd: Date | null = d.nextDate?.toDate?.() ?? null;
+                if (nd) nextCheckinYMD = lisbonYMD(nd);
+              }
+            } catch {}
+          }
+          const today = lisbonTodayYMD();
+          const dueStatus: "today" | "overdue" | null = nextCheckinYMD
+            ? nextCheckinYMD < today
+              ? "overdue"
+              : nextCheckinYMD === today
+              ? "today"
+              : null
+            : null;
+
           const qDF = query(
             collection(db, `users/${u.id}/dailyFeedback`),
             orderBy("date", "desc"),

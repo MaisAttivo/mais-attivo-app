@@ -14,7 +14,7 @@ import {
   query,
   Timestamp,
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 
 import { Input } from "@/components/ui/input";

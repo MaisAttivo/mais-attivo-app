@@ -446,11 +446,18 @@ function CoachDashboard() {
                       {c.email ?? "—"}
                     </div>
                   </div>
-                  {typeof c.diasDesdeUltimoDF === "number" && (
-                    <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
-                      Últ. registo: {c.diasDesdeUltimoDF}d
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {c.dueStatus && (
+                      <Badge variant={c.dueStatus === "overdue" ? "destructive" : "secondary"}>
+                        {c.dueStatus === "overdue" ? "CI em atraso" : "CI hoje"}
+                      </Badge>
+                    )}
+                    {typeof c.diasDesdeUltimoDF === "number" && (
+                      <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
+                        Últ. registo: {c.diasDesdeUltimoDF}d
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 

@@ -4,9 +4,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import EmojiCalendar from "@/components/EmojiCalendar";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { Button } from "@/components/ui/button";
 import {
   doc,
   getDoc,
@@ -81,6 +83,7 @@ type Daily = {
 type WeeklyStatus = { done: boolean };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -293,22 +296,30 @@ export default function DashboardPage() {
   const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
 
   const waPhone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE;
+  async function doLogout() {
+    try { await signOut(auth); } catch {}
+    router.replace("/login");
+  }
+
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{displayName}</h1>
-        {waPhone && (
-          <a
-            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
-            title="Enviar mensagem no WhatsApp"
-          >
-            <span aria-hidden>🟢</span>
-            WhatsApp
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={doLogout}>Terminar sessão</Button>
+          {waPhone && (
+            <a
+              href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
+              title="Enviar mensagem no WhatsApp"
+            >
+              <span aria-hidden>🟢</span>
+              WhatsApp
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3">

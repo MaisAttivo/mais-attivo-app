@@ -431,7 +431,11 @@ function CoachDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((c) => (
           <Link key={c.id} href={`/coach/client/${c.id}`} className="group block cursor-pointer">
-            <Card className="shadow-sm hover:shadow-md transition">
+            <Card className={cn(
+              "shadow-sm hover:shadow-md transition",
+              c.dueStatus === "overdue" && "border-destructive",
+              c.dueStatus === "today" && "border-primary"
+            )}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">

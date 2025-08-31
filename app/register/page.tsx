@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function RegisterPage() {
@@ -17,27 +17,43 @@ export default function RegisterPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setLoading(true);
 
     try {
       // 1) Criar conta no Auth
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      // 1.1) (Opcional) colocar o displayName no perfil Auth
+      if (name.trim()) {
+        await updateProfile(cred.user, { displayName: name.trim() });
+      }
 
       // 2) Guardar documento em /users/{uid}
-      await setDoc(doc(db, "users", cred.user.uid), {
+      const userRef = doc(db, "users", cred.user.uid);
+      await setDoc(userRef, {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: "client",                // bloqueado: ninguém escolhe "coach" no frontend
+        role: "client",                // nunca permitir definir "coach" no frontend
+        onboardingDone: false,         // <- importante para o guard enviar p/ onboarding
+        // defaults úteis para o resto da app (podem ser ajustados no onboarding)
+        workoutFrequency: 0,
+        metaAgua: null,
+        // campos de sistema
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         notificationsEnabled: true,
         devicePlatform: "web",
       });
 
       // 3) Ir para o onboarding (questionário inicial)
-      router.push("/onboarding");
+      router.replace("/onboarding");
     } catch (err: any) {
-      // Mensagens mais amigáveis
       const msg =
         err?.code === "auth/email-already-in-use"
           ? "Este email já está a ser usado."

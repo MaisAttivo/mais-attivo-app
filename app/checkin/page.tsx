@@ -35,7 +35,6 @@ function addDaysUTC(ymd: string, days: number) {
   return ymdUTC(d);
 }
 
-/** ===== Tipos ===== */
 type UserLite = {
   id: string;
   email?: string;
@@ -47,26 +46,22 @@ export default function CheckinPage() {
   const router = useRouter();
   const search = useSearchParams();
 
-  // edição via query params
   const editClientIdQP = search.get("clientId") || "";
   const editCheckinIdQP = search.get("checkinId") || "";
 
-  // sessão
   const [isCoach, setIsCoach] = useState<boolean | null>(null);
   const [uid, setUid] = useState<string | null>(null);
 
-  // clientes
   const [loadingClients, setLoadingClients] = useState(true);
   const [clients, setClients] = useState<UserLite[]>([]);
   const [clientId, setClientId] = useState(editClientIdQP);
 
-  // formulário
   const todayYMD = useMemo(() => ymdUTC(new Date()), []);
   const [lastDate, setLastDate] = useState(todayYMD);
-  const [nextDate, setNextDate] = useState(addDaysUTC(todayYMD, 21)); // auto +21
+  const [nextDate, setNextDate] = useState(addDaysUTC(todayYMD, 21));
   const [type, setType] = useState<"online" | "presencial">("presencial");
-  const [comment, setComment] = useState(""); // público (cliente vê)
-  const [privateComment, setPrivateComment] = useState(""); // privado (só coach)
+  const [comment, setComment] = useState("");
+  const [privateComment, setPrivateComment] = useState("");
 
   const [peso, setPeso] = useState<string>("");
   const [massaMuscular, setMassaMuscular] = useState<string>("");
@@ -77,12 +72,10 @@ export default function CheckinPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // recalc +21
   useEffect(() => {
     if (lastDate) setNextDate(addDaysUTC(lastDate, 21));
   }, [lastDate]);
 
-  // Auth + claim coach
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) {
@@ -101,18 +94,17 @@ export default function CheckinPage() {
     return () => unsub();
   }, [router]);
 
-  // Carregar lista de clientes (até 100)
   useEffect(() => {
     async function loadClients() {
       try {
         setLoadingClients(true);
-        let q = query(
+        let qy = query(
           collection(db, "users"),
           where("role", "==", "client"),
           orderBy("email", "asc"),
           limit(100)
         );
-        let snap = await getDocs(q);
+        let snap = await getDocs(qy);
         if (snap.empty) {
           const q2 = query(collection(db, "users"), orderBy("email", "asc"), limit(100));
           snap = await getDocs(q2);
@@ -140,7 +132,6 @@ export default function CheckinPage() {
     if (isCoach) loadClients();
   }, [isCoach, clientId]);
 
-  // ===== Carregar dados em modo edição (checkin + coachNotes/default) =====
   useEffect(() => {
     async function loadForEdit() {
       if (!isCoach || !clientId || !editCheckinIdQP) return;
@@ -151,7 +142,6 @@ export default function CheckinPage() {
         if (snap.exists()) {
           const d: any = snap.data();
 
-          // datas
           if (d.date instanceof Timestamp) {
             setLastDate(ymdUTC(d.date.toDate()));
           }
@@ -197,9 +187,7 @@ export default function CheckinPage() {
 
       const checkinsCol = collection(db, `users/${clientId}/checkins`);
       const editing = Boolean(editCheckinIdQP);
-      const checkinRef = editing
-        ? doc(checkinsCol, editCheckinIdQP)
-        : doc(checkinsCol); // novo autoId
+      const checkinRef = editing ? doc(checkinsCol, editCheckinIdQP) : doc(checkinsCol);
 
       const lastDateTs = Timestamp.fromDate(fromYMDToUTCDate(lastDate));
       const nextDateTs = Timestamp.fromDate(fromYMDToUTCDate(nextDate));
@@ -224,7 +212,7 @@ export default function CheckinPage() {
         batch.set(checkinRef, payload);
       }
 
-      // Comentário privado (doc fixo "default" por check-in)
+      // Comentário privado
       if (privateComment.trim().length > 0) {
         const coachNoteRef = doc(collection(checkinRef, "coachNotes"), "default");
         batch.set(
@@ -232,7 +220,7 @@ export default function CheckinPage() {
           {
             privateComment: privateComment.trim(),
             coachId: uid,
-            createdAt: serverTimestamp(), // só terá efeito na 1ª criação
+            createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
           { merge: true }
@@ -241,12 +229,17 @@ export default function CheckinPage() {
 
       // Update resumido no /users
       const userRef = doc(db, "users", clientId);
-      batch.update(userRef, {
+      const numericPeso = Number(peso);
+      const updates: any = {
         lastCheckinDate: lastDate,
         nextCheckinDate: nextDate,
         objetivoPeso,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (Number.isFinite(numericPeso) && numericPeso > 0) {
+        updates.metaAgua = Number((numericPeso * 0.05).toFixed(2)); // 5% do peso
+      }
+      batch.update(userRef, updates);
 
       await batch.commit();
 

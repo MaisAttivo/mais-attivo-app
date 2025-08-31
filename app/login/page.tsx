@@ -17,14 +17,23 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setMsg(null);
 
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
-      // cria/normaliza o documento users/{uid} se não existir
-      await ensureUserDoc(cred.user, "client"); // muda para "coach" se este login for de coach
-      router.push("/dashboard");
+
+      // ✅ NÃO passes `db` aqui. Só (user, "client")
+      const udoc = await ensureUserDoc(cred.user, "client");
+
+      if (udoc.role === "coach") {
+        router.replace("/coach");
+      } else if (!udoc.onboardingDone) {
+        router.replace("/onboarding");
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err: any) {
       console.error(err);
       const code = err?.code || "";
@@ -35,7 +44,6 @@ export default function LoginPage() {
           ? "Muitas tentativas. Tenta mais tarde."
           : "Falha no login. Verifica os dados.";
       setMsg(`❌ ${pretty}`);
-    } finally {
       setLoading(false);
     }
   }
@@ -109,8 +117,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-4 text-xs text-slate-500">
-            Dica: se o login falhar, confirma que o método Email/Password está
-            ativo no Firebase e que o utilizador existe.
+            Dica: confirma no Firebase Auth que o método Email/Password está ativo.
           </p>
         </div>
       </div>

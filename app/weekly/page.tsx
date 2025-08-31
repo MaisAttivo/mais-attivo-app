@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 // ===== Helpers de datas (UTC) =====
 function isoWeekYear(date: Date) {
@@ -29,7 +26,6 @@ function yearWeekIdUTC(d = new Date()) {
   const w = String(isoWeekNumber(d)).padStart(2, "0");
   return `${y}-W${w}`;
 }
-
 function isWeekendUTC(date = new Date()) {
   const dow = date.getUTCDay();
   return dow === 0 || dow === 6;
@@ -43,9 +39,12 @@ type WeeklyData = {
   stressLevels: string;
   dietChallenges: string;
   workoutChallenges: string;
+  pesoAtualKg?: number | "";
 };
 
 export default function WeeklyPage() {
+  const router = useRouter();
+
   const [uid, setUid] = useState<string | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
@@ -57,6 +56,7 @@ export default function WeeklyPage() {
     stressLevels: "",
     dietChallenges: "",
     workoutChallenges: "",
+    pesoAtualKg: "",
   });
   const [loadingDoc, setLoadingDoc] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +90,7 @@ export default function WeeklyPage() {
             stressLevels: d.stressLevels || "",
             dietChallenges: d.dietChallenges || "",
             workoutChallenges: d.workoutChallenges || "",
+            pesoAtualKg: typeof d.pesoAtualKg === "number" ? d.pesoAtualKg : "",
           });
         } else {
           setForm((f) => ({ ...f, weekEndDate: new Date() }));
@@ -122,11 +123,24 @@ export default function WeeklyPage() {
           stressLevels: form.stressLevels.trim(),
           dietChallenges: form.dietChallenges.trim(),
           workoutChallenges: form.workoutChallenges.trim(),
+          pesoAtualKg: form.pesoAtualKg === "" ? null : Number(form.pesoAtualKg),
           createdAt: serverTimestamp(),
         },
         { merge: true }
       );
+
+      // Atualiza metaAgua a partir do peso (5%), se fornecido
+      const nWeight = Number(form.pesoAtualKg);
+      if (Number.isFinite(nWeight) && nWeight > 0) {
+        const metaAgua = Number((nWeight * 0.05).toFixed(2));
+        await updateDoc(doc(db, "users", uid), {
+          metaAgua,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
       setToast({ type: "success", msg: "Weekly guardado." });
+      router.replace("/dashboard");
     } catch (e: any) {
       console.error(e);
       setToast({ type: "error", msg: e?.message || "Erro ao guardar." });
@@ -140,7 +154,7 @@ export default function WeeklyPage() {
   if (!uid) return <div className="p-4">Inicia sessão para preencher o weekly.</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-6">
+    <div className="relative max-w-2xl mx-auto p-4 pb-24 space-y-6">
       {toast && (
         <div
           className={`fixed right-4 top-4 z-50 px-4 py-2 rounded-xl text-white shadow ${
@@ -150,6 +164,13 @@ export default function WeeklyPage() {
           {toast.msg}
         </div>
       )}
+
+      {/* BACK (topo) */}
+      <div>
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+          <span>⬅️</span> Voltar à dashboard
+        </Link>
+      </div>
 
       <h1 className="text-2xl font-semibold">Weekly feedback</h1>
 
@@ -232,17 +253,55 @@ export default function WeeklyPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div>
+            <label className="block text-sm font-medium mb-1">Peso atual (kg) — opcional</label>
+            <input
+              type="number"
+              step="0.1"
+              placeholder="Ex: 74.5"
+              value={form.pesoAtualKg as any}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, pesoAtualKg: (e.target as HTMLInputElement).valueAsNumber as any }))
+              }
+              className="border rounded-xl px-3 py-2 w-full"
+              disabled={!canFillThisWeekend}
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Se preencheres, a meta de água (em <code>users</code>) é atualizada para 5% do teu peso.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleSubmit}
               disabled={!canFillThisWeekend || saving}
-              className="px-4 py-2 rounded-xl border shadow disabled:opacity-50"
+              className="flex-1 px-4 py-2 rounded-xl border shadow disabled:opacity-50"
             >
               {saving ? "A guardar…" : "Guardar weekly"}
             </button>
+
+            {/* Voltar à dashboard (inline) */}
+            <Link
+              href="/dashboard"
+              className="flex-1 text-center border rounded px-4 py-2 hover:bg-gray-50"
+            >
+              Voltar à dashboard
+            </Link>
           </div>
         </div>
       )}
+
+      {/* Botão fixo em baixo (sempre visível) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
+        <div className="max-w-2xl mx-auto">
+          <Link
+            href="/dashboard"
+            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+          >
+            ⬅️ Voltar à dashboard
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

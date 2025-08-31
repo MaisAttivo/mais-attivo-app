@@ -79,7 +79,6 @@ export default function DashboardPage() {
   // Nome e metas
   const [displayName, setDisplayName] = useState<string>("O meu painel");
   const [workoutFrequency, setWorkoutFrequency] = useState<number>(0); // objetivo semanal
-  const [questionnaireMetaAgua, setQuestionnaireMetaAgua] = useState<number | null>(null);
 
   // daily/weekly
   const [todayDaily, setTodayDaily] = useState<Daily | null>(null);
@@ -96,7 +95,7 @@ export default function DashboardPage() {
   const [pesoMedioSemanaAtual, setPesoMedioSemanaAtual] = useState<number | null>(null);
   const [pesoMedioSemanaAnterior, setPesoMedioSemanaAnterior] = useState<number | null>(null);
 
-  // Meta de água (mais recente)
+  // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
   const todayId = useMemo(() => ymdUTC(new Date()), []);
@@ -131,24 +130,11 @@ export default function DashboardPage() {
       setLastCheckin(toYMD(udata.lastCheckinDate) || udata.lastCheckinText || null);
       setNextCheckin(toYMD(udata.nextCheckinDate) || udata.nextCheckinText || null);
       setObjetivoPeso(udata.objetivoPeso ?? null);
+      setDisplayName((udata.name || udata.email || "O meu painel").toString());
+      setWorkoutFrequency(num(udata.workoutFrequency) ?? 0);
 
-      // questionnaire (último)
-      const qSnap = await getDocs(
-        query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
-      );
-      if (!qSnap.empty) {
-        const qd: any = qSnap.docs[0].data();
-        const name = (qd.fullName || udata.name || udata.email || "O meu painel").toString();
-        setDisplayName(name);
-        // objetivo semanal de treinos
-        setWorkoutFrequency(num(qd.workoutFrequency) ?? 0);
-        // meta de água
-        setQuestionnaireMetaAgua(num(qd.metaAgua));
-      } else {
-        setDisplayName((udata.name || udata.email || "O meu painel").toString());
-        setWorkoutFrequency(0);
-        setQuestionnaireMetaAgua(null);
-      }
+      // meta de água vem SEMPRE do users
+      setLatestMetaAgua(num(udata.metaAgua) ?? 3.0);
 
       // dailies (30)
       const dSnap = await getDocs(
@@ -160,16 +146,12 @@ export default function DashboardPage() {
         dailies.push({
           id: docSnap.id,
           createdAt: d.createdAt?.toDate?.() || null,
-          didWorkout: d.didWorkout ?? null,
-          weight: num(d.weight),
-          waterLiters: num(d.waterLiters),
-          steps: num(d.steps),
+          didWorkout: d.didWorkout ?? d.treinou ?? null,
+          weight: num(d.weight) ?? num(d.peso),
+          waterLiters: num(d.waterLiters) ?? num(d.aguaLitros),
+          steps: num(d.steps) ?? num(d.passos),
           metaAgua: num(d.metaAgua),
-          // legado
-          treinou: d.treinou ?? null,
-          peso: num(d.peso),
-          aguaLitros: num(d.aguaLitros),
-          passos: num(d.passos),
+          // legado já mapeado acima
           alimentacao100: d.alimentacao100 ?? d.alimentacaoOk ?? null,
         });
       });
@@ -193,7 +175,7 @@ export default function DashboardPage() {
       const semanaAnteriorDocs = dailies.filter((d) => d.id >= startPrevYMD && d.id <= endPrevYMD);
 
       // treinos semana atual (canónico ou legado)
-      setTreinosSemana(semanaAtualDocs.filter((d) => d.didWorkout === true || d.treinou === true).length);
+      setTreinosSemana(semanaAtualDocs.filter((d) => d.didWorkout === true).length);
 
       // streak alimentação 100% (contagem regressiva até hoje)
       let streak = 0;
@@ -209,32 +191,19 @@ export default function DashboardPage() {
       // médias 7 dias água/passos
       const last7 = [...dailies].slice(0, 7);
       const aguaVals = last7
-        .map((d) => num(d.waterLiters) ?? num(d.aguaLitros))
-        .filter((v): v is number => v !== null);
+        .map((d) => d.waterLiters)
+        .filter((v): v is number => v !== null && v !== undefined);
       const passosVals = last7
-        .map((d) => num(d.steps) ?? num(d.passos))
-        .filter((v): v is number => v !== null);
+        .map((d) => d.steps)
+        .filter((v): v is number => v !== null && v !== undefined);
       setAguaMedia7(aguaVals.length ? +(aguaVals.reduce((a, b) => a + b, 0) / aguaVals.length).toFixed(2) : null);
       setPassosMedia7(passosVals.length ? Math.round(passosVals.reduce((a, b) => a + b, 0) / passosVals.length) : null);
 
       // pesos médios por semana
-      const pesosSemanaAtual = semanaAtualDocs.map((d) => num(d.weight) ?? num(d.peso)).filter((v): v is number => v !== null);
-      const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => num(d.weight) ?? num(d.peso)).filter((v): v is number => v !== null);
+      const pesosSemanaAtual = semanaAtualDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
+      const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
       setPesoMedioSemanaAtual(pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null);
       setPesoMedioSemanaAnterior(pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null);
-
-      // check-ins (para fallback de datas + meta agua)
-      const cSnap = await getDocs(query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(1)));
-      let checkinMetaAgua: number | null = null;
-      if (!cSnap.empty) {
-        const c0: any = cSnap.docs[0].data();
-        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
-        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
-        checkinMetaAgua = num(c0.metaAgua);
-      }
-
-      // meta de água final: daily → check-in → questionnaire → default
-      setLatestMetaAgua(num(lastDailyDoc?.metaAgua) ?? checkinMetaAgua ?? questionnaireMetaAgua ?? 3.0);
 
       // weekly desta semana (feito?)
       const year = isoStart.getUTCFullYear();
@@ -244,8 +213,16 @@ export default function DashboardPage() {
       const weekId = `${year}-W${String(weekNo).padStart(2, "0")}`;
       const wSnap = await getDoc(doc(db, `users/${uid}/weeklyFeedback/${weekId}`));
       setWeekly({ done: wSnap.exists() });
+
+      // fallback de datas de check-in se users ainda não tiver
+      const cSnap = await getDocs(query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(1)));
+      if (!cSnap.empty) {
+        const c0: any = cSnap.docs[0].data();
+        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
+        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
+      }
     })().catch((e) => console.error("Dashboard load error:", e));
-  }, [uid, todayId, isoStart, isoEnd, questionnaireMetaAgua]);
+  }, [uid, todayId, isoStart, isoEnd]);
 
   if (loading) return <div className="p-4">A carregar…</div>;
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;

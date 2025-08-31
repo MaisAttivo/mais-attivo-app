@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 // ID da data no fuso local do utilizador (YYYY-MM-DD)
@@ -28,13 +29,13 @@ export default function DailyPage() {
   const [waterLiters, setWaterLiters] = useState<number | "">("");
   const [steps, setSteps] = useState<number | "">("");
   const [trained, setTrained] = useState(false);
-  const [didCardio, setDidCardio] = useState(false); // checkbox -> string ao guardar
-  const [food100, setFood100] = useState(false);     // alimentacao100
+  const [didCardio, setDidCardio] = useState(false);
+  const [food100, setFood100] = useState(false);
   const [notes, setNotes] = useState("");
 
   // Metadados para regra de 2h
-  const [docDate, setDocDate] = useState<Date | null>(null);        // date salvo no doc (não pode mudar no update)
-  const [createdAt, setCreatedAt] = useState<Date | null>(null);    // para janela de edição
+  const [docDate, setDocDate] = useState<Date | null>(null);
+  const [createdAt, setCreatedAt] = useState<Date | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export default function DailyPage() {
   const canEdit =
     alreadySubmitted &&
     !!createdAt &&
-    Date.now() < createdAt.getTime() + 2 * 60 * 60 * 1000; // 2h
+    Date.now() < createdAt.getTime() + 2 * 60 * 60 * 1000;
 
   // Autenticação + carregar registo de hoje (se existir)
   useEffect(() => {
@@ -59,7 +60,6 @@ export default function DailyPage() {
       if (snap.exists()) {
         const data = snap.data() as any;
 
-        // ler pelos nomes padronizados (com retrocompat)
         setWeightKg(
           typeof data.peso === "number"
             ? data.peso
@@ -83,16 +83,11 @@ export default function DailyPage() {
         );
         setTrained(Boolean(data.treinou ?? data.trained));
         const cardioStr: string =
-          typeof data.cardio === "string"
-            ? data.cardio
-            : data.cardio === true
-            ? "sim"
-            : "";
+          typeof data.cardio === "string" ? data.cardio : data.cardio === true ? "sim" : "";
         setDidCardio(cardioStr === "sim");
         setFood100(Boolean(data.alimentacao100));
         setNotes(data.outraAtividade ?? data.notes ?? "");
 
-        // metadados
         setDocDate(data.date?.toDate?.() || null);
         setCreatedAt(data.createdAt?.toDate?.() || null);
         setAlreadySubmitted(true);
@@ -115,29 +110,28 @@ export default function DailyPage() {
       const ref = doc(db, `users/${uid}/dailyFeedback/${todayId}`);
 
       if (!alreadySubmitted) {
-        // CREATE — envia date atual e createdAt (regras exigem)
+        // CREATE — regras exigem 'date' e 'createdAt'
         await setDoc(
           ref,
           {
-            date: new Date(),              // timestamp
-            createdAt: serverTimestamp(),  // janela de 2h
+            date: new Date(),
+            createdAt: serverTimestamp(),
             peso: Number(weightKg) || 0,
             aguaLitros: Number(waterLiters) || 0,
             passos: Number(steps) || 0,
             treinou: !!trained,
             alimentacao100: !!food100,
-            cardio: didCardio ? "sim" : "",   // string
+            cardio: didCardio ? "sim" : "",
             outraAtividade: notes.trim(),
           },
           { merge: false }
         );
         setSavedMsg("Feedback diário guardado ✅");
         setAlreadySubmitted(true);
-        // Para permitir edição imediata na UI (sem recarregar), define createdAt agora
         setCreatedAt(new Date());
         setDocDate(new Date());
       } else {
-        // UPDATE — só se canEdit; mantém 'date' exatamente igual ao salvo
+        // UPDATE — manter 'date' igual
         if (!canEdit || !docDate) {
           setError("Já não é possível editar (janela de 2 horas expirada).");
           setSubmitting(false);
@@ -146,9 +140,7 @@ export default function DailyPage() {
         await setDoc(
           ref,
           {
-            // IMPORTANTÍSSIMO: enviar o MESMO 'date' do doc original
             date: docDate,
-            // NÃO enviar createdAt no update
             peso: Number(weightKg) || 0,
             aguaLitros: Number(waterLiters) || 0,
             passos: Number(steps) || 0,
@@ -161,6 +153,18 @@ export default function DailyPage() {
         );
         setSavedMsg("Alterações guardadas ✅");
       }
+
+      // Atualiza metaAgua em users (5% do peso do daily, se houver)
+      const nWeight = Number(weightKg);
+      if (Number.isFinite(nWeight) && nWeight > 0) {
+        const metaAgua = Number((nWeight * 0.05).toFixed(2));
+        await updateDoc(doc(db, "users", uid), {
+          metaAgua,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      router.replace("/dashboard");
     } catch (err: any) {
       console.error(err);
       setError(err?.message ?? "Falha ao guardar o feedback.");
@@ -174,7 +178,14 @@ export default function DailyPage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto p-6">
+    <main className="relative max-w-xl mx-auto p-6 pb-24">
+      {/* BACK (topo) */}
+      <div className="mb-4">
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+          <span>⬅️</span> Voltar à dashboard
+        </Link>
+      </div>
+
       <h1 className="text-3xl font-bold mb-2 text-center">Feedback Diário</h1>
       <p className="text-center text-sm text-gray-600 mb-6">{todayId}</p>
 
@@ -288,14 +299,36 @@ export default function DailyPage() {
         {error && <p className="text-red-600">{error}</p>}
         {savedMsg && <p className="text-green-700">{savedMsg}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting || (alreadySubmitted && !canEdit)}
-          className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-60"
-        >
-          {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="submit"
+            disabled={submitting || (alreadySubmitted && !canEdit)}
+            className="flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-60"
+          >
+            {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
+          </button>
+
+          {/* Voltar à dashboard (inline) */}
+          <Link
+            href="/dashboard"
+            className="flex-1 text-center border rounded px-4 py-2 hover:bg-gray-50"
+          >
+            Voltar à dashboard
+          </Link>
+        </div>
       </form>
+
+      {/* Botão fixo em baixo (sempre visível) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
+        <div className="max-w-xl mx-auto">
+          <Link
+            href="/dashboard"
+            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+          >
+            ⬅️ Voltar à dashboard
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }

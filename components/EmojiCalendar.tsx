@@ -134,7 +134,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
       <div className="grid grid-cols-7 gap-0.5">
         {cells.map((date, idx) => {
           if (!date) return <div key={idx} className="h-6 sm:h-7" />;
-          const ymd = toLocalYMD(date);
+          const ymd = toLisbonYMD(date);
           const info = days[ymd];
           const isToday = ymd === todayYMD;
           const hasEmoji = Boolean(info?.has);

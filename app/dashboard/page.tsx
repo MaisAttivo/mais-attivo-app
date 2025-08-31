@@ -268,7 +268,7 @@ export default function DashboardPage() {
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-[#b58c2c] p-5">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Último check-in</div>
           <div className="text-xl font-semibold">{lastCheckin ?? "—"}</div>
         </div>

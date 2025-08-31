@@ -298,7 +298,7 @@ export default function WeeklyPage() {
         <div className="max-w-2xl mx-auto">
           <Link
             href="/dashboard"
-            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             ⬅️ Voltar à dashboard
           </Link>

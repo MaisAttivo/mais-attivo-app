@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
@@ -411,7 +413,7 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
             <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
-            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
+            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "�� Em falta"}</div>
           </div>
           <div className="flex gap-2">
             {todayDaily ? (

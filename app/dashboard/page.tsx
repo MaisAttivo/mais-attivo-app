@@ -133,7 +133,23 @@ export default function DashboardPage() {
       setLastCheckin(toYMD(udata.lastCheckinDate) || udata.lastCheckinText || null);
       setNextCheckin(toYMD(udata.nextCheckinDate) || udata.nextCheckinText || null);
       setObjetivoPeso(udata.objetivoPeso ?? null);
-      setDisplayName((udata.name || udata.email || "O meu painel").toString());
+
+      let dn = (udata.fullName || udata.name || udata.nome || "").toString().trim();
+      if (!dn) {
+        try {
+          let qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+          let sQ = await getDocs(qQ);
+          if (sQ.empty) {
+            try {
+              qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("__name__", "desc"), limit(1));
+              sQ = await getDocs(qQ);
+            } catch {}
+          }
+          if (!sQ.empty) dn = String(sQ.docs[0].get("fullName") || "").trim();
+        } catch {}
+      }
+      setDisplayName(dn || (udata.email || "O meu painel").toString());
+
       setWorkoutFrequency(num(udata.workoutFrequency) ?? 0);
 
       // meta de água vem SEMPRE do users

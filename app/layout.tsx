@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-[#FFF7E8] to-[#F9F0CF] min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased attivo-bg min-h-screen`}
       >
         {showHeader && (
           <header className="w-full py-3">

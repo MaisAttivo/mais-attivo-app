@@ -219,6 +219,7 @@ async function fetchLatestHydrationTarget(userId: string): Promise<number> {
 /* ========= Página ========= */
 function CoachDashboard() {
   const { ready, uid } = useAuthReady();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);

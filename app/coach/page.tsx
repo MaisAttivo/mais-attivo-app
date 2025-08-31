@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, daysBetweenLisbon, formatLisbonDate, lisbonTodayYMD, lisbonYMD } from "@/lib/utils";
 import CoachGuard from "@/components/ui/CoachGuard";
+import { useRouter } from "next/navigation";
 
 /* ========= Tipos ========= */
 type DailyFeedback = {

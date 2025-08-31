@@ -306,7 +306,6 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{displayName}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={doLogout}>Terminar sessão</Button>
           {waPhone && (
             <a
               href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
@@ -459,6 +458,10 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      <div className="pt-2 pb-8 flex justify-center">
+        <Button variant="outline" onClick={doLogout}>Terminar sessão</Button>
+      </div>
     </div>
   );
 }

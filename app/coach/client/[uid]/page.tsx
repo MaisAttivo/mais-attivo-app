@@ -19,6 +19,7 @@ import {
 import { db } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";

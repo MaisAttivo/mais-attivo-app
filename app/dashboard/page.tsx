@@ -268,14 +268,14 @@ export default function DashboardPage() {
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Último check-in</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Último check-in</div>
           <div className="text-xl font-semibold">{lastCheckin ?? "—"}</div>
         </div>
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm text-gray-500">Próximo check-in</div>
+              <div className="text-sm text-slate-700">Próximo check-in</div>
               <div className={`text-xl font-semibold ${isPastCheckin || isTodayCheckin ? "text-rose-600" : ""}`}>
                 {nextCheckin ?? "—"}
               </div>
@@ -302,35 +302,35 @@ export default function DashboardPage() {
 
       {/* KPIs semana + médias 7 dias */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Treinos na semana</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Treinos na semana</div>
           <div className="text-2xl font-semibold">
             {treinosSemana} {workoutFrequency ? ` / ${workoutFrequency}` : ""}
           </div>
         </div>
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Streak alimentação 100%</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Streak alimentação 100%</div>
           <div className={`text-2xl font-semibold ${streakClass}`}>
             {streakAlimentacao} {streakBadge}
           </div>
         </div>
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Água — média 7 dias</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Água — média 7 dias</div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}
             {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
           </div>
         </div>
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Passos — média 7 dias</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Passos — média 7 dias</div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>
 
       {/* Pesos médios + alinhamento com objetivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">
             Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
           </div>
           <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
@@ -342,8 +342,8 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4">
-          <div className="text-sm text-gray-500">Peso médio — semana anterior</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
           <div className="text-2xl font-semibold">
             {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
           </div>
@@ -351,16 +351,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Daily hoje */}
-      <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4 flex flex-wrap gap-3 items-center justify-between">
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
         <div>
-          <div className="text-sm text-gray-500">Daily de hoje ({todayId})</div>
+          <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
           <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
         </div>
         <div className="flex gap-2">
           {todayDaily ? (
             <Link
               href="/daily"
-              className={`px-4 py-2 rounded-xl border-2 border-[#D4AF37] text-[#8C6A00] bg-white hover:bg-[#FFF4D1] hover:shadow ${canEditDaily ? "" : "opacity-60 cursor-not-allowed"}`}
+              className={`px-4 py-2 rounded-xl border-2 ${canEditDaily ? "border-[#D4AF37] text-[#8C6A00] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white"} shadow hover:shadow-md`}
               onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
             >
               Editar
@@ -374,9 +374,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Weekly */}
-      <div className="rounded-2xl bg-white shadow-md ring-1 ring-slate-300 p-4 flex flex-wrap gap-3 items-center justify-between">
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
         <div>
-          <div className="text-sm text-gray-500">Weekly desta semana</div>
+          <div className="text-sm text-slate-700">Weekly desta semana</div>
           <div className="text-lg">
             {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
           </div>

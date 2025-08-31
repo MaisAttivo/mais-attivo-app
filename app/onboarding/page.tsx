@@ -395,7 +395,7 @@ export default function OnboardingPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition"
+          className="w-full rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] transition"
         >
           {saving ? "A guardar..." : "Enviar questionário"}
         </button>

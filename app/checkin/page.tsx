@@ -276,14 +276,14 @@ export default function CheckinPage() {
         {editingUI ? "Editar Check-in (Coach)" : "Check-in (Coach)"}
       </h1>
 
-      <form onSubmit={handleSubmit} className="rounded-2xl border p-5 space-y-5">
+      <form onSubmit={handleSubmit} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-5">
         {/* Cliente */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Cliente</label>
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
+            className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2"
             disabled={loadingClients || !!editClientIdQP} // trava se veio por query param
           >
             {loadingClients && <option>Carregando…</option>}
@@ -307,7 +307,7 @@ export default function CheckinPage() {
               type="date"
               value={lastDate}
               onChange={(e) => setLastDate(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2"
+              className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2"
               required
             />
           </div>
@@ -317,7 +317,7 @@ export default function CheckinPage() {
               type="date"
               value={nextDate}
               onChange={(e) => setNextDate(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2"
+              className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2"
             />
             <p className="text-xs text-slate-500 mt-1">É calculado automaticamente quando alteras a data anterior, mas podes ajustar.</p>
           </div>
@@ -327,7 +327,7 @@ export default function CheckinPage() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de check-in</label>
-            <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full rounded-xl border px-3 py-2">
+            <select value={type} onChange={(e) => setType(e.target.value as any)} className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2">
               <option value="presencial">Presencial</option>
               <option value="online">Online</option>
             </select>
@@ -335,7 +335,7 @@ export default function CheckinPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Objetivo de peso</label>
-            <select value={objetivoPeso} onChange={(e) => setObjetivoPeso(e.target.value as any)} className="w-full rounded-xl border px-3 py-2">
+            <select value={objetivoPeso} onChange={(e) => setObjetivoPeso(e.target.value as any)} className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2">
               <option value="perda">Perda</option>
               <option value="ganho">Ganho</option>
             </select>
@@ -349,15 +349,15 @@ export default function CheckinPage() {
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Peso (kg)</label>
-            <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="ex: 74.5" className="w-full rounded-xl border px-3 py-2" />
+            <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="ex: 74.5" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Massa Muscular (kg)</label>
-            <input type="number" step="0.1" value={massaMuscular} onChange={(e) => setMassaMuscular(e.target.value)} placeholder="ex: 32.1" className="w-full rounded-xl border px-3 py-2" />
+            <input type="number" step="0.1" value={massaMuscular} onChange={(e) => setMassaMuscular(e.target.value)} placeholder="ex: 32.1" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Massa Gorda (kg)</label>
-            <input type="number" step="0.1" value={massaGorda} onChange={(e) => setMassaGorda(e.target.value)} placeholder="ex: 14.8" className="w-full rounded-xl border px-3 py-2" />
+            <input type="number" step="0.1" value={massaGorda} onChange={(e) => setMassaGorda(e.target.value)} placeholder="ex: 14.8" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
           </div>
         </div>
 
@@ -368,7 +368,7 @@ export default function CheckinPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Notas e orientações para o cliente…"
-            className="w-full rounded-xl border px-3 py-2 min-h-[90px]"
+            className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2 min-h-[90px]"
           />
         </div>
 
@@ -379,7 +379,7 @@ export default function CheckinPage() {
             value={privateComment}
             onChange={(e) => setPrivateComment(e.target.value)}
             placeholder="Observações internas — não são partilhadas com o cliente"
-            className="w-full rounded-xl border px-3 py-2 min-h-[90px]"
+            className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2 min-h-[90px]"
           />
           <p className="text-xs text-slate-500 mt-1">
             Guardado em <code>checkins/&lt;id&gt;/coachNotes/default</code> e invisível ao cliente pelas regras.

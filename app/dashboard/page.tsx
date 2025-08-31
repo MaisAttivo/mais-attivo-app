@@ -50,6 +50,16 @@ function toYMD(value: any): string | null {
     value instanceof Date ? value : null;
   return dt ? ymdUTC(dt) : null;
 }
+// Europe/Lisbon helpers
+function ymdTZ(d = new Date(), tz = "Europe/Lisbon") {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+function toYMDTZ(value: any, tz = "Europe/Lisbon"): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value.slice(0, 10);
+  const dt = typeof value?.toDate === "function" ? value.toDate() : (value instanceof Date ? value : null);
+  return dt ? ymdTZ(dt, tz) : null;
+}
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
 
 /** ===== Tipos ===== */
@@ -101,7 +111,7 @@ export default function DashboardPage() {
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
-  const todayId = useMemo(() => ymdUTC(new Date()), []);
+  const todayId = useMemo(() => ymdTZ(new Date(), "Europe/Lisbon"), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
   const isoEnd = useMemo(() => endOfISOWeekUTC(new Date()), []);
 
@@ -130,8 +140,8 @@ export default function DashboardPage() {
       // users/{uid}
       const userSnap = await getDoc(doc(db, "users", uid));
       const udata: any = userSnap.data() || {};
-      setLastCheckin(toYMD(udata.lastCheckinDate) || udata.lastCheckinText || null);
-      setNextCheckin(toYMD(udata.nextCheckinDate) || udata.nextCheckinText || null);
+      setLastCheckin(toYMDTZ(udata.lastCheckinDate, "Europe/Lisbon") || udata.lastCheckinText || null);
+      setNextCheckin(toYMDTZ(udata.nextCheckinDate, "Europe/Lisbon") || udata.nextCheckinText || null);
       setObjetivoPeso(udata.objetivoPeso ?? null);
 
       let dn = (udata.fullName || udata.name || udata.nome || "").toString().trim();
@@ -237,8 +247,8 @@ export default function DashboardPage() {
       const cSnap = await getDocs(query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(1)));
       if (!cSnap.empty) {
         const c0: any = cSnap.docs[0].data();
-        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
-        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
+        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMDTZ(c0.date, "Europe/Lisbon"));
+        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMDTZ(c0.nextDate, "Europe/Lisbon"));
       }
     })().catch((e) => console.error("Dashboard load error:", e));
   }, [uid, todayId, isoStart, isoEnd]);
@@ -247,8 +257,8 @@ export default function DashboardPage() {
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
   // Próximo check-in: estados
-  const isPastCheckin = !!nextCheckin && nextCheckin < ymdUTC(new Date());
-  const isTodayCheckin = !!nextCheckin && nextCheckin === ymdUTC(new Date());
+  const isPastCheckin = !!nextCheckin && nextCheckin < ymdTZ(new Date(), "Europe/Lisbon");
+  const isTodayCheckin = !!nextCheckin && nextCheckin === ymdTZ(new Date(), "Europe/Lisbon");
 
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(

@@ -52,7 +52,7 @@ export default function LoginPage() {
     <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="w-full max-w-md p-6">
         <img
-          src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Ffdbe5cc8eec14676b3b8258cd4176a26?format=webp&width=800"
+          src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F85c027e76b9749cc87b9ad6e6e494211?format=webp&width=1200"
           alt="Mais Attivo"
           className="block mb-2 w-[115%] sm:w-[125%] max-w-none -mx-[7.5%] sm:-mx-[12.5%] h-auto"
         />

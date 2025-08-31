@@ -101,61 +101,62 @@ export default function EmojiCalendar({ uid, mode }: Props) {
   const label = mode === "workout" ? "Treinos" : "Alimentação 100%";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-lg">{label} — {title}</div>
-        <div className="flex items-center gap-2">
+        <div className="font-semibold text-base">{label} — {title}</div>
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setAnchor((d) => addMonths(d, -1))}
-            className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
             aria-label="Mês anterior"
             title="Mês anterior"
           >←</button>
           <button
             type="button"
             onClick={() => setAnchor(getMonthStart(new Date()))}
-            className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
             aria-label="Hoje"
             title="Hoje"
           >Hoje</button>
           <button
             type="button"
             onClick={() => setAnchor((d) => addMonths(d, 1))}
-            className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
             aria-label="Próximo mês"
             title="Próximo mês"
           >→</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-600">
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] text-slate-600">
         <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div><div>Dom</div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {cells.map((date, idx) => {
-          if (!date) return <div key={idx} className="h-8 sm:h-9" />;
+          if (!date) return <div key={idx} className="h-6 sm:h-7" />;
           const ymd = toLocalYMD(date);
           const info = days[ymd];
           const isToday = ymd === todayYMD;
-          const show = Boolean(info?.has);
+          const hasEmoji = Boolean(info?.has);
           const clickable = isToday; // Apenas o dia de hoje abre o formulário
+          const content = hasEmoji ? emoji : String(date.getDate());
           return (
-            <div key={ymd} className="h-8 sm:h-9 flex items-center justify-center rounded border text-sm select-none">
+            <div key={ymd} className="h-6 sm:h-7 flex items-center justify-center rounded border text-[11px] select-none">
               {clickable ? (
                 <a href="/daily" className={`block w-full h-full flex items-center justify-center ${isToday ? "bg-amber-50" : ""}`} title={isToday ? "Abrir diário de hoje" : undefined}>
-                  <span className="leading-none">{show ? emoji : ""}</span>
+                  <span className="leading-none">{content}</span>
                 </a>
               ) : (
-                <span className="leading-none">{show ? emoji : ""}</span>
+                <span className="leading-none">{content}</span>
               )}
             </div>
           );
         })}
       </div>
 
-      {loading && <div className="text-xs text-slate-500">A carregar…</div>}
+      {loading && <div className="text-[10px] text-slate-500">A carregar…</div>}
     </div>
   );
 }

@@ -269,7 +269,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold">{displayName}</h1>
         {waPhone && (
           <a
-            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Preciso de ajuda com a app.")}`}
+            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
@@ -315,6 +315,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Pesos médios + alinhamento com objetivo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">
+            Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
+          </div>
+          <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
+            {pesoMedioSemanaAtual !== null ? `${pesoMedioSemanaAtual} kg` : "—"}
+          </div>
+          {pesoMedioSemanaAnterior != null && (
+            <div className="text-xs text-gray-500 mt-1">
+              vs semana anterior: {pesoMedioSemanaAnterior} kg
+            </div>
+          )}
+        </div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
+          <div className="text-2xl font-semibold">
+            {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
+          </div>
+        </div>
+      </div>
+
       {/* KPIs semana + médias 7 dias */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
@@ -339,29 +362,6 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Passos — média 7 dias</div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
-        </div>
-      </div>
-
-      {/* Pesos médios + alinhamento com objetivo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">
-            Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
-          </div>
-          <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
-            {pesoMedioSemanaAtual !== null ? `${pesoMedioSemanaAtual} kg` : "—"}
-          </div>
-          {pesoMedioSemanaAnterior != null && (
-            <div className="text-xs text-gray-500 mt-1">
-              vs semana anterior: {pesoMedioSemanaAnterior} kg
-            </div>
-          )}
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
-          <div className="text-2xl font-semibold">
-            {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
-          </div>
         </div>
       </div>
 

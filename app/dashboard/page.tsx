@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
+import EmojiCalendar from "@/components/EmojiCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
@@ -362,6 +363,16 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Passos — média 7 dias</div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
+        </div>
+      </div>
+
+      {/* Calendários de streaks */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <EmojiCalendar uid={uid!} mode="workout" />
+        </div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <EmojiCalendar uid={uid!} mode="diet" />
         </div>
       </div>
 

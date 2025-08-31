@@ -65,12 +65,26 @@ type Cliente = {
   diasSemTreinar?: number | null;
   diasSemAlimentacaoOK?: number | null;
   diasSemAguaOK?: number | null;
+  nextCheckinYMD?: string | null;
+  checkinToday?: boolean;
+  checkinOverdue?: boolean;
 };
 
 /* ========= Utils ========= */
 const toDate = (ts?: Timestamp | null) => (ts ? ts.toDate() : null);
 const daysBetween = (a: Date, b: Date) =>
   Math.floor(Math.abs(a.getTime() - b.getTime()) / 86400000);
+
+// Europe/Lisbon helpers for date comparisons and display in YYYY-MM-DD
+const ymdTZ = (d: Date, tz: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const todayLisbonYMD = () => ymdTZ(new Date(), "Europe/Lisbon");
+const toYMDLisbonFlexible = (v: any): string | null => {
+  if (!v) return null;
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const d = (v instanceof Date) ? v : (typeof v?.toDate === "function" ? v.toDate() : null);
+  return d ? ymdTZ(d, "Europe/Lisbon") : null;
+};
 
 /* ========= Auth helper ========= */
 function useAuthReady() {
@@ -249,6 +263,23 @@ function CoachDashboard() {
           const nomeFinal = await resolveDisplayName(u.id, u.email);
           const metaAgua = await fetchLatestHydrationTarget(u.id);
 
+          // Próximo check-in (users → fallback último checkin)
+          let nextCheckinYMD: string | null = null;
+          try {
+            const us = await getDoc(doc(db, "users", u.id));
+            const ud: any = us.data() || {};
+            nextCheckinYMD = toYMDLisbonFlexible(ud.nextCheckinDate) || ud.nextCheckinText || null;
+          } catch {}
+          if (!nextCheckinYMD) {
+            try {
+              const cSnap = await getDocs(query(collection(db, `users/${u.id}/checkins`), orderBy("date", "desc"), limit(1)));
+              if (!cSnap.empty) nextCheckinYMD = toYMDLisbonFlexible((cSnap.docs[0].data() as any).nextDate);
+            } catch {}
+          }
+          const todayY = todayLisbonYMD();
+          const checkinToday = !!nextCheckinYMD && nextCheckinYMD === todayY;
+          const checkinOverdue = !!nextCheckinYMD && nextCheckinYMD < todayY;
+
           const qDF = query(
             collection(db, `users/${u.id}/dailyFeedback`),
             orderBy("date", "desc"),
@@ -274,6 +305,9 @@ function CoachDashboard() {
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
             diasSemAguaOK: Number.isFinite(m.diasSemAguaOK) ? m.diasSemAguaOK : null,
+            nextCheckinYMD,
+            checkinToday,
+            checkinOverdue,
           } as Cliente;
         })
       );
@@ -396,7 +430,13 @@ function CoachDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((c) => (
           <Link key={c.id} href={`/coach/client/${c.id}`} className="group block cursor-pointer">
-            <Card className="shadow-sm hover:shadow-md transition">
+            <Card
+              className={cn(
+                "shadow-sm hover:shadow-md transition",
+                c.checkinOverdue ? "border-destructive ring-2 ring-destructive/40 bg-rose-50" :
+                c.checkinToday ? "bg-[#FFF4D1] ring-2 ring-[#706800]" : ""
+              )}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -407,11 +447,18 @@ function CoachDashboard() {
                       {c.email ?? "—"}
                     </div>
                   </div>
-                  {typeof c.diasDesdeUltimoDF === "number" && (
-                    <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
-                      Últ. registo: {c.diasDesdeUltimoDF}d
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {c.nextCheckinYMD && (
+                      <Badge variant={c.checkinOverdue || c.checkinToday ? "destructive" : "outline"}>
+                        Próx. CI: {c.nextCheckinYMD}
+                      </Badge>
+                    )}
+                    {typeof c.diasDesdeUltimoDF === "number" && (
+                      <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
+                        Últ. registo: {c.diasDesdeUltimoDF}d
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 

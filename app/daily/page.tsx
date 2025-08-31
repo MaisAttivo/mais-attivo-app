@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -201,6 +203,7 @@ export default function DailyPage() {
         </div>
       )}
 
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block font-medium mb-1">Peso (kg)</label>
@@ -303,7 +306,7 @@ export default function DailyPage() {
           <button
             type="submit"
             disabled={submitting || (alreadySubmitted && !canEdit)}
-            className="flex-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-60"
+            className="flex-1 rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
           </button>
@@ -311,19 +314,20 @@ export default function DailyPage() {
           {/* Voltar à dashboard (inline) */}
           <Link
             href="/dashboard"
-            className="flex-1 text-center border rounded px-4 py-2 hover:bg-gray-50"
+            className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             Voltar à dashboard
           </Link>
         </div>
       </form>
+      </div>
 
       {/* Botão fixo em baixo (sempre visível) */}
       <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
         <div className="max-w-xl mx-auto">
           <Link
             href="/dashboard"
-            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             ⬅️ Voltar à dashboard
           </Link>

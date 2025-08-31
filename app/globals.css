@@ -120,3 +120,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Attivo elegant patterned background within brand palette */
+.attivo-bg {
+  background:
+    radial-gradient(1000px 500px at 50% -15%, rgba(255,255,255,0.75), rgba(255,255,255,0) 60%),
+    repeating-linear-gradient(135deg, rgba(212,175,55,0.09) 0px, rgba(212,175,55,0.09) 1px, transparent 1px, transparent 14px),
+    linear-gradient(135deg, #FFF7E8, #F9F0CF);
+  min-height: 100vh;
+}

@@ -1,8 +1,11 @@
 "use client";
 
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
+import EmojiCalendar from "@/components/EmojiCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
@@ -130,7 +133,23 @@ export default function DashboardPage() {
       setLastCheckin(toYMD(udata.lastCheckinDate) || udata.lastCheckinText || null);
       setNextCheckin(toYMD(udata.nextCheckinDate) || udata.nextCheckinText || null);
       setObjetivoPeso(udata.objetivoPeso ?? null);
-      setDisplayName((udata.name || udata.email || "O meu painel").toString());
+
+      let dn = (udata.fullName || udata.name || udata.nome || "").toString().trim();
+      if (!dn) {
+        try {
+          let qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+          let sQ = await getDocs(qQ);
+          if (sQ.empty) {
+            try {
+              qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("__name__", "desc"), limit(1));
+              sQ = await getDocs(qQ);
+            } catch {}
+          }
+          if (!sQ.empty) dn = String(sQ.docs[0].get("fullName") || "").trim();
+        } catch {}
+      }
+      setDisplayName(dn || (udata.email || "O meu painel").toString());
+
       setWorkoutFrequency(num(udata.workoutFrequency) ?? 0);
 
       // meta de água vem SEMPRE do users
@@ -242,6 +261,9 @@ export default function DashboardPage() {
 
   const isWeekend = [0, 6].includes(new Date().getUTCDay());
 
+  const needsDaily = !todayDaily;
+  const needsWeekly = isWeekend && !weekly.done;
+
   // Cor do peso médio desta semana vs anterior em função do objetivo
   const pesoAlignClass = (() => {
     if (pesoMedioSemanaAtual == null || pesoMedioSemanaAnterior == null || !objetivoPeso) return "text-gray-900";
@@ -260,20 +282,62 @@ export default function DashboardPage() {
   const streakBadge = streakAlimentacao >= 2 ? "🔥" : "";
   const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
 
+  const waPhone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE;
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-semibold">{displayName}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{displayName}</h1>
+        {waPhone && (
+          <a
+            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
+            title="Enviar mensagem no WhatsApp"
+          >
+            <span aria-hidden>🟢</span>
+            WhatsApp
+          </a>
+        )}
+      </div>
+
+      {(needsDaily || needsWeekly) && (
+        <div className="grid grid-cols-1 gap-3">
+          {needsDaily && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div>
+                <div className="text-sm">Daily de hoje ({todayId})</div>
+                <div className="text-lg">⛔ Em falta</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Criar daily</Link>
+              </div>
+            </div>
+          )}
+          {needsWeekly && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div>
+                <div className="text-sm">Weekly desta semana</div>
+                <div className="text-lg">⛔ Em falta</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Preencher semanal</Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Último check-in</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Último check-in</div>
           <div className="text-xl font-semibold">{lastCheckin ?? "—"}</div>
         </div>
-        <div className="border rounded-2xl p-4">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm text-gray-500">Próximo check-in</div>
+              <div className="text-sm text-slate-700">Próximo check-in</div>
               <div className={`text-xl font-semibold ${isPastCheckin || isTodayCheckin ? "text-rose-600" : ""}`}>
                 {nextCheckin ?? "—"}
               </div>
@@ -298,37 +362,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs semana + médias 7 dias */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Treinos na semana</div>
-          <div className="text-2xl font-semibold">
-            {treinosSemana} {workoutFrequency ? ` / ${workoutFrequency}` : ""}
-          </div>
-        </div>
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Streak alimentação 100%</div>
-          <div className={`text-2xl font-semibold ${streakClass}`}>
-            {streakAlimentacao} {streakBadge}
-          </div>
-        </div>
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Água — média 7 dias</div>
-          <div className="text-2xl font-semibold">
-            {aguaMedia7 != null ? aguaMedia7 : "—"}
-            {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
-          </div>
-        </div>
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Passos — média 7 dias</div>
-          <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
-        </div>
-      </div>
-
       {/* Pesos médios + alinhamento com objetivo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">
             Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
           </div>
           <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
@@ -340,51 +377,77 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <div className="border rounded-2xl p-4">
-          <div className="text-sm text-gray-500">Peso médio — semana anterior</div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
           <div className="text-2xl font-semibold">
             {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
           </div>
         </div>
       </div>
 
-      {/* Daily hoje */}
-      <div className="border rounded-2xl p-4 flex flex-wrap gap-3 items-center justify-between">
-        <div>
-          <div className="text-sm text-gray-500">Daily de hoje ({todayId})</div>
-          <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
+      {/* KPIs semana + médias 7 dias */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <EmojiCalendar uid={uid!} mode="workout" />
         </div>
-        <div className="flex gap-2">
-          {todayDaily ? (
-            <Link
-              href="/daily"
-              className={`px-4 py-2 rounded-xl border hover:shadow ${canEditDaily ? "" : "opacity-50 cursor-not-allowed"}`}
-              onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
-            >
-              Editar
-            </Link>
-          ) : (
-            <Link href="/daily" className="px-4 py-2 rounded-xl border hover:shadow">
-              Criar daily
-            </Link>
-          )}
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <EmojiCalendar uid={uid!} mode="diet" />
+        </div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Água — média 7 dias</div>
+          <div className="text-2xl font-semibold">
+            {aguaMedia7 != null ? aguaMedia7 : "—"}
+            {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <div className="text-sm text-slate-700">Passos — média 7 dias</div>
+          <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>
 
-      {/* Weekly */}
-      <div className="border rounded-2xl p-4 flex flex-wrap gap-3 items-center justify-between">
-        <div>
-          <div className="text-sm text-gray-500">Weekly desta semana</div>
-          <div className="text-lg">
-            {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
+
+      {/* Daily hoje */}
+      {!needsDaily && (
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
+          <div>
+            <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
+            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
+          </div>
+          <div className="flex gap-2">
+            {todayDaily ? (
+              <Link
+                href="/daily"
+                className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
+                onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
+              >
+                Editar
+              </Link>
+            ) : (
+              <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
+                Criar daily
+              </Link>
+            )}
           </div>
         </div>
-        {!weekly.done && isWeekend && (
-          <Link href="/weekly" className="px-4 py-2 rounded-xl border hover:shadow">
-            Preencher semanal
-          </Link>
-        )}
-      </div>
+      )}
+
+      {/* Weekly */}
+      {!needsWeekly && (
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
+          <div>
+            <div className="text-sm text-slate-700">Weekly desta semana</div>
+            <div className="text-lg">
+              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
+            </div>
+          </div>
+          {!weekly.done && isWeekend && (
+            <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
+              Preencher semanal
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

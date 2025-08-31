@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -183,7 +185,7 @@ export default function WeeklyPage() {
       {loadingDoc ? (
         <div className="text-sm text-gray-500">A carregar…</div>
       ) : (
-        <div className="space-y-4 border p-4 rounded-2xl">
+        <div className="space-y-4 rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div>
             <label className="block text-sm font-medium mb-1">Como correu a semana?</label>
             <textarea
@@ -275,7 +277,7 @@ export default function WeeklyPage() {
             <button
               onClick={handleSubmit}
               disabled={!canFillThisWeekend || saving}
-              className="flex-1 px-4 py-2 rounded-xl border shadow disabled:opacity-50"
+              className="flex-1 px-4 py-2 rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1] shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "A guardar…" : "Guardar weekly"}
             </button>
@@ -283,7 +285,7 @@ export default function WeeklyPage() {
             {/* Voltar à dashboard (inline) */}
             <Link
               href="/dashboard"
-              className="flex-1 text-center border rounded px-4 py-2 hover:bg-gray-50"
+              className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
             >
               Voltar à dashboard
             </Link>
@@ -296,7 +298,7 @@ export default function WeeklyPage() {
         <div className="max-w-2xl mx-auto">
           <Link
             href="/dashboard"
-            className="w-full inline-flex justify-center rounded-xl border px-4 py-2 hover:bg-gray-50"
+            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             ⬅️ Voltar à dashboard
           </Link>

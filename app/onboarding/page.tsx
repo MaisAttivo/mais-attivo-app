@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
@@ -162,6 +164,7 @@ export default function OnboardingPage() {
     <main className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-center">Questionário Inicial</h1>
 
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
       <form onSubmit={handleSave} className="space-y-8">
         {/* 1. Dados Pessoais */}
         <section>
@@ -393,11 +396,12 @@ export default function OnboardingPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition"
+          className="w-full rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] transition"
         >
           {saving ? "A guardar..." : "Enviar questionário"}
         </button>
       </form>
+      </div>
     </main>
   );
 }

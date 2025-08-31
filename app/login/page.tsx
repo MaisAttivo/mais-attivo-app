@@ -49,9 +49,14 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+    <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-[#FFF7E8] to-[#F9F0CF]">
       <div className="w-full max-w-md p-6">
-        <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
+        <img
+          src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=1200"
+          alt="Mais Attivo"
+          className="block mb-2 w-[115%] sm:w-[125%] max-w-none -mx-[7.5%] sm:-mx-[12.5%] h-auto"
+        />
+        <div className="rounded-2xl bg-white shadow-xl ring-1 ring-slate-300 p-6">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Entrar
           </h1>
@@ -61,7 +66,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Email
               </label>
               <input
@@ -71,13 +76,13 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="mt-1 w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] transition"
                 placeholder="ex: joao@exemplo.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-800">
                 Palavra-passe
               </label>
               <div className="relative mt-1">
@@ -87,13 +92,13 @@ export default function LoginPage() {
                   required
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] transition"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
-                  className="absolute inset-y-0 right-2 my-1 rounded-lg px-2 text-xs text-slate-600 hover:bg-slate-100"
+                  className="absolute inset-y-0 right-2 my-1 rounded-lg px-2 text-xs text-slate-700 hover:bg-slate-200"
                   aria-label={showPass ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
                 >
                   {showPass ? "Ocultar" : "Mostrar"}
@@ -110,7 +115,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              className="w-full rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
               {loading ? "A entrar…" : "Entrar"}
             </button>

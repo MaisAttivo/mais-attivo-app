@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { use, useEffect, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import {

@@ -245,6 +245,9 @@ export default function DashboardPage() {
 
   const isWeekend = [0, 6].includes(new Date().getUTCDay());
 
+  const needsDaily = !todayDaily;
+  const needsWeekly = isWeekend && !weekly.done;
+
   // Cor do peso médio desta semana vs anterior em função do objetivo
   const pesoAlignClass = (() => {
     if (pesoMedioSemanaAtual == null || pesoMedioSemanaAnterior == null || !objetivoPeso) return "text-gray-900";
@@ -281,6 +284,33 @@ export default function DashboardPage() {
           </a>
         )}
       </div>
+
+      {(needsDaily || needsWeekly) && (
+        <div className="grid grid-cols-1 gap-3">
+          {needsDaily && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div>
+                <div className="text-sm">Daily de hoje ({todayId})</div>
+                <div className="text-lg">⛔ Em falta</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Criar daily</Link>
+              </div>
+            </div>
+          )}
+          {needsWeekly && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div>
+                <div className="text-sm">Weekly desta semana</div>
+                <div className="text-lg">⛔ Em falta</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Preencher semanal</Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -362,42 +392,46 @@ export default function DashboardPage() {
 
 
       {/* Daily hoje */}
-      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
-        <div>
-          <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
-          <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
+      {!needsDaily && (
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
+          <div>
+            <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
+            <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
+          </div>
+          <div className="flex gap-2">
+            {todayDaily ? (
+              <Link
+                href="/daily"
+                className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
+                onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
+              >
+                Editar
+              </Link>
+            ) : (
+              <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
+                Criar daily
+              </Link>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {todayDaily ? (
-            <Link
-              href="/daily"
-              className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
-              onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
-            >
-              Editar
-            </Link>
-          ) : (
-            <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
-              Criar daily
+      )}
+
+      {/* Weekly */}
+      {!needsWeekly && (
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
+          <div>
+            <div className="text-sm text-slate-700">Weekly desta semana</div>
+            <div className="text-lg">
+              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
+            </div>
+          </div>
+          {!weekly.done && isWeekend && (
+            <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
+              Preencher semanal
             </Link>
           )}
         </div>
-      </div>
-
-      {/* Weekly */}
-      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
-        <div>
-          <div className="text-sm text-slate-700">Weekly desta semana</div>
-          <div className="text-lg">
-            {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
-          </div>
-        </div>
-        {!weekly.done && isWeekend && (
-          <Link href="/weekly" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
-            Preencher semanal
-          </Link>
-        )}
-      </div>
+      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ import {
   query,
 } from "firebase/firestore";
 
-/** ===== Helpers de datas (UTC) ===== */
+/** ===== Helpers de datas (UTC) + local ===== */
 function ymdUTC(d = new Date()) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
     .toISOString()
@@ -49,6 +49,12 @@ function toYMD(value: any): string | null {
     typeof value.toDate === "function" ? value.toDate() :
     value instanceof Date ? value : null;
   return dt ? ymdUTC(dt) : null;
+}
+function getLocalDateId(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
 
@@ -101,7 +107,13 @@ export default function DashboardPage() {
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
-  const todayId = useMemo(() => ymdUTC(new Date()), []);
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const todayId = useMemo(() => getLocalDateId(now), [now]);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
   const isoEnd = useMemo(() => endOfISOWeekUTC(new Date()), []);
 
@@ -259,7 +271,7 @@ export default function DashboardPage() {
     !!todayDaily?.createdAt &&
     Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
 
-  const isWeekend = [0, 6].includes(new Date().getUTCDay());
+  const isWeekend = [0, 6].includes(new Date().getDay());
 
   const needsDaily = !todayDaily;
   const needsWeekly = isWeekend && !weekly.done;

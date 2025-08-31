@@ -203,6 +203,7 @@ export default function DailyPage() {
         </div>
       )}
 
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block font-medium mb-1">Peso (kg)</label>
@@ -313,12 +314,13 @@ export default function DailyPage() {
           {/* Voltar à dashboard (inline) */}
           <Link
             href="/dashboard"
-            className="flex-1 text-center border rounded px-4 py-2 hover:bg-gray-50"
+            className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
           >
             Voltar à dashboard
           </Link>
         </div>
       </form>
+      </div>
 
       {/* Botão fixo em baixo (sempre visível) */}
       <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">

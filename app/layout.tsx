@@ -1,7 +1,8 @@
 "use client";
 
 import { Geist, Geist_Mono } from "next/font/google";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "@/lib/auth";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,7 +22,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { uid, role, loading } = useSession();
   const showHeader = pathname !== "/login" && pathname !== "/register";
+
+  function handleLogoClick() {
+    if (loading) return;
+    if (!uid) { router.replace("/login"); return; }
+    if (role === "coach") { router.replace("/coach"); return; }
+    router.replace("/dashboard");
+  }
+
   return (
     <html lang="en">
       <body
@@ -29,11 +40,13 @@ export default function RootLayout({
       >
         {showHeader && (
           <header className="w-full py-3">
-            <img
-              src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=600"
-              alt="Mais Attivo"
-              className="mx-auto h-12 sm:h-14 w-auto"
-            />
+            <button type="button" onClick={handleLogoClick} className="block mx-auto">
+              <img
+                src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=600"
+                alt="Mais Attivo"
+                className="mx-auto h-12 sm:h-14 w-auto cursor-pointer"
+              />
+            </button>
           </header>
         )}
         {children}

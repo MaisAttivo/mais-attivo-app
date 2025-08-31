@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import TopLogo from "@/components/ui/TopLogo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,13 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-[#FFF7E8] to-[#F9F0CF] min-h-screen`}
       >
-        {/* Top logo appears on all pages except login/register */}
-        {/* eslint-disable-next-line react/no-unknown-property */}
-        <div>
-          {/** Client wrapper decides visibility by pathname */}
-          {/* @ts-expect-error Server-Client boundary */}
-          {require("@/components/ui/TopLogo").default?.()}
-        </div>
+        <TopLogo />
         {children}
       </body>
     </html>

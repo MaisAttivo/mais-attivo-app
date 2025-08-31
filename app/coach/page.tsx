@@ -96,8 +96,9 @@ function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number
   const diasDesdeUltimoDF = last?.date ? daysBetween(now, toDate(last.date)!) : Infinity;
 
   let diasSemTreinar = Infinity;
-  for (const df of history) {
-    if (df.didWorkout === true) {
+  for (const df of history as any[]) {
+    const trained = (df as any).didWorkout === true || (df as any).treinou === true || (df as any).trained === true;
+    if (trained) {
       diasSemTreinar = daysBetween(now, toDate(df.date)!);
       break;
     }
@@ -112,8 +113,8 @@ function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number
   }
 
   let diasSemAguaOK = Infinity;
-  for (const df of history) {
-    const agua = df.waterLiters ?? 0;
+  for (const df of history as any[]) {
+    const agua = (df as any).waterLiters ?? (df as any).aguaLitros ?? 0;
     if (agua >= metaAgua) {
       diasSemAguaOK = daysBetween(now, toDate(df.date)!);
       break;

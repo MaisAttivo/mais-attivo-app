@@ -1,7 +1,9 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { usePathname } from "next/navigation";
 import "./globals.css";
-import TopLogo from "@/components/ui/TopLogo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,12 +25,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const showHeader = pathname !== "/login" && pathname !== "/register";
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-[#FFF7E8] to-[#F9F0CF] min-h-screen`}
       >
-        <TopLogo />
+        {showHeader && (
+          <header className="w-full py-3">
+            <img
+              src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=600"
+              alt="Mais Attivo"
+              className="mx-auto h-10 w-auto"
+            />
+          </header>
+        )}
         {children}
       </body>
     </html>

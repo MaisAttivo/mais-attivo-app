@@ -450,6 +450,16 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      <div className="pt-2 flex justify-center">
+        <button
+          type="button"
+          onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}
+          className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
+        >
+          Terminar sessão
+        </button>
+      </div>
     </div>
   );
 }

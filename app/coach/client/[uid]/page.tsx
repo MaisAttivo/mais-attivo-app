@@ -124,10 +124,9 @@ export default function CoachClientProfilePage(
       setLastCheckinYMD(userLastDt ? ymd(userLastDt) : null);
       setNextCheckinYMD(userNextDt ? ymd(userNextDt) : null);
       if (userNextDt) {
-        const t = todayUTC();
-        const nd = new Date(userNextDt);
-        nd.setUTCHours(0, 0, 0, 0);
-        setNextDue(nd.getTime() <= t.getTime());
+        const today = todayLisbonYMD();
+        const ndY = ymd(userNextDt);
+        setNextDue(!!ndY && ndY <= today);
       } else {
         setNextDue(false);
       }

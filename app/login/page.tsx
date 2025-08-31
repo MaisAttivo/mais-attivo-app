@@ -49,7 +49,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+    <main className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-[#FFF7E8] to-[#F9F0CF]">
       <div className="w-full max-w-md p-6">
         <img
           src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fb8f25fb491154d179da1f49a2fc6b90e?format=webp&width=1200"
@@ -93,7 +93,7 @@ export default function LoginPage() {
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 pr-12 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] transition"
-                  placeholder="•••••���••"
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"

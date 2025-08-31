@@ -164,6 +164,7 @@ export default function OnboardingPage() {
     <main className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-center">Questionário Inicial</h1>
 
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
       <form onSubmit={handleSave} className="space-y-8">
         {/* 1. Dados Pessoais */}
         <section>
@@ -400,6 +401,7 @@ export default function OnboardingPage() {
           {saving ? "A guardar..." : "Enviar questionário"}
         </button>
       </form>
+      </div>
     </main>
   );
 }

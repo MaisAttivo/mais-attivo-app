@@ -371,7 +371,6 @@ function CoachDashboard() {
           <Button variant="outline" onClick={fetchClientes} disabled={loading}>
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Atualizar
           </Button>
-          <Button variant="secondary" onClick={doLogout}>Terminar sessão</Button>
         </div>
       </div>
 
@@ -501,6 +500,10 @@ function CoachDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <div className="pt-2 pb-8 flex justify-center">
+        <Button variant="secondary" onClick={doLogout}>Terminar sessão</Button>
+      </div>
     </div>
   );
 }

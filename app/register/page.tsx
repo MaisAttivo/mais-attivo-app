@@ -79,19 +79,19 @@ export default function RegisterPage() {
           alt="Mais Attivo"
           className="block mb-2 w-[115%] sm:w-[125%] max-w-none -mx-[7.5%] sm:-mx-[12.5%] h-auto"
         />
-        <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
+        <div className="rounded-2xl bg-white shadow-xl ring-1 ring-slate-300 p-6">
           <h1 className="text-2xl font-semibold mb-4 text-slate-900">Criar conta</h1>
 
           <form onSubmit={handleRegister} className="grid gap-3">
             <input
-              className="border rounded px-3 py-2"
+              className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
               placeholder="Nome"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
             <input
-              className="border rounded px-3 py-2"
+              className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
               type="email"
               placeholder="Email"
               value={email}
@@ -99,7 +99,7 @@ export default function RegisterPage() {
               required
             />
             <input
-              className="border rounded px-3 py-2"
+              className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
               type="password"
               placeholder="Password (mín. 6)"
               value={password}
@@ -111,7 +111,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
+              className="mt-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow-md hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
             >
               {loading ? "A criar..." : "Criar conta"}
             </button>

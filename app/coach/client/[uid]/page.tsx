@@ -176,10 +176,9 @@ export default function CoachClientProfilePage(
         const nd = toDate(checkinsLocal[0].nextDate ?? null);
         setNextCheckinYMD(ymd(nd));
         if (nd) {
-          const t = todayUTC();
-          const nd0 = new Date(nd);
-          nd0.setUTCHours(0, 0, 0, 0);
-          setNextDue(nd0.getTime() <= t.getTime());
+          const today = todayLisbonYMD();
+          const ndY = ymd(nd);
+          setNextDue(!!ndY && ndY <= today);
         }
       }
 

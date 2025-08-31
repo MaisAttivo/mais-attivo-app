@@ -261,7 +261,8 @@ export default function DashboardPage() {
     !!todayDaily?.createdAt &&
     Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
 
-  const isWeekend = [0, 6].includes(new Date().getUTCDay());
+  const lisbonWkd = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/Lisbon" }).format(new Date());
+  const isWeekend = lisbonWkd === "Sat" || lisbonWkd === "Sun";
 
   const needsDaily = !todayDaily;
   const needsWeekly = isWeekend && !weekly.done;

@@ -41,6 +41,16 @@ const todayUTC = () => {
   return t;
 };
 
+// Europe/Lisbon helpers
+const ymdTZ = (d: Date, tz: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+const todayLisbonYMD = () => ymdTZ(new Date(), "Europe/Lisbon");
+
 type Daily = {
   id: string;
   date?: Timestamp;
@@ -127,10 +137,8 @@ export default function CoachClientProfilePage(
       setLastCheckinYMD(userLastDt ? ymd(userLastDt) : null);
       setNextCheckinYMD(userNextDt ? ymd(userNextDt) : null);
       if (userNextDt) {
-        const t = todayUTC();
-        const nd = new Date(userNextDt);
-        nd.setUTCHours(0, 0, 0, 0);
-        setNextDue(nd.getTime() <= t.getTime());
+        const due = ymdTZ(userNextDt, "Europe/Lisbon") <= todayLisbonYMD();
+        setNextDue(due);
       } else {
         setNextDue(false);
       }
@@ -180,10 +188,8 @@ export default function CoachClientProfilePage(
         const nd = toDate(checkinsLocal[0].nextDate ?? null);
         setNextCheckinYMD(ymd(nd));
         if (nd) {
-          const t = todayUTC();
-          const nd0 = new Date(nd);
-          nd0.setUTCHours(0, 0, 0, 0);
-          setNextDue(nd0.getTime() <= t.getTime());
+          const due = ymdTZ(nd, "Europe/Lisbon") <= todayLisbonYMD();
+          setNextDue(due);
         }
       }
 
@@ -414,7 +420,20 @@ export default function CoachClientProfilePage(
                     <div className="text-sm">
                       <div className="font-medium">Data: {ymd(toDate(c.date ?? null))}</div>
                       <div className="text-muted-foreground">
-                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "—"}
+                        Próxima: {(() => {
+                          const nd = toDate(c.nextDate ?? null);
+                          const due = (() => {
+                            if (!nd) return false;
+                            const ndStr = ymdTZ(nd, "Europe/Lisbon");
+                            return ndStr <= todayLisbonYMD();
+                          })();
+                          return (
+                            <>
+                              <span className={due ? "text-destructive font-semibold" : undefined}>{ymd(nd)}</span>
+                              {" "}• Tipo: {c.type ?? "—"}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

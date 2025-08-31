@@ -262,9 +262,24 @@ export default function DashboardPage() {
   const streakBadge = streakAlimentacao >= 2 ? "🔥" : "";
   const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
 
+  const waPhone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE;
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-semibold">{displayName}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{displayName}</h1>
+        {waPhone && (
+          <a
+            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Preciso de ajuda com a app.")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
+            title="Enviar mensagem no WhatsApp"
+          >
+            <span aria-hidden>🟢</span>
+            WhatsApp
+          </a>
+        )}
+      </div>
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

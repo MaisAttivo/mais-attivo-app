@@ -54,7 +54,7 @@ export default function LoginPage() {
         <img
           src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2Fc8f64e36febe4c2391d98a7f535b326a?format=webp&width=800"
           alt="Mais Attivo"
-          className="mx-auto mb-6 h-16 sm:h-20 w-auto"
+          className="block mb-6 w-[115%] sm:w-[125%] max-w-none -mx-[7.5%] sm:-mx-[12.5%] h-auto"
         />
         <div className="rounded-2xl bg-white/90 shadow-xl ring-1 ring-slate-200 p-6">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">

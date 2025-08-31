@@ -389,7 +389,7 @@ function CoachDashboard() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>Conjuntos rápidos</DropdownMenuLabel>
+                <DropdownMenuLabel>Conjuntos r��pidos</DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
                   checked={activeFilters.semFiltro}
                   onCheckedChange={() => toggleFilter("semFiltro")}
@@ -472,11 +472,11 @@ function CoachDashboard() {
 
                 {c.ultimoDF && (
                   <div className="text-xs text-muted-foreground">
-                    Último DF: {toDate(c.ultimoDF.date)?.toLocaleDateString()} • Treinou: {String(c.ultimoDF.didWorkout ?? "?")}
-                    {typeof c.ultimoDF.waterLiters === "number" && ` • Água: ${c.ultimoDF.waterLiters}L`}
-                    {typeof c.ultimoDF.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF.alimentacao100 ? "Sim" : "Não"}`}
-                    {(typeof c.ultimoDF.peso === "number" || typeof c.ultimoDF.weight === "number") &&
-                      ` • Peso: ${(c.ultimoDF.peso ?? c.ultimoDF.weight)}kg`}
+                    Último DF: {c.ultimoDF?.date ? formatLisbonDate(toDate(c.ultimoDF.date)!, { dateStyle: "short" }) : "—"} • Treinou: {String(c.ultimoDF?.didWorkout ?? "?")}
+                    {typeof c.ultimoDF?.waterLiters === "number" && ` • Água: ${c.ultimoDF?.waterLiters}L`}
+                    {typeof c.ultimoDF?.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF?.alimentacao100 ? "Sim" : "Não"}`}
+                    {(typeof c.ultimoDF?.peso === "number" || typeof c.ultimoDF?.weight === "number") &&
+                      ` • Peso: ${(c.ultimoDF?.peso ?? c.ultimoDF?.weight)}kg`}
                   </div>
                 )}
               </CardContent>

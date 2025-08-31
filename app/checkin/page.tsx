@@ -396,7 +396,7 @@ export default function CheckinPage() {
           <button
             type="submit"
             disabled={saving || !clientId}
-            className="rounded-xl bg-blue-600 text-white font-semibold px-4 py-2.5 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2.5 shadow hover:bg-[#FFF4D1] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "A guardar…" : editingUI ? "Atualizar check-in" : "Guardar check-in"}
           </button>

@@ -246,8 +246,8 @@ export default function DashboardPage() {
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
   // Próximo check-in: estados
-  const isPastCheckin = !!nextCheckin && nextCheckin < ymdUTC(new Date());
-  const isTodayCheckin = !!nextCheckin && nextCheckin === ymdUTC(new Date());
+  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
+  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
 
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(

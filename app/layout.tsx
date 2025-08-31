@@ -46,14 +46,14 @@ export default function RootLayout({
                 <img
                   src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F83d1b8046a0a4d0592f0f582b2fcc9a1?format=webp&width=800"
                   alt="Mais Attivo"
-                  className="mx-auto h-12 sm:h-14 w-auto cursor-pointer"
+                  className="mx-auto h-[144px] sm:h-[168px] w-auto cursor-pointer"
                 />
               </button>
             ) : (
               <img
                 src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F83d1b8046a0a4d0592f0f582b2fcc9a1?format=webp&width=800"
                 alt="Mais Attivo"
-                className="mx-auto h-12 sm:h-14 w-auto"
+                className="mx-auto h-[144px] sm:h-[168px] w-auto"
               />
             )}
           </header>

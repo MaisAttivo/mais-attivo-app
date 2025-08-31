@@ -18,11 +18,9 @@ import {
   query,
 } from "firebase/firestore";
 
-/** ===== Helpers de datas (UTC) ===== */
+/** ===== Helpers de datas (Portugal/Lisboa) ===== */
 function ymdUTC(d = new Date()) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-    .toISOString()
-    .slice(0, 10);
+  return lisbonYMD(d);
 }
 function startOfISOWeekUTC(date = new Date()) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

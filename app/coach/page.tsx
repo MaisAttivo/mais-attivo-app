@@ -354,10 +354,11 @@ function CoachDashboard() {
     });
   }
 
+  const router = useRouter();
+
   if (!ready) return <div className="p-6 text-sm text-muted-foreground">A iniciar sessão…</div>;
   if (!uid) return <div className="p-6 text-sm text-destructive">Precisas de iniciar sessão para aceder.</div>;
 
-  const router = useRouter();
   async function doLogout() {
     try { await signOut(auth); } catch {}
     router.replace("/login");

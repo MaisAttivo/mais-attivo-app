@@ -72,8 +72,7 @@ type Cliente = {
 
 /* ========= Utils ========= */
 const toDate = (ts?: Timestamp | null) => (ts ? ts.toDate() : null);
-const daysBetween = (a: Date, b: Date) =>
-  Math.floor(Math.abs(a.getTime() - b.getTime()) / 86400000);
+const daysBetween = (a: Date, b: Date) => daysBetweenLisbon(a, b);
 
 /* ========= Auth helper ========= */
 function useAuthReady() {

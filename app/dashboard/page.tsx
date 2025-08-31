@@ -268,7 +268,7 @@ export default function DashboardPage() {
 
       {/* Check-ins */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-[rgba(254,226,154,0.62)] shadow-lg ring-2 ring-slate-400 p-5">
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-[#b58c2c] p-5">
           <div className="text-sm text-slate-700">Último check-in</div>
           <div className="text-xl font-semibold">{lastCheckin ?? "—"}</div>
         </div>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
           {todayDaily ? (
             <Link
               href="/daily"
-              className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#b58c2c] text-[#8C6A00] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
+              className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
               onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
             >
               Editar

@@ -389,7 +389,7 @@ function CoachDashboard() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>Conjuntos r��pidos</DropdownMenuLabel>
+                <DropdownMenuLabel>Conjuntos rápidos</DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
                   checked={activeFilters.semFiltro}
                   onCheckedChange={() => toggleFilter("semFiltro")}
@@ -492,6 +492,12 @@ function CoachDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <div className="pt-2 flex justify-center">
+        <Button variant="outline" onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}>
+          Terminar sessão
+        </Button>
+      </div>
     </div>
   );
 }

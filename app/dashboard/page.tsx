@@ -4,7 +4,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
+import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -17,11 +20,9 @@ import {
   query,
 } from "firebase/firestore";
 
-/** ===== Helpers de datas (UTC) ===== */
+/** ===== Helpers de datas (Portugal/Lisboa) ===== */
 function ymdUTC(d = new Date()) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-    .toISOString()
-    .slice(0, 10);
+  return lisbonYMD(d);
 }
 function startOfISOWeekUTC(date = new Date()) {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -71,6 +72,7 @@ type Daily = {
 type WeeklyStatus = { done: boolean };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -247,8 +249,8 @@ export default function DashboardPage() {
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
   // Próximo check-in: estados
-  const isPastCheckin = !!nextCheckin && nextCheckin < ymdUTC(new Date());
-  const isTodayCheckin = !!nextCheckin && nextCheckin === ymdUTC(new Date());
+  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
+  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
 
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(
@@ -259,7 +261,8 @@ export default function DashboardPage() {
     !!todayDaily?.createdAt &&
     Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
 
-  const isWeekend = [0, 6].includes(new Date().getUTCDay());
+  const lisbonWkd = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/Lisbon" }).format(new Date());
+  const isWeekend = lisbonWkd === "Sat" || lisbonWkd === "Sun";
 
   const needsDaily = !todayDaily;
   const needsWeekly = isWeekend && !weekly.done;
@@ -448,6 +451,16 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      <div className="pt-2 flex justify-center">
+        <button
+          type="button"
+          onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}
+          className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
+        >
+          Terminar sessão
+        </button>
+      </div>
     </div>
   );
 }

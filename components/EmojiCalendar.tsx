@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { lisbonYMD } from "@/lib/utils";
 
 type Props = {
   uid: string;
@@ -20,11 +21,8 @@ function getMonthStart(d: Date) {
 function getMonthEnd(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
 }
-function toLocalYMD(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+function toLisbonYMD(date: Date): string {
+  return lisbonYMD(date);
 }
 function addMonths(d: Date, months: number) {
   const nd = new Date(d);
@@ -58,11 +56,11 @@ export default function EmojiCalendar({ uid, mode }: Props) {
   const [days, setDays] = useState<Record<string, DayInfo>>({});
 
   const title = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+    const fmt = new Intl.DateTimeFormat("pt-PT", { month: "long", year: "numeric", timeZone: "Europe/Lisbon" });
     return fmt.format(anchor);
   }, [anchor]);
 
-  const todayYMD = useMemo(() => toLocalYMD(new Date()), []);
+  const todayYMD = useMemo(() => toLisbonYMD(new Date()), []);
 
   useEffect(() => {
     let alive = true;
@@ -83,7 +81,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
           const data: any = doc.data();
           const dateVal = data.date?.toDate?.() as Date | undefined;
           if (!dateVal) return;
-          const id = toLocalYMD(dateVal);
+          const id = toLisbonYMD(dateVal);
           const has = mode === "workout" ? Boolean(data.treinou ?? data.didWorkout) : Boolean(data.alimentacao100);
           res[id] = { id, has };
         });
@@ -136,7 +134,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
       <div className="grid grid-cols-7 gap-0.5">
         {cells.map((date, idx) => {
           if (!date) return <div key={idx} className="h-6 sm:h-7" />;
-          const ymd = toLocalYMD(date);
+          const ymd = toLisbonYMD(date);
           const info = days[ymd];
           const isToday = ymd === todayYMD;
           const hasEmoji = Boolean(info?.has);

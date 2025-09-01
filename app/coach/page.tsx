@@ -14,7 +14,7 @@ import {
   query,
   Timestamp,
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 
 import { Input } from "@/components/ui/input";
@@ -31,8 +31,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, daysBetweenLisbon, formatLisbonDate, lisbonTodayYMD, lisbonYMD } from "@/lib/utils";
 import CoachGuard from "@/components/ui/CoachGuard";
+import { useRouter } from "next/navigation";
 
 /* ========= Tipos ========= */
 type DailyFeedback = {
@@ -65,12 +66,13 @@ type Cliente = {
   diasSemTreinar?: number | null;
   diasSemAlimentacaoOK?: number | null;
   diasSemAguaOK?: number | null;
+  nextCheckinYMD?: string | null;
+  dueStatus?: "today" | "overdue" | null;
 };
 
 /* ========= Utils ========= */
 const toDate = (ts?: Timestamp | null) => (ts ? ts.toDate() : null);
-const daysBetween = (a: Date, b: Date) =>
-  Math.floor(Math.abs(a.getTime() - b.getTime()) / 86400000);
+const daysBetween = (a: Date, b: Date) => daysBetweenLisbon(a, b);
 
 /* ========= Auth helper ========= */
 function useAuthReady() {
@@ -217,6 +219,7 @@ async function fetchLatestHydrationTarget(userId: string): Promise<number> {
 /* ========= Página ========= */
 function CoachDashboard() {
   const { ready, uid } = useAuthReady();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -249,6 +252,36 @@ function CoachDashboard() {
           const nomeFinal = await resolveDisplayName(u.id, u.email);
           const metaAgua = await fetchLatestHydrationTarget(u.id);
 
+          let nextCheckinYMD: string | null = null;
+          try {
+            const us = await getDoc(doc(db, "users", u.id));
+            if (us.exists()) {
+              const data: any = us.data();
+              const nd: Date | null = data.nextCheckinDate?.toDate?.() ?? null;
+              if (nd) nextCheckinYMD = lisbonYMD(nd);
+              else if (typeof data.nextCheckinText === "string") nextCheckinYMD = data.nextCheckinText;
+            }
+          } catch {}
+          if (!nextCheckinYMD) {
+            try {
+              const qC = query(collection(db, `users/${u.id}/checkins`), orderBy("date", "desc"), limit(1));
+              const sC = await getDocs(qC);
+              if (!sC.empty) {
+                const d: any = sC.docs[0].data();
+                const nd: Date | null = d.nextDate?.toDate?.() ?? null;
+                if (nd) nextCheckinYMD = lisbonYMD(nd);
+              }
+            } catch {}
+          }
+          const today = lisbonTodayYMD();
+          const dueStatus: "today" | "overdue" | null = nextCheckinYMD
+            ? nextCheckinYMD < today
+              ? "overdue"
+              : nextCheckinYMD === today
+              ? "today"
+              : null
+            : null;
+
           const qDF = query(
             collection(db, `users/${u.id}/dailyFeedback`),
             orderBy("date", "desc"),
@@ -274,6 +307,8 @@ function CoachDashboard() {
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
             diasSemAguaOK: Number.isFinite(m.diasSemAguaOK) ? m.diasSemAguaOK : null,
+            nextCheckinYMD,
+            dueStatus,
           } as Cliente;
         })
       );
@@ -396,7 +431,10 @@ function CoachDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((c) => (
           <Link key={c.id} href={`/coach/client/${c.id}`} className="group block cursor-pointer">
-            <Card className="shadow-sm hover:shadow-md transition">
+            <Card className={cn(
+              "shadow-sm hover:shadow-md transition",
+              (c.dueStatus === "overdue" || c.dueStatus === "today") && "bg-[#FFE3B3] ring-2 ring-[#B97100] text-[#B97100]"
+            )}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -407,11 +445,18 @@ function CoachDashboard() {
                       {c.email ?? "—"}
                     </div>
                   </div>
-                  {typeof c.diasDesdeUltimoDF === "number" && (
-                    <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
-                      Últ. registo: {c.diasDesdeUltimoDF}d
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {c.dueStatus && (
+                      <Badge variant={c.dueStatus === "overdue" ? "destructive" : "secondary"}>
+                        {c.dueStatus === "overdue" ? "CI em atraso" : "CI hoje"}
+                      </Badge>
+                    )}
+                    {typeof c.diasDesdeUltimoDF === "number" && (
+                      <Badge variant={c.diasDesdeUltimoDF >= 4 ? "destructive" : "default"}>
+                        Últ. registo: {c.diasDesdeUltimoDF}d
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
@@ -426,11 +471,11 @@ function CoachDashboard() {
 
                 {c.ultimoDF && (
                   <div className="text-xs text-muted-foreground">
-                    Último DF: {toDate(c.ultimoDF.date)?.toLocaleDateString()} • Treinou: {String(c.ultimoDF.didWorkout ?? "?")}
-                    {typeof c.ultimoDF.waterLiters === "number" && ` • Água: ${c.ultimoDF.waterLiters}L`}
-                    {typeof c.ultimoDF.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF.alimentacao100 ? "Sim" : "Não"}`}
-                    {(typeof c.ultimoDF.peso === "number" || typeof c.ultimoDF.weight === "number") &&
-                      ` • Peso: ${(c.ultimoDF.peso ?? c.ultimoDF.weight)}kg`}
+                    Último DF: {c.ultimoDF?.date ? formatLisbonDate(toDate(c.ultimoDF.date)!, { dateStyle: "short" }) : "—"} • Treinou: {String(c.ultimoDF?.didWorkout ?? "?")}
+                    {typeof c.ultimoDF?.waterLiters === "number" && ` • Água: ${c.ultimoDF?.waterLiters}L`}
+                    {typeof c.ultimoDF?.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF?.alimentacao100 ? "Sim" : "Não"}`}
+                    {(typeof c.ultimoDF?.peso === "number" || typeof c.ultimoDF?.weight === "number") &&
+                      ` • Peso: ${(c.ultimoDF?.peso ?? c.ultimoDF?.weight)}kg`}
                   </div>
                 )}
               </CardContent>
@@ -446,6 +491,12 @@ function CoachDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <div className="pt-2 flex justify-center">
+        <Button variant="outline" onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}>
+          Terminar sessão
+        </Button>
+      </div>
     </div>
   );
 }

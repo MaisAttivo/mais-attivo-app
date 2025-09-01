@@ -19,6 +19,7 @@ import {
 import { db } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -34,12 +35,8 @@ const toDateFlexible = (v: any): Date | null => {
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return new Date(`${v}T00:00:00Z`);
   return null;
 };
-const ymd = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "—");
-const todayUTC = () => {
-  const t = new Date();
-  t.setUTCHours(0, 0, 0, 0);
-  return t;
-};
+const ymd = (d: Date | null | undefined) => (d ? lisbonYMD(d) : "—");
+const todayLisbonYMD = () => lisbonTodayYMD();
 
 type Daily = {
   id: string;
@@ -127,10 +124,9 @@ export default function CoachClientProfilePage(
       setLastCheckinYMD(userLastDt ? ymd(userLastDt) : null);
       setNextCheckinYMD(userNextDt ? ymd(userNextDt) : null);
       if (userNextDt) {
-        const t = todayUTC();
-        const nd = new Date(userNextDt);
-        nd.setUTCHours(0, 0, 0, 0);
-        setNextDue(nd.getTime() <= t.getTime());
+        const today = todayLisbonYMD();
+        const ndY = ymd(userNextDt);
+        setNextDue(!!ndY && ndY <= today);
       } else {
         setNextDue(false);
       }
@@ -180,10 +176,9 @@ export default function CoachClientProfilePage(
         const nd = toDate(checkinsLocal[0].nextDate ?? null);
         setNextCheckinYMD(ymd(nd));
         if (nd) {
-          const t = todayUTC();
-          const nd0 = new Date(nd);
-          nd0.setUTCHours(0, 0, 0, 0);
-          setNextDue(nd0.getTime() <= t.getTime());
+          const today = todayLisbonYMD();
+          const ndY = ymd(nd);
+          setNextDue(!!ndY && ndY <= today);
         }
       }
 
@@ -328,7 +323,7 @@ export default function CoachClientProfilePage(
                       const agua = num(d.waterLiters) ?? num(d.aguaLitros);
                       return (
                         <tr key={d.id} className="border-t">
-                          <td className="py-2 pr-4">{d.id}</td>
+                          <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
                           <td className="py-2 pr-4">{w != null ? w : "—"}</td>
                           <td className="py-2 pr-4">
                             {agua != null ? agua : "—"}

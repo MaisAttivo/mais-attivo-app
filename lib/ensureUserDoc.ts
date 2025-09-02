@@ -30,6 +30,7 @@ export async function ensureUserDoc(
     name: user.displayName || "",
     role: fallbackRole,
     onboardingDone: false,
+    active: true,
     workoutFrequency: 0,
     metaAgua: null as number | null,
   };
@@ -42,6 +43,7 @@ export async function ensureUserDoc(
       updatedAt: serverTimestamp(),
       notificationsEnabled: true,
       devicePlatform: "web",
+      active: true,
     };
     try {
       await setDoc(ref, payload);
@@ -70,6 +72,8 @@ export async function ensureUserDoc(
   if (typeof data.onboardingDone !== "boolean") patch.onboardingDone = false;
   if (!("workoutFrequency" in data)) patch.workoutFrequency = 0;
   if (!("metaAgua" in data)) patch.metaAgua = null;
+
+  if (typeof data.active !== "boolean") patch.active = true;
 
   if (Object.keys(patch).length) {
     patch.updatedAt = serverTimestamp();

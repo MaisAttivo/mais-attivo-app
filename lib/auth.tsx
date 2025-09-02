@@ -10,22 +10,24 @@ export function useSession() {
   const [uid, setUid] = useState<string | null>(null);
   const [role, setRole] = useState<"client" | "coach" | null>(null);
   const [onboardingDone, setOnb] = useState<boolean | null>(null);
+  const [active, setActive] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { setUid(null); setRole(null); setOnb(null); setLoading(false); return; }
+      if (!u) { setUid(null); setRole(null); setOnb(null); setActive(null); setLoading(false); return; }
       setUid(u.uid);
       const snap = await getDoc(doc(db, "users", u.uid));
       const data: any = snap.data() || {};
       setRole(data?.role ?? "client");
       setOnb(!!data?.onboardingDone);
+      setActive(typeof data?.active === "boolean" ? data.active : true);
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  return { uid, role, onboardingDone, loading };
+  return { uid, role, onboardingDone, active, loading };
 }
 
 /** Guard para páginas de CLIENTE. Força onboarding se faltar. */

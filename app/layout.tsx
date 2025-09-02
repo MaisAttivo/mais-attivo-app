@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { uid, role, loading } = useSession();
+  const { uid, role, active, loading } = useSession();
   const showHeader = pathname !== "/login" && pathname !== "/register";
   const clickableLogo = pathname !== "/onboarding";
 

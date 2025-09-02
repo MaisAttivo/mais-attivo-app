@@ -3,6 +3,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -63,6 +65,15 @@ export default function RootLayout({
             <div className="rounded-2xl bg-white shadow-lg ring-2 ring-rose-400 p-6 text-center">
               <h2 className="text-xl font-semibold text-rose-700 mb-2">Conta inativa</h2>
               <p className="text-sm text-rose-700">A tua conta está inativa. Fala com o teu coach para voltar a ativá-la.</p>
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}
+                  className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
+                >
+                  Terminar sessão
+                </button>
+              </div>
             </div>
           </main>
         ) : (

@@ -14,6 +14,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -90,6 +91,8 @@ export default function CoachClientProfilePage(
   // Header info
   const [name, setName] = useState<string>("Cliente");
   const [email, setEmail] = useState<string>("—");
+  const [active, setActive] = useState<boolean>(true);
+  const [savingActive, setSavingActive] = useState<boolean>(false);
   const [lastCheckinYMD, setLastCheckinYMD] = useState<string | null>(null);
   const [nextCheckinYMD, setNextCheckinYMD] = useState<string | null>(null);
   const [nextDue, setNextDue] = useState<boolean>(false);
@@ -117,6 +120,7 @@ export default function CoachClientProfilePage(
       const uSnap = await getDoc(doc(db, "users", uid));
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
+      setActive(typeof u.active === "boolean" ? u.active : true);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -280,7 +284,28 @@ export default function CoachClientProfilePage(
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={async (e) => {
+                  const val = e.currentTarget.checked;
+                  setActive(val);
+                  setSavingActive(true);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
+                  } catch (err) {
+                    setActive(!val);
+                    console.error("toggle active error", err);
+                  } finally {
+                    setSavingActive(false);
+                  }
+                }}
+              />
+              <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
+            </label>
+
             {editarUltimoHref && (
               <Link href={editarUltimoHref}>
                 <Button variant="secondary">Editar último check-in</Button>

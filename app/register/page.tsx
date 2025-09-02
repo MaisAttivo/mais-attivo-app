@@ -43,6 +43,7 @@ export default function RegisterPage() {
         email: email.trim().toLowerCase(),
         role: "client",                // nunca permitir definir "coach" no frontend
         onboardingDone: false,         // <- importante para o guard enviar p/ onboarding
+        active: true,                  // conta ativa por omissão
         // defaults úteis para o resto da app (podem ser ajustados no onboarding)
         workoutFrequency: 0,
         metaAgua: null,

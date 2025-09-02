@@ -58,7 +58,16 @@ export default function RootLayout({
             )}
           </header>
         )}
-        {children}
+        {uid && role !== "coach" && active === false ? (
+          <main className="max-w-xl mx-auto p-6">
+            <div className="rounded-2xl bg-white shadow-lg ring-2 ring-rose-400 p-6 text-center">
+              <h2 className="text-xl font-semibold text-rose-700 mb-2">Conta inativa</h2>
+              <p className="text-sm text-rose-700">A tua conta está inativa. Fala com o teu coach para voltar a ativá-la.</p>
+            </div>
+          </main>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );

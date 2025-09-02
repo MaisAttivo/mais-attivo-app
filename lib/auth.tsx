@@ -40,10 +40,11 @@ export function ClientGuard({ children }: { children: React.ReactNode }) {
     if (loading) return;
     if (!uid) { router.replace("/login"); return; }
     if (role === "coach") { router.replace("/coach"); return; }
+    if (active === false) { router.replace("/login"); return; }
     if (!onboardingDone && pathname !== "/onboarding") {
       router.replace("/onboarding");
     }
-  }, [uid, role, onboardingDone, loading, pathname, router]);
+  }, [uid, role, onboardingDone, active, loading, pathname, router]);
 
   if (loading) return <div className="p-6">A verificar sessão…</div>;
   return <>{children}</>;

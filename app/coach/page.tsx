@@ -60,6 +60,7 @@ type Cliente = {
   id: string;
   nome: string;
   email?: string;
+  active?: boolean;
   ultimoDF?: DailyFeedback | null;
   metaAguaLitros: number;
   diasDesdeUltimoDF?: number | null;
@@ -90,6 +91,7 @@ export type FilterKey =
   | "semTreino5d"
   | "semAlimentacao5d"
   | "agua3d"
+  | "contaInativa"
   | "semFiltro";
 
 function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number) {
@@ -230,6 +232,7 @@ function CoachDashboard() {
     semTreino5d: false,
     semAlimentacao5d: false,
     agua3d: false,
+    contaInativa: false,
   });
 
   async function fetchClientes() {
@@ -242,6 +245,7 @@ function CoachDashboard() {
         .map((d) => ({
           id: d.id,
           email: d.get("email") ?? undefined,
+          active: typeof d.get("active") === "boolean" ? (d.get("active") as boolean) : true,
         }));
 
       const twoWeeksAgo = new Date();
@@ -301,6 +305,7 @@ function CoachDashboard() {
             id: u.id,
             nome: nomeFinal,
             email: u.email,
+            active: u.active,
             ultimoDF: m.last ?? null,
             metaAguaLitros: metaAgua,
             diasDesdeUltimoDF: Number.isFinite(m.diasDesdeUltimoDF) ? m.diasDesdeUltimoDF : null,
@@ -332,7 +337,14 @@ function CoachDashboard() {
       term ? `${c.nome} ${c.email ?? ""}`.toLowerCase().includes(term) : true
     );
 
-    const anySpecific = Object.entries(activeFilters).some(([k, v]) => k !== "semFiltro" && v);
+    // Por omissão, esconder contas inativas
+    if (!activeFilters.contaInativa) {
+      list = list.filter((c) => c.active !== false);
+    } else {
+      list = list.filter((c) => c.active === false);
+    }
+
+    const anySpecific = Object.entries(activeFilters).some(([k, v]) => k !== "semFiltro" && k !== "contaInativa" && v);
     if (!anySpecific) return list;
 
     return list.filter((c) => {
@@ -348,7 +360,7 @@ function CoachDashboard() {
   function toggleFilter(key: FilterKey) {
     setActiveFilters((prev) => {
       const next = { ...prev, [key]: !prev[key] } as typeof prev;
-      const someSpecific = next.inativos4d || next.semTreino5d || next.semAlimentacao5d || next.agua3d;
+      const someSpecific = next.inativos4d || next.semTreino5d || next.semAlimentacao5d || next.agua3d || next.contaInativa;
       next.semFiltro = !someSpecific;
       return next;
     });
@@ -421,6 +433,14 @@ function CoachDashboard() {
                   onCheckedChange={() => toggleFilter("agua3d")}
                 >
                   Sem meta de água há ≥ 3 dias
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Conta</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.contaInativa}
+                  onCheckedChange={() => toggleFilter("contaInativa")}
+                >
+                  Inativos (conta desativada)
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>

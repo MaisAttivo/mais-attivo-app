@@ -121,6 +121,10 @@ export default function CoachClientProfilePage(
   const dietInputRef = useRef<HTMLInputElement>(null);
   const [trainingSelected, setTrainingSelected] = useState<string | null>(null);
   const [dietSelected, setDietSelected] = useState<string | null>(null);
+  const [uploadingTraining, setUploadingTraining] = useState(false);
+  const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [dietError, setDietError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -285,12 +289,28 @@ export default function CoachClientProfilePage(
   const editarUltimoHref = checkins[0]?.id ? `/checkin?clientId=${uid}&checkinId=${checkins[0].id}` : "";
 
   async function handlePlanUpload(kind: "training" | "diet", file: File) {
-    const path = `plans/${uid}/${kind}.pdf`;
-    const r = ref(storage, path);
-    await uploadBytes(r, file, { contentType: "application/pdf" });
-    const url = await getDownloadURL(r);
-    await setDoc(doc(db, "users", uid, "plans", "latest"), { [kind === "training" ? "trainingUrl" : "dietUrl"]: url, updatedAt: serverTimestamp() }, { merge: true });
-    if (kind === "training") setTrainingUrl(url); else setDietUrl(url);
+    try {
+      if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) throw new Error("Apenas PDFs são permitidos.");
+      if (file.size > 20 * 1024 * 1024) throw new Error("Ficheiro demasiado grande (máx. 20MB).");
+
+      if (kind === "training") { setUploadingTraining(true); setTrainingError(null); }
+      else { setUploadingDiet(true); setDietError(null); }
+
+      const path = `plans/${uid}/${kind}.pdf`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file, { contentType: "application/pdf" });
+      const url = await getDownloadURL(r);
+      await setDoc(doc(db, "users", uid, "plans", "latest"), { [kind === "training" ? "trainingUrl" : "dietUrl"]: url, updatedAt: serverTimestamp() }, { merge: true });
+      if (kind === "training") setTrainingUrl(url); else setDietUrl(url);
+    } catch (e: any) {
+      const msg = e?.message || "Falha no upload.";
+      if (kind === "training") setTrainingError(msg); else setDietError(msg);
+      console.error("Upload plano falhou", e);
+    } finally {
+      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+    }
   }
 
   return (
@@ -453,11 +473,15 @@ export default function CoachClientProfilePage(
                       className="hidden" aria-hidden="true"
                       onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setTrainingSelected(f.name); handlePlanUpload("training", f); e.currentTarget.value = ""; }}}
                     />
-                    <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
+                    <Button size="sm" onClick={() => trainingInputRef.current?.click()} disabled={uploadingTraining}>
                       <Upload className="h-4 w-4" />
-                      Escolher ficheiro
+                      {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
-                    <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    {trainingError ? (
+                      <div className="text-xs text-red-600 text-left">{trainingError}</div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    )}
                   </div>
                 </div>
                 <div className="rounded-2xl border p-4 bg-background">
@@ -485,11 +509,15 @@ export default function CoachClientProfilePage(
                       className="hidden" aria-hidden="true"
                       onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setDietSelected(f.name); handlePlanUpload("diet", f); e.currentTarget.value = ""; }}}
                     />
-                    <Button size="sm" onClick={() => dietInputRef.current?.click()}>
+                    <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
                       <Upload className="h-4 w-4" />
-                      Escolher ficheiro
+                      {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
-                    <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    {dietError ? (
+                      <div className="text-xs text-red-600 text-left">{dietError}</div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    )}
                   </div>
                 </div>
               </div>

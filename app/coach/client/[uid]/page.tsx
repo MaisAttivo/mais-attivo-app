@@ -2,7 +2,7 @@
 
 "use client";
 
-import { use, useEffect, useState, type ChangeEvent } from "react";
+import { use, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -21,7 +21,6 @@ import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +117,10 @@ export default function CoachClientProfilePage(
   const [trainingUrl, setTrainingUrl] = useState<string | null>(null);
   const [dietUrl, setDietUrl] = useState<string | null>(null);
   const [plansLoading, setPlansLoading] = useState<boolean>(true);
+  const trainingInputRef = useRef<HTMLInputElement>(null);
+  const dietInputRef = useRef<HTMLInputElement>(null);
+  const [trainingSelected, setTrainingSelected] = useState<string | null>(null);
+  const [dietSelected, setDietSelected] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -443,8 +446,18 @@ export default function CoachClientProfilePage(
                     <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
                   <div className="mt-3">
-                    <label className="block text-xs text-muted-foreground mb-1">Carregar PDF</label>
-                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("training", f);}} />
+                    <input
+                      ref={trainingInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setTrainingSelected(f.name); handlePlanUpload("training", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
+                      <Upload className="h-4 w-4" />
+                      Escolher ficheiro
+                    </Button>
+                    <div className="mt-1 text-xs text-muted-foreground">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                 </div>
                 <div className="rounded-2xl border p-4 bg-background">
@@ -465,8 +478,18 @@ export default function CoachClientProfilePage(
                     <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
                   <div className="mt-3">
-                    <label className="block text-xs text-muted-foreground mb-1">Carregar PDF</label>
-                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("diet", f);}} />
+                    <input
+                      ref={dietInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setDietSelected(f.name); handlePlanUpload("diet", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => dietInputRef.current?.click()}>
+                      <Upload className="h-4 w-4" />
+                      Escolher ficheiro
+                    </Button>
+                    <div className="mt-1 text-xs text-muted-foreground">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                 </div>
               </div>

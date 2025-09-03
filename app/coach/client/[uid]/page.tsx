@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info, Upload, FileText } from "lucide-react";
+import { AlertTriangle, Info, Upload, FileText, X } from "lucide-react";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -125,6 +125,7 @@ export default function CoachClientProfilePage(
   const [uploadingDiet, setUploadingDiet] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -254,7 +255,17 @@ export default function CoachClientProfilePage(
       // Carregar planos (PDFs)
       try {
         const planSnap = await getDoc(doc(db, "users", uid, "plans", "latest"));
-        const planData: any = planSnap.data() || {};
+        let planData: any = planSnap.data() || {};
+        if ((!planData.trainingUrl || !planData.dietUrl)) {
+          try {
+            const qs = await getDocs(collection(db, `users/${uid}/plans`));
+            const all: any[] = [];
+            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
+            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
+            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
+            planData = { ...planData, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
+          } catch {}
+        }
         setTrainingUrl(planData.trainingUrl || null);
         setDietUrl(planData.dietUrl || null);
       } catch {}
@@ -455,9 +466,7 @@ export default function CoachClientProfilePage(
                   </div>
                   {trainingUrl ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm" variant="secondary">
-                        <a href={trainingUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
-                      </Button>
+                      <Button size="sm" onClick={()=>setPreviewUrl(trainingUrl!)}>Ver</Button>
                       <Button asChild size="sm" variant="outline">
                         <a href={trainingUrl} download>Download</a>
                       </Button>
@@ -491,9 +500,7 @@ export default function CoachClientProfilePage(
                   </div>
                   {dietUrl ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm" variant="secondary">
-                        <a href={dietUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
-                      </Button>
+                      <Button size="sm" onClick={()=>setPreviewUrl(dietUrl!)}>Ver</Button>
                       <Button asChild size="sm" variant="outline">
                         <a href={dietUrl} download>Download</a>
                       </Button>
@@ -524,6 +531,20 @@ export default function CoachClientProfilePage(
             )}
           </CardContent>
         </Card>
+
+        {previewUrl && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
+              <div className="absolute top-3 right-3 flex gap-2">
+                <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
+                <Button size="sm" variant="secondary" onClick={()=>setPreviewUrl(null)}><X className="h-4 w-4" />Fechar</Button>
+              </div>
+              <object data={previewUrl} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={previewUrl} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
+              </object>
+            </div>
+          </div>
+        )}
 
         {/* Check-ins */}
         <Card className="shadow-sm">

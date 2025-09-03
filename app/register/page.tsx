@@ -1,11 +1,9 @@
 "use client";
 
-"use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function RegisterPage() {
@@ -16,22 +14,30 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [consent, setConsent] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [healthConsent, setHealthConsent] = useState(false);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setError(null);
     setLoading(true);
-    if (!consent) { setError("Tens de aceitar a política de privacidade e uso de imagem."); setLoading(false); return; }
+
+    if (!termsAccepted || !healthConsent) {
+      setError(
+        !termsAccepted && !healthConsent
+          ? "Tens de aceitar os Termos & Política de Privacidade e dar consentimento explícito para tratamento de dados de saúde."
+          : !termsAccepted
+          ? "Tens de aceitar os Termos & Política de Privacidade."
+          : "Tens de dar consentimento explícito para tratamento de dados de saúde."
+      );
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1) Criar conta no Auth
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        email.trim(),
-        password
-      );
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
 
       // 1.1) (Opcional) colocar o displayName no perfil Auth
       if (name.trim()) {
@@ -43,20 +49,19 @@ export default function RegisterPage() {
       await setDoc(userRef, {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: "client",                // nunca permitir definir "coach" no frontend
-        onboardingDone: false,         // <- importante para o guard enviar p/ onboarding
-        active: true,                  // conta ativa por omissão
-        // defaults úteis para o resto da app (podem ser ajustados no onboarding)
+        role: "client",
+        onboardingDone: false,
+        active: true,
         workoutFrequency: 0,
         metaAgua: null,
-        // consentimentos
-        privacyConsent: true,
-        healthDataExplicitConsent: true,
+        // consentimentos (separados conforme a norma)
+        privacyConsent: termsAccepted,
+        healthDataExplicitConsent: healthConsent,
         imageUseConsent: false,
         imageUseSocialCensored: false,
         privacyConsentAt: serverTimestamp(),
         healthDataConsentAt: serverTimestamp(),
-        // campos de sistema
+        // sistema
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         notificationsEnabled: true,
@@ -118,10 +123,31 @@ export default function RegisterPage() {
               minLength={6}
             />
 
+            {/* 1) Termos & Privacidade (obrigatório) */}
             <label className="flex items-start gap-2 text-xs text-slate-700 mt-1">
-              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+              />
               <span>
-                Aceito os <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Termos & Política de Privacidade</a> e dou o meu <strong>consentimento explícito</strong> para o tratamento dos meus <strong>dados de saúde</strong> (ex.: peso, medidas, composição corporal, rotinas) para fins de acompanhamento. Posso retirar este consentimento a qualquer momento.
+                Li e aceito os {""}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">
+                  Termos & Política de Privacidade
+                </a>
+                .
+              </span>
+            </label>
+
+            {/* 2) Consentimento explícito para dados de saúde (obrigatório) */}
+            <label className="flex items-start gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={healthConsent}
+                onChange={(e) => setHealthConsent(e.target.checked)}
+              />
+              <span>
+                Dou o meu <strong>consentimento explícito</strong> para o tratamento dos meus <strong>dados de saúde</strong> (ex.: peso, medidas, composição corporal, rotinas) para fins de acompanhamento. Posso retirar este consentimento a qualquer momento.
               </span>
             </label>
 
@@ -137,10 +163,7 @@ export default function RegisterPage() {
           {error && <p className="text-red-600 mt-3">{error}</p>}
 
           <p className="mt-4 text-sm text-slate-600">
-            Já tens conta?{" "}
-            <a className="underline" href="/login">
-              Inicia sessão
-            </a>
+            Já tens conta? <a className="underline" href="/login">Inicia sessão</a>
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ClientGuard, useSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";

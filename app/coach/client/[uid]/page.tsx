@@ -17,8 +17,9 @@ import {
   updateDoc,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,11 @@ export default function CoachClientProfilePage(
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+
+  // Planos PDF
+  const [trainingUrl, setTrainingUrl] = useState<string | null>(null);
+  const [dietUrl, setDietUrl] = useState<string | null>(null);
+  const [plansLoading, setPlansLoading] = useState<boolean>(true);
 
   useEffect(() => {
     (async () => {
@@ -237,6 +243,15 @@ export default function CoachClientProfilePage(
       setMetaAgua(meta);
       setMetaSource(source);
 
+      // Carregar planos (PDFs)
+      try {
+        const planSnap = await getDoc(doc(db, "users", uid, "plans", "latest"));
+        const planData: any = planSnap.data() || {};
+        setTrainingUrl(planData.trainingUrl || null);
+        setDietUrl(planData.dietUrl || null);
+      } catch {}
+      setPlansLoading(false);
+
       setLoading(false);
     })();
   }, [uid]);
@@ -264,6 +279,15 @@ export default function CoachClientProfilePage(
 
   const novoCheckinHref = `/checkin?clientId=${uid}`;
   const editarUltimoHref = checkins[0]?.id ? `/checkin?clientId=${uid}&checkinId=${checkins[0].id}` : "";
+
+  async function handlePlanUpload(kind: "training" | "diet", file: File) {
+    const path = `plans/${uid}/${kind}.pdf`;
+    const r = ref(storage, path);
+    await uploadBytes(r, file, { contentType: "application/pdf" });
+    const url = await getDownloadURL(r);
+    await setDoc(doc(db, "users", uid, "plans", "latest"), { [kind === "training" ? "trainingUrl" : "dietUrl"]: url, updatedAt: serverTimestamp() }, { merge: true });
+    if (kind === "training") setTrainingUrl(url); else setDietUrl(url);
+  }
 
   return (
     <CoachGuard>
@@ -386,6 +410,45 @@ export default function CoachClientProfilePage(
               </div>
             ) : (
               <div className="text-muted-foreground">Sem weekly registado.</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Planos (PDFs) */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Planos (PDF)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            {plansLoading ? (
+              <div className="text-muted-foreground">A carregar…</div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border p-3">
+                  <div className="font-medium mb-2">Plano de Treino</div>
+                  {trainingUrl ? (
+                    <div className="space-x-3">
+                      <a className="underline" href={trainingUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      <a className="underline" href={trainingUrl} download>Download</a>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">Sem plano.</div>
+                  )}
+                  <div className="mt-2"><input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("training", f);}} /></div>
+                </div>
+                <div className="rounded-xl border p-3">
+                  <div className="font-medium mb-2">Sugestão Alimentar</div>
+                  {dietUrl ? (
+                    <div className="space-x-3">
+                      <a className="underline" href={dietUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      <a className="underline" href={dietUrl} download>Download</a>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">Sem plano.</div>
+                  )}
+                  <div className="mt-2"><input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("diet", f);}} /></div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

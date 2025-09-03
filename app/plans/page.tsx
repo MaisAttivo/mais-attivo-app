@@ -3,22 +3,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, FileText, X } from "lucide-react";
 
-function PdfCard({ title, url }: { title: string; url?: string | null }) {
+function PdfCard({ title, url, onPreview }: { title: string; url?: string | null; onPreview?: (url: string)=>void }) {
   return (
     <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-4">
       <div className="text-sm text-slate-700 mb-2">{title}</div>
       {url ? (
-        <div className="space-y-2">
-          <object data={url} type="application/pdf" className="w-full h-64 rounded border" aria-label={title}>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Abrir PDF</a>
-          </object>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-slate-700"><FileText className="h-4 w-4" />PDF disponível</div>
           <div className="flex gap-2">
-            <Button asChild size="sm" variant="secondary"><a href={url} target="_blank" rel="noopener noreferrer">Abrir</a></Button>
+            <Button size="sm" onClick={()=>onPreview && url && onPreview(url)}>Ver</Button>
             <Button asChild size="sm" variant="outline"><a href={url} download>Download</a></Button>
           </div>
         </div>
@@ -32,6 +30,7 @@ function PdfCard({ title, url }: { title: string; url?: string | null }) {
 export default function PlansPage() {
   const { uid, role, loading: sessionLoading } = useSession();
   const [plan, setPlan] = useState<{ trainingUrl?: string | null; dietUrl?: string | null } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [plansLoading, setPlansLoading] = useState(true);
 
   const targetUidState = useState("");
@@ -55,7 +54,23 @@ export default function PlansPage() {
       setPlansLoading(true);
       try {
         const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
-        if (alive) setPlan((snap.data() as any) || { trainingUrl: null, dietUrl: null });
+        let data: any = snap.data() || {};
+        // Fallback: procurar docs estruturados em users/{uid}/plans
+        if ((!data.trainingUrl || !data.dietUrl)) {
+          try {
+            let qs = await getDocs(
+              // tentar por createdAt, senão por __name__
+              collection(db, "users", effectiveUid, "plans")
+            );
+            // procurar por type/url
+            const all: any[] = [];
+            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
+            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
+            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
+            data = { ...data, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
+          } catch {}
+        }
+        if (alive) setPlan(data || { trainingUrl: null, dietUrl: null });
       } finally {
         if (alive) setPlansLoading(false);
       }
@@ -157,8 +172,22 @@ export default function PlansPage() {
             <div className="text-sm text-slate-600">A carregar…</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <PdfCard title="Plano de Treino (PDF)" url={plan?.trainingUrl} />
-              <PdfCard title="Sugestão Alimentar (PDF)" url={plan?.dietUrl} />
+              <PdfCard title="Plano de Treino (PDF)" url={plan?.trainingUrl} onPreview={setPreviewUrl} />
+              <PdfCard title="Sugestão Alimentar (PDF)" url={plan?.dietUrl} onPreview={setPreviewUrl} />
+            </div>
+          )}
+
+          {previewUrl && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+              <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
+                  <Button size="sm" variant="secondary" onClick={()=>setPreviewUrl(null)}><X className="h-4 w-4" />Fechar</Button>
+                </div>
+                <object data={previewUrl} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                  <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={previewUrl} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
+                </object>
+              </div>
             </div>
           )}
         </div>

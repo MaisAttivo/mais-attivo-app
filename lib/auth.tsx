@@ -1,6 +1,6 @@
 // lib/auth.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -30,7 +30,7 @@ export function useSession() {
   return { uid, role, onboardingDone, active, loading };
 }
 
-/** Guard para páginas de CLIENTE. Força onboarding se faltar. */
+/** Guard para p��ginas de CLIENTE. Força onboarding se faltar. */
 export function ClientGuard({ children }: { children: React.ReactNode }) {
   const { uid, role, onboardingDone, loading, active } = useSession();
   const router = useRouter();

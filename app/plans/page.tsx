@@ -5,6 +5,8 @@ import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 function PdfCard({ title, url }: { title: string; url?: string | null }) {
   return (
@@ -16,8 +18,8 @@ function PdfCard({ title, url }: { title: string; url?: string | null }) {
             <a href={url} target="_blank" rel="noopener noreferrer" className="underline">Abrir PDF</a>
           </object>
           <div className="flex gap-2">
-            <a href={url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Abrir</a>
-            <a href={url} download className="px-3 py-1.5 rounded border border-slate-400 text-slate-800 bg-white shadow hover:bg-slate-50">Download</a>
+            <Button asChild size="sm" variant="secondary"><a href={url} target="_blank" rel="noopener noreferrer">Abrir</a></Button>
+            <Button asChild size="sm" variant="outline"><a href={url} download>Download</a></Button>
           </div>
         </div>
       ) : (
@@ -81,11 +83,11 @@ export default function PlansPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <div className="text-sm mb-1">Upload Plano de Treino (PDF)</div>
-                    <input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("training", f)}} />
+                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("training", f)}} />
                   </div>
                   <div>
                     <div className="text-sm mb-1">Upload Sugestão Alimentar (PDF)</div>
-                    <input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("diet", f)}} />
+                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("diet", f)}} />
                   </div>
                 </div>
               )}

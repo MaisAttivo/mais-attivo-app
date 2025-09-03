@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import PrivacyContent from "@/components/PrivacyContent";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [healthConsent, setHealthConsent] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -36,15 +38,12 @@ export default function RegisterPage() {
     }
 
     try {
-      // 1) Criar conta no Auth
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
 
-      // 1.1) (Opcional) colocar o displayName no perfil Auth
       if (name.trim()) {
         await updateProfile(cred.user, { displayName: name.trim() });
       }
 
-      // 2) Guardar documento em /users/{uid}
       const userRef = doc(db, "users", cred.user.uid);
       await setDoc(userRef, {
         name: name.trim(),
@@ -54,21 +53,18 @@ export default function RegisterPage() {
         active: true,
         workoutFrequency: 0,
         metaAgua: null,
-        // consentimentos (separados conforme a norma)
         privacyConsent: termsAccepted,
         healthDataExplicitConsent: healthConsent,
         imageUseConsent: false,
         imageUseSocialCensored: false,
         privacyConsentAt: serverTimestamp(),
         healthDataConsentAt: serverTimestamp(),
-        // sistema
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         notificationsEnabled: true,
         devicePlatform: "web",
       });
 
-      // 3) Ir para o onboarding (questionário inicial)
       router.replace("/onboarding");
     } catch (err: any) {
       const msg =
@@ -123,7 +119,6 @@ export default function RegisterPage() {
               minLength={6}
             />
 
-            {/* 1) Termos & Privacidade (obrigatório) */}
             <label className="flex items-start gap-2 text-xs text-slate-700 mt-1">
               <input
                 type="checkbox"
@@ -132,14 +127,13 @@ export default function RegisterPage() {
               />
               <span>
                 Li e aceito os {""}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">
+                <button type="button" onClick={() => setShowTerms(true)} className="underline">
                   Termos & Política de Privacidade
-                </a>
+                </button>
                 .
               </span>
             </label>
 
-            {/* 2) Consentimento explícito para dados de saúde (obrigatório) */}
             <label className="flex items-start gap-2 text-xs text-slate-700">
               <input
                 type="checkbox"
@@ -167,6 +161,32 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowTerms(false)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative w-full max-w-3xl max-h-[85dvh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-300"
+          >
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <h2 className="text-lg font-semibold">Termos & Política de Privacidade</h2>
+              <button
+                type="button"
+                aria-label="Fechar"
+                className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100"
+                onClick={() => setShowTerms(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[75dvh]">
+              <PrivacyContent />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

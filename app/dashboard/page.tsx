@@ -285,7 +285,7 @@ export default function DashboardPage() {
     }
   })();
 
-  // Streak alimentação — decoraç��o
+  // Streak alimentação — decoração
   const streakBadge = streakAlimentacao >= 2 ? "🔥" : "";
   const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
 
@@ -383,25 +383,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Pesos médios + alinhamento com objetivo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Peso atual + média na mesma card */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">
-            Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
-          </div>
-          <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
-            {pesoMedioSemanaAtual !== null ? `${pesoMedioSemanaAtual} kg` : "—"}
-          </div>
-          {pesoMedioSemanaAnterior != null && (
-            <div className="text-xs text-gray-500 mt-1">
-              vs semana anterior: {pesoMedioSemanaAnterior} kg
-            </div>
-          )}
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
+          <div className="text-sm text-slate-700">Peso</div>
           <div className="text-2xl font-semibold">
-            {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
+            {todayDaily?.weight != null ? `${todayDaily.weight} kg` : lastDaily?.weight != null ? `${lastDaily.weight} kg` : "—"}
+          </div>
+          <div className="text-xs text-slate-500 mt-1">
+            média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
           </div>
         </div>
       </div>

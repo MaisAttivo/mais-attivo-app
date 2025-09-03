@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
+import SwitchableCalendar from "@/components/SwitchableCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";

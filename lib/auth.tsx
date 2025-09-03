@@ -30,12 +30,12 @@ export function useSession() {
   return { uid, role, onboardingDone, active, loading };
 }
 
-/** Guard para p��ginas de CLIENTE. Força onboarding se faltar. */
+/** Guard para páginas de CLIENTE. Força onboarding se faltar. */
 export function ClientGuard({ children }: { children: React.ReactNode }) {
   const { uid, role, onboardingDone, loading, active } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const redirected = React.useRef(false);
+  const redirected = useRef(false);
 
   useEffect(() => {
     if (loading || redirected.current) return;

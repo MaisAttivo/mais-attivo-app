@@ -407,15 +407,9 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs semana + médias 7 dias */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="workout" />
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="diet" />
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="cardio" />
+          <SwitchableCalendar uid={uid!} />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Água — média 7 dias</div>

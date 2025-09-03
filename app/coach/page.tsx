@@ -67,6 +67,7 @@ type Cliente = {
   diasSemTreinar?: number | null;
   diasSemAlimentacaoOK?: number | null;
   diasSemAguaOK?: number | null;
+  diasPlanoTreino?: number | null;
   nextCheckinYMD?: string | null;
   dueStatus?: "today" | "overdue" | null;
 };
@@ -91,6 +92,7 @@ export type FilterKey =
   | "semTreino5d"
   | "semAlimentacao5d"
   | "agua3d"
+  | "treino2m"
   | "contaInativa"
   | "semFiltro";
 
@@ -133,6 +135,7 @@ const filterPredicates: Record<Exclude<FilterKey, "semFiltro">, (c: Cliente) => 
   semTreino5d: (c) => (c.diasSemTreinar ?? Infinity) >= 5,
   semAlimentacao5d: (c) => (c.diasSemAlimentacaoOK ?? Infinity) >= 5,
   agua3d: (c) => (c.diasSemAguaOK ?? Infinity) >= 3,
+  treino2m: (c) => (c.diasPlanoTreino ?? Infinity) >= 60,
 };
 
 /* ========= Helpers: nome + meta de água ========= */
@@ -232,6 +235,7 @@ function CoachDashboard() {
     semTreino5d: false,
     semAlimentacao5d: false,
     agua3d: false,
+    treino2m: false,
     contaInativa: false,
   });
 
@@ -301,6 +305,33 @@ function CoachDashboard() {
 
           const m = getDerivedMetricsFromHistory(history, metaAgua);
 
+          // Plano de treino: última atualização
+          let diasPlanoTreino: number | null = null;
+          try {
+            const pSnap = await getDoc(doc(db, "users", u.id, "plans", "latest"));
+            let dt: Date | null = null;
+            if (pSnap.exists()) {
+              const d: any = pSnap.data();
+              const ts = d.trainingUpdatedAt ?? d.updatedAt ?? null;
+              dt = ts?.toDate?.() ?? null;
+            }
+            if (!dt) {
+              try {
+                const pAll = await getDocs(collection(db, `users/${u.id}/plans`));
+                let best: Date | null = null;
+                pAll.forEach((docu) => {
+                  const d: any = docu.data();
+                  const isTraining = d.type === "treino" || d.type === "training";
+                  if (!isTraining) return;
+                  const cand = (d.updatedAt?.toDate?.() ?? d.createdAt?.toDate?.() ?? null) as Date | null;
+                  if (cand && (!best || cand.getTime() > best.getTime())) best = cand;
+                });
+                dt = best;
+              } catch {}
+            }
+            if (dt) diasPlanoTreino = daysBetween(new Date(), dt);
+          } catch {}
+
           return {
             id: u.id,
             nome: nomeFinal,
@@ -312,6 +343,7 @@ function CoachDashboard() {
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
             diasSemAguaOK: Number.isFinite(m.diasSemAguaOK) ? m.diasSemAguaOK : null,
+            diasPlanoTreino: Number.isFinite(diasPlanoTreino as number) ? (diasPlanoTreino as number) : null,
             nextCheckinYMD,
             dueStatus,
           } as Cliente;
@@ -353,6 +385,7 @@ function CoachDashboard() {
       if (activeFilters.semTreino5d) keep = keep && filterPredicates.semTreino5d(c);
       if (activeFilters.semAlimentacao5d) keep = keep && filterPredicates.semAlimentacao5d(c);
       if (activeFilters.agua3d) keep = keep && filterPredicates.agua3d(c);
+      if (activeFilters.treino2m) keep = keep && filterPredicates.treino2m(c);
       return keep;
     });
   }, [clientes, search, activeFilters]);
@@ -433,6 +466,12 @@ function CoachDashboard() {
                   onCheckedChange={() => toggleFilter("agua3d")}
                 >
                   Sem meta de água há ≥ 3 dias
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.treino2m}
+                  onCheckedChange={() => toggleFilter("treino2m")}
+                >
+                  Treino desatualizado há ≥ 2 meses
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Conta</DropdownMenuLabel>

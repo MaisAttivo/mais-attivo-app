@@ -392,8 +392,28 @@ function CoachDashboard() {
 
   function toggleFilter(key: FilterKey) {
     setActiveFilters((prev) => {
-      const next = { ...prev, [key]: !prev[key] } as typeof prev;
-      const someSpecific = next.inativos4d || next.semTreino5d || next.semAlimentacao5d || next.agua3d || next.contaInativa;
+      let next = { ...prev, [key]: !prev[key] } as typeof prev;
+      if (key === "semFiltro") {
+        const enabled = next.semFiltro;
+        if (enabled) {
+          next = {
+            ...next,
+            inativos4d: false,
+            semTreino5d: false,
+            semAlimentacao5d: false,
+            agua3d: false,
+            treino2m: false,
+            contaInativa: false,
+          };
+        }
+      }
+      const someSpecific =
+        next.inativos4d ||
+        next.semTreino5d ||
+        next.semAlimentacao5d ||
+        next.agua3d ||
+        next.treino2m ||
+        next.contaInativa;
       next.semFiltro = !someSpecific;
       return next;
     });

@@ -10,6 +10,9 @@ import { auth, db } from "@/lib/firebase";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
 import { onAuthStateChanged } from "firebase/auth";
+import { Button } from "@/components/ui/button";
+import { Menu } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   doc,
   getDoc,
@@ -289,19 +292,26 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{displayName}</h1>
-        {waPhone && (
-          <a
-            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
-            title="Enviar mensagem no WhatsApp"
-          >
-            <span aria-hidden>🟢</span>
-            WhatsApp
-          </a>
-        )}
+        <div className="w-10" />
+        <h1 className="text-2xl font-semibold text-center flex-1">{displayName}</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" aria-label="Menu">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Navegação</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}>
+              Terminar Sessão
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {(needsDaily || needsWeekly) && (

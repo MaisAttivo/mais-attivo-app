@@ -102,7 +102,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-base">{label} — {title}</div>
+        <div className="font-semibold text-base">{title}</div>
         <div className="flex items-center gap-1.5">
           <button
             type="button"

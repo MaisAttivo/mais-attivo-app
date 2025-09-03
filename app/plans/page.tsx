@@ -93,7 +93,7 @@ export default function PlansPage() {
                         ref={trainingInputRef}
                         type="file"
                         accept="application/pdf"
-                        className="sr-only"
+                        className="hidden" aria-hidden="true"
                         onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedTraining(f.name); handleUpload("training", f); e.currentTarget.value = ""; }}}
                       />
                       <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
@@ -110,7 +110,7 @@ export default function PlansPage() {
                         ref={dietInputRef}
                         type="file"
                         accept="application/pdf"
-                        className="sr-only"
+                        className="hidden" aria-hidden="true"
                         onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedDiet(f.name); handleUpload("diet", f); e.currentTarget.value = ""; }}}
                       />
                       <Button size="sm" onClick={() => dietInputRef.current?.click()}>

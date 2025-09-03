@@ -407,8 +407,8 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs semana + médias 7 dias */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="col-span-2 sm:col-span-1 rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="col-span-2 md:col-span-1 rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <SwitchableCalendar uid={uid!} />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">

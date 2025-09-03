@@ -21,7 +21,28 @@ export default function PrivacyPage() {
           Quando consentires, poderás escolher opções como <em>ocultar rosto</em> ou autorizar apenas <em>antes‑depois anónimo</em>. Sem esse consentimento, as tuas imagens permanecem privadas e não são usadas para divulgação.
         </p>
 
-        <h2 className="text-lg font-semibold mt-4 mb-1">Direitos do Titular</h2>
+        <h2 className="text-lg font-semibold mt-6 mb-1">Informação adicional (à prova de auditoria)</h2>
+        <ul className="list-disc ml-5 text-sm text-slate-700 space-y-2">
+          <li>
+            <strong>Responsável pelo tratamento:</strong> Mais Attivo. Contacto: <a className="underline" href="mailto:maisattivo.geral@gmail.com">maisattivo.geral@gmail.com</a>.
+          </li>
+          <li>
+            <strong>Subprocessadores:</strong> Firebase (Google), Vercel, OneSignal, Builder.io (entre outros necessários à operação do serviço).
+          </li>
+          <li>
+            <strong>Transferências fora da UE:</strong> quando aplicável, baseadas nas Standard Contractual Clauses (SCCs) e Acordos de Processamento de Dados (DPAs) com esses fornecedores.
+          </li>
+          <li>
+            <strong>Conservação:</strong> dados de acompanhamento por até 3 anos após o fim do serviço; dados de faturação por 10 anos; registos de consentimentos enquanto vigentes + 5 anos; imagens mantidas apenas enquanto houver consentimento e até retirada do mesmo.
+          </li>
+          <li>
+            <strong>Reclamações:</strong> manténs todos os direitos RGPD. Podes apresentar reclamação à CNPD em <a className="underline" href="https://www.cnpd.pt/" target="_blank" rel="noopener noreferrer">www.cnpd.pt</a>.
+          </li>
+        </ul>
+
+        <div className="text-xs text-slate-500 mt-4">Versão da política: v1.0 — 03/09/2025</div>
+
+        <h2 className="text-lg font-semibold mt-6 mb-1">Direitos do Titular</h2>
         <p className="text-sm text-slate-700">
           Tens direito de acesso, retificação, portabilidade e apagamento dos dados, bem como oposição e limitação do tratamento. Para exercer estes direitos, contacta-nos pelos canais habituais.
         </p>

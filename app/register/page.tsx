@@ -51,9 +51,11 @@ export default function RegisterPage() {
         metaAgua: null,
         // consentimentos
         privacyConsent: true,
-        imageUseConsent: true,
-        imageUseSocialCensored: true,
+        healthDataExplicitConsent: true,
+        imageUseConsent: false,
+        imageUseSocialCensored: false,
         privacyConsentAt: serverTimestamp(),
+        healthDataConsentAt: serverTimestamp(),
         // campos de sistema
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -119,7 +121,7 @@ export default function RegisterPage() {
             <label className="flex items-start gap-2 text-xs text-slate-700 mt-1">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>
-                Li e aceito a <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Política de Privacidade (RGPD)</a> e a utilização de imagem: os dados são tratados segundo a lei portuguesa e as imagens que nos forneceres são privadas; poderão ser usadas nas redes sociais com a cara censurada, a menos que peças o contrário.
+                Aceito os <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Termos & Política de Privacidade</a> e dou o meu <strong>consentimento explícito</strong> para o tratamento dos meus <strong>dados de saúde</strong> (ex.: peso, medidas, composição corporal, rotinas) para fins de acompanhamento. Posso retirar este consentimento a qualquer momento.
               </span>
             </label>
 

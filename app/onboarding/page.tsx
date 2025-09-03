@@ -91,6 +91,9 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
+      const wf = Math.max(0, parseInt(String(workoutFrequency as any), 10) || 0);
+      const weightN = toNum(weightKg);
+      const metaAguaCalc = weightN > 0 ? Number((weightN * 0.05).toFixed(2)) : 4;
       await addDoc(collection(db, `users/${uid}/questionnaire`), {
         // pessoais
         fullName: fullName.trim(),
@@ -105,7 +108,7 @@ export default function OnboardingPage() {
         doesOtherActivity: yesNoToBool(doesOtherActivity),
         otherActivityDetails: otherActivityDetails.trim(),
 
-        workoutFrequency: toNum(workoutFrequency),
+        workoutFrequency: wf,
 
         hasInjury: yesNoToBool(hasInjury),
         injuryDetails: injuryDetails.trim(),
@@ -149,14 +152,9 @@ export default function OnboardingPage() {
         completedAt: serverTimestamp(),
       });
 
-      const wf = toNum(workoutFrequency);
-      const fromWeight = toNum(weightKg) > 0 ? Number((toNum(weightKg) * 0.05).toFixed(2)) : null;
-      const fallbackWater = toNum(waterLitersPerDay);
-      const metaAgua = (fromWeight && fromWeight > 0 ? fromWeight : (fallbackWater > 0 ? fallbackWater : null)) as number | null;
-
       await updateDoc(doc(db, "users", uid), {
         workoutFrequency: wf,
-        metaAgua,
+        metaAgua: metaAguaCalc,
         onboardingDone: true,
         updatedAt: serverTimestamp(),
       });

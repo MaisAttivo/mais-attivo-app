@@ -121,7 +121,7 @@ export default function RegisterPage() {
             <label className="flex items-start gap-2 text-xs text-slate-700 mt-1">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>
-                Li e aceito a Política de Privacidade e a utilização de imagem: os dados são tratados segundo a lei portuguesa e as imagens que nos forneceres são privadas; poderão ser usadas nas redes sociais com a cara censurada, a menos que peças o contrário.
+                Li e aceito a <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Política de Privacidade (RGPD)</a> e a utilização de imagem: os dados são tratados segundo a lei portuguesa e as imagens que nos forneceres são privadas; poderão ser usadas nas redes sociais com a cara censurada, a menos que peças o contrário.
               </span>
             </label>
 

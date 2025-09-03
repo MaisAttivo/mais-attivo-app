@@ -445,7 +445,7 @@ export default function CoachClientProfilePage(
                   ) : (
                     <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
-                  <div className="mt-3">
+                  <div className="mt-3 flex flex-col items-start gap-2">
                     <input
                       ref={trainingInputRef}
                       type="file"
@@ -457,7 +457,7 @@ export default function CoachClientProfilePage(
                       <Upload className="h-4 w-4" />
                       Escolher ficheiro
                     </Button>
-                    <div className="mt-1 text-xs text-muted-foreground">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                 </div>
                 <div className="rounded-2xl border p-4 bg-background">
@@ -477,7 +477,7 @@ export default function CoachClientProfilePage(
                   ) : (
                     <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
-                  <div className="mt-3">
+                  <div className="mt-3 flex flex-col items-start gap-2">
                     <input
                       ref={dietInputRef}
                       type="file"
@@ -489,7 +489,7 @@ export default function CoachClientProfilePage(
                       <Upload className="h-4 w-4" />
                       Escolher ficheiro
                     </Button>
-                    <div className="mt-1 text-xs text-muted-foreground">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                 </div>
               </div>

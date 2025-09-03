@@ -149,7 +149,7 @@ export default function OnboardingPage() {
         completedAt: serverTimestamp(),
       });
 
-      router.push("/client/dashboard");
+      router.push("/dashboard");
     } catch (err) {
       console.error(err);
       setError("Não foi possível guardar o questionário.");

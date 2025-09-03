@@ -392,6 +392,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-xs text-slate-500 mt-1">
             média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
+            <div className="text-xs text-slate-500 mt-0.5">semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : "—"}</div>
           </div>
         </div>
       </div>

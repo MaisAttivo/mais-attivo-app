@@ -43,6 +43,10 @@ export default function PlansPage() {
   const dietInputRef = useRef<HTMLInputElement>(null);
   const [selectedTraining, setSelectedTraining] = useState<string | null>(null);
   const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
+  const [uploadingTraining, setUploadingTraining] = useState(false);
+  const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [dietError, setDietError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!effectiveUid) return;
@@ -60,16 +64,32 @@ export default function PlansPage() {
   }, [effectiveUid]);
 
   async function handleUpload(kind: "training" | "diet", file: File) {
-    if (!effectiveUid || !file) return;
-    const path = `plans/${effectiveUid}/${kind}.pdf`;
-    const r = ref(storage, path);
-    await uploadBytes(r, file, { contentType: "application/pdf" });
-    const url = await getDownloadURL(r);
-    const docRef = doc(db, "users", effectiveUid, "plans", "latest");
-    const payload: any = { updatedAt: serverTimestamp() };
-    if (kind === "training") payload.trainingUrl = url; else payload.dietUrl = url;
-    await setDoc(docRef, payload, { merge: true });
-    setPlan((p) => ({ ...(p || {}), ...(kind === "training" ? { trainingUrl: url } : { dietUrl: url }) }));
+    try {
+      if (!effectiveUid || !file) return;
+      if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) throw new Error("Apenas PDFs são permitidos.");
+      if (file.size > 20 * 1024 * 1024) throw new Error("Ficheiro demasiado grande (máx. 20MB).");
+
+      if (kind === "training") { setUploadingTraining(true); setTrainingError(null); }
+      else { setUploadingDiet(true); setDietError(null); }
+
+      const path = `plans/${effectiveUid}/${kind}.pdf`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file, { contentType: "application/pdf" });
+      const url = await getDownloadURL(r);
+      const docRef = doc(db, "users", effectiveUid, "plans", "latest");
+      const payload: any = { updatedAt: serverTimestamp() };
+      if (kind === "training") payload.trainingUrl = url; else payload.dietUrl = url;
+      await setDoc(docRef, payload, { merge: true });
+      setPlan((p) => ({ ...(p || {}), ...(kind === "training" ? { trainingUrl: url } : { dietUrl: url }) }));
+    } catch (e: any) {
+      const msg = e?.message || "Falha no upload.";
+      if (kind === "training") setTrainingError(msg); else setDietError(msg);
+      console.error("Upload planos falhou", e);
+    } finally {
+      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+    }
   }
 
   if (sessionLoading) return <main className="max-w-3xl mx-auto p-6">A carregar…</main>;
@@ -96,11 +116,15 @@ export default function PlansPage() {
                         className="hidden" aria-hidden="true"
                         onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedTraining(f.name); handleUpload("training", f); e.currentTarget.value = ""; }}}
                       />
-                      <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
+                      <Button size="sm" onClick={() => trainingInputRef.current?.click()} disabled={uploadingTraining}>
                         <Upload className="h-4 w-4" />
-                        Escolher ficheiro
+                        {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
                       </Button>
-                      <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedTraining ?? "Nenhum ficheiro selecionado"}</div>
+                      {trainingError ? (
+                        <div className="text-xs text-red-600 text-left">{trainingError}</div>
+                      ) : (
+                        <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedTraining ?? "Nenhum ficheiro selecionado"}</div>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -113,11 +137,15 @@ export default function PlansPage() {
                         className="hidden" aria-hidden="true"
                         onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedDiet(f.name); handleUpload("diet", f); e.currentTarget.value = ""; }}}
                       />
-                      <Button size="sm" onClick={() => dietInputRef.current?.click()}>
+                      <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
                         <Upload className="h-4 w-4" />
-                        Escolher ficheiro
+                        {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
                       </Button>
-                      <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedDiet ?? "Nenhum ficheiro selecionado"}</div>
+                      {dietError ? (
+                        <div className="text-xs text-red-600 text-left">{dietError}</div>
+                      ) : (
+                        <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedDiet ?? "Nenhum ficheiro selecionado"}</div>
+                      )}
                     </div>
                   </div>
                 </div>

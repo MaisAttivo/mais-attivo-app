@@ -450,7 +450,7 @@ export default function CoachClientProfilePage(
                       ref={trainingInputRef}
                       type="file"
                       accept="application/pdf"
-                      className="sr-only"
+                      className="hidden" aria-hidden="true"
                       onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setTrainingSelected(f.name); handlePlanUpload("training", f); e.currentTarget.value = ""; }}}
                     />
                     <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
@@ -482,7 +482,7 @@ export default function CoachClientProfilePage(
                       ref={dietInputRef}
                       type="file"
                       accept="application/pdf"
-                      className="sr-only"
+                      className="hidden" aria-hidden="true"
                       onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setDietSelected(f.name); handlePlanUpload("diet", f); e.currentTarget.value = ""; }}}
                     />
                     <Button size="sm" onClick={() => dietInputRef.current?.click()}>
@@ -612,7 +612,7 @@ function K({
   const arrow = (() => {
     if (delta == null) return null;
     if (delta > 0) return "↑";
-    if (delta < 0) return "↓";
+    if (delta < 0) return "��";
     return "→";
   })();
 

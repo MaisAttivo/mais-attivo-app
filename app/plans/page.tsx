@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Upload } from "lucide-react";
 
 function PdfCard({ title, url }: { title: string; url?: string | null }) {
   return (
@@ -38,6 +38,11 @@ export default function PlansPage() {
   const [targetUid, setTargetUid] = targetUidState;
   const isCoach = role === "coach";
   const effectiveUid = useMemo(() => (isCoach && targetUid ? targetUid.trim() : uid || null), [isCoach, targetUid, uid]);
+
+  const trainingInputRef = useRef<HTMLInputElement>(null);
+  const dietInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTraining, setSelectedTraining] = useState<string | null>(null);
+  const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
 
   useEffect(() => {
     if (!effectiveUid) return;
@@ -83,11 +88,33 @@ export default function PlansPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <div className="text-sm mb-1">Upload Plano de Treino (PDF)</div>
-                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("training", f)}} />
+                    <input
+                      ref={trainingInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedTraining(f.name); handleUpload("training", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
+                      <Upload className="h-4 w-4" />
+                      Escolher ficheiro
+                    </Button>
+                    <div className="mt-1 text-xs text-slate-600">{selectedTraining ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                   <div>
                     <div className="text-sm mb-1">Upload Sugestão Alimentar (PDF)</div>
-                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleUpload("diet", f)}} />
+                    <input
+                      ref={dietInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedDiet(f.name); handleUpload("diet", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => dietInputRef.current?.click()}>
+                      <Upload className="h-4 w-4" />
+                      Escolher ficheiro
+                    </Button>
+                    <div className="mt-1 text-xs text-slate-600">{selectedDiet ?? "Nenhum ficheiro selecionado"}</div>
                   </div>
                 </div>
               )}

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function RegisterPage() {
@@ -16,12 +16,16 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setError(null);
+    setResetMsg(null);
     setLoading(true);
+    if (!consent) { setError("Tens de aceitar a política de privacidade e uso de imagem."); setLoading(false); return; }
 
     try {
       // 1) Criar conta no Auth
@@ -47,6 +51,11 @@ export default function RegisterPage() {
         // defaults úteis para o resto da app (podem ser ajustados no onboarding)
         workoutFrequency: 0,
         metaAgua: null,
+        // consentimentos
+        privacyConsent: true,
+        imageUseConsent: true,
+        imageUseSocialCensored: true,
+        privacyConsentAt: serverTimestamp(),
         // campos de sistema
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -109,15 +118,42 @@ export default function RegisterPage() {
               minLength={6}
             />
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow-md hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
-            >
-              {loading ? "A criar..." : "Criar conta"}
-            </button>
+            <label className="flex items-start gap-2 text-xs text-slate-700 mt-1">
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              <span>
+                Li e aceito a Política de Privacidade e a utilização de imagem: os dados são tratados segundo a lei portuguesa e as imagens que nos forneceres são privadas; poderão ser usadas nas redes sociais com a cara censurada, a menos que peças o contrário.
+              </span>
+            </label>
+
+            <div className="flex items-center justify-between mt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  setResetMsg(null);
+                  if (!email.trim()) { setResetMsg("Indica o teu email acima."); return; }
+                  try {
+                    await sendPasswordResetEmail(auth, email.trim());
+                    setResetMsg("Enviámos um email para redefinir a palavra‑passe.");
+                  } catch (e: any) {
+                    setResetMsg("Não foi possível enviar. Verifica o email.");
+                  }
+                }}
+                className="text-sm underline text-slate-700 hover:text-slate-900"
+              >
+                Esqueci-me da palavra‑passe
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow-md hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
+              >
+                {loading ? "A criar..." : "Criar conta"}
+              </button>
+            </div>
           </form>
 
+          {resetMsg && <p className="text-xs text-slate-700 mt-2">{resetMsg}</p>}
           {error && <p className="text-red-600 mt-3">{error}</p>}
 
           <p className="mt-4 text-sm text-slate-600">

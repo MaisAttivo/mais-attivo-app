@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { ensureUserDoc } from "@/lib/ensureUserDoc";
 
@@ -14,12 +14,14 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
     setMsg(null);
+    setResetMsg(null);
 
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
@@ -112,14 +114,35 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
-            >
-              {loading ? "A entrar…" : "Entrar"}
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={async () => {
+                  setResetMsg(null);
+                  if (!email.trim()) { setResetMsg("Indica o teu email em cima."); return; }
+                  try {
+                    await sendPasswordResetEmail(auth, email.trim());
+                    setResetMsg("Enviámos um email para redefinir a palavra‑passe.");
+                  } catch (e: any) {
+                    setResetMsg("Não foi possível enviar. Verifica o email.");
+                  }
+                }}
+                className="text-sm underline text-slate-700 hover:text-slate-900"
+              >
+                Esqueci-me da palavra‑passe
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {loading ? "A entrar…" : "Entrar"}
+              </button>
+            </div>
           </form>
+
+          {resetMsg && <p className="mt-3 text-xs text-slate-700">{resetMsg}</p>}
 
           <p className="mt-4 text-xs text-slate-500">
             Dica: confirma no Firebase Auth que o método Email/Password está ativo.

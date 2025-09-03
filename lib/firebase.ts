@@ -2,11 +2,13 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Initialize Firebase only in the browser to avoid SSR crashes when env vars are missing
 let appInstance: any = undefined;
 let authInstance: any = undefined;
 let dbInstance: any = undefined;
+let storageInstance: any = undefined;
 
 if (typeof window !== "undefined") {
   const firebaseConfig = {
@@ -25,6 +27,7 @@ if (typeof window !== "undefined") {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
     dbInstance = getFirestore(appInstance);
+    storageInstance = getStorage(appInstance);
   } else {
     if (process.env.NODE_ENV !== "production") {
       // Surface a helpful warning in dev instead of crashing the server render
@@ -37,3 +40,4 @@ if (typeof window !== "undefined") {
 export const app = appInstance as any;
 export const auth = authInstance as any;
 export const db = dbInstance as any;
+export const storage = storageInstance as any;

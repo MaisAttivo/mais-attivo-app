@@ -6,24 +6,26 @@ import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, limit, orderBy, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Upload, FileText, X } from "lucide-react";
 
 function PdfCard({ title, url, onPreview }: { title: string; url?: string | null; onPreview?: (url: string)=>void }) {
   return (
-    <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-4">
-      <div className="text-sm text-slate-700 mb-2">{title}</div>
-      {url ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-slate-700"><FileText className="h-4 w-4" />PDF disponível</div>
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {url ? (
           <div className="flex gap-2">
             <Button size="sm" onClick={()=>onPreview && url && onPreview(url)}>Ver</Button>
             <Button asChild size="sm" variant="outline"><a href={url} download>Download</a></Button>
           </div>
-        </div>
-      ) : (
-        <div className="text-sm text-slate-500">Ainda não está disponível.</div>
-      )}
-    </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">Sem plano.</div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -111,7 +113,7 @@ export default function PlansPage() {
   if (!uid) return <main className="max-w-3xl mx-auto p-6">Inicia sessão para ver esta página.</main>;
   return (
       <main className="max-w-3xl mx-auto p-6">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-6">
+        <div>
           <h1 className="text-2xl font-semibold mb-4">Planos</h1>
 
           {isCoach && (
@@ -172,8 +174,8 @@ export default function PlansPage() {
             <div className="text-sm text-slate-600">A carregar…</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <PdfCard title="Plano de Treino (PDF)" url={plan?.trainingUrl} onPreview={setPreviewUrl} />
-              <PdfCard title="Sugestão Alimentar (PDF)" url={plan?.dietUrl} onPreview={setPreviewUrl} />
+              <PdfCard title="Plano de Treino" url={plan?.trainingUrl} onPreview={setPreviewUrl} />
+              <PdfCard title="Sugestão Alimentar" url={plan?.dietUrl} onPreview={setPreviewUrl} />
             </div>
           )}
 
@@ -192,32 +194,6 @@ export default function PlansPage() {
           )}
         </div>
 
-        <div className="mt-6 text-xs text-slate-500">
-          <div className="font-semibold mb-1">Como configurar o Firebase Storage</div>
-          <ol className="list-decimal ml-5 space-y-1">
-            <li>Em Firebase Console, ativa Storage e define o bucket em NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET.</li>
-            <li>Regras recomendadas (ler para clientes, escrever apenas por treinador):</li>
-          </ol>
-          <pre className="mt-2 bg-slate-100 p-2 rounded overflow-x-auto">
-{`rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    function isSignedIn() { return request.auth != null; }
-    function isCoach() { return request.auth.token.coach == true; }
-
-    // planos/{uid}/{kind}.pdf  (kind in [training, diet])
-    match /plans/{uid}/{file} {
-      allow read: if isSignedIn() && request.auth.uid == uid || isCoach();
-      allow write: if isCoach();
-    }
-  }
-}`}
-          </pre>
-          <ol start={3} className="list-decimal ml-5 space-y-1">
-            <li>Cria as pastas automaticamente ao fazer upload (não é preciso criar antes).</li>
-            <li>Os PDFs ficam guardados em plans/UID/training.pdf e plans/UID/diet.pdf.</li>
-          </ol>
-        </div>
       </main>
   );
 }

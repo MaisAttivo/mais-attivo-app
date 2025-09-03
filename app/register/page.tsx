@@ -17,13 +17,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setError(null);
-    setResetMsg(null);
     setLoading(true);
     if (!consent) { setError("Tens de aceitar a política de privacidade e uso de imagem."); setLoading(false); return; }
 
@@ -125,35 +123,15 @@ export default function RegisterPage() {
               </span>
             </label>
 
-            <div className="flex items-center justify-between mt-1">
-              <button
-                type="button"
-                onClick={async () => {
-                  setResetMsg(null);
-                  if (!email.trim()) { setResetMsg("Indica o teu email acima."); return; }
-                  try {
-                    await sendPasswordResetEmail(auth, email.trim());
-                    setResetMsg("Enviámos um email para redefinir a palavra‑passe.");
-                  } catch (e: any) {
-                    setResetMsg("Não foi possível enviar. Verifica o email.");
-                  }
-                }}
-                className="text-sm underline text-slate-700 hover:text-slate-900"
-              >
-                Esqueci-me da palavra‑passe
-              </button>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow-md hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
-              >
-                {loading ? "A criar..." : "Criar conta"}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow-md hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60"
+            >
+              {loading ? "A criar..." : "Criar conta"}
+            </button>
           </form>
 
-          {resetMsg && <p className="text-xs text-slate-700 mt-2">{resetMsg}</p>}
           {error && <p className="text-red-600 mt-3">{error}</p>}
 
           <p className="mt-4 text-sm text-slate-600">

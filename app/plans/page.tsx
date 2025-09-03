@@ -28,9 +28,9 @@ function PdfCard({ title, url }: { title: string; url?: string | null }) {
 }
 
 export default function PlansPage() {
-  const { uid, role, loading } = useSession();
+  const { uid, role, loading: sessionLoading } = useSession();
   const [plan, setPlan] = useState<{ trainingUrl?: string | null; dietUrl?: string | null } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [plansLoading, setPlansLoading] = useState(true);
 
   const targetUidState = useState("");
   const [targetUid, setTargetUid] = targetUidState;
@@ -41,12 +41,12 @@ export default function PlansPage() {
     if (!effectiveUid) return;
     let alive = true;
     (async () => {
-      setLoading(true);
+      setPlansLoading(true);
       try {
         const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
         if (alive) setPlan((snap.data() as any) || { trainingUrl: null, dietUrl: null });
       } finally {
-        if (alive) setLoading(false);
+        if (alive) setPlansLoading(false);
       }
     })();
     return () => { alive = false; };
@@ -65,7 +65,7 @@ export default function PlansPage() {
     setPlan((p) => ({ ...(p || {}), ...(kind === "training" ? { trainingUrl: url } : { dietUrl: url }) }));
   }
 
-  if (loading) return <main className="max-w-3xl mx-auto p-6">A carregar…</main>;
+  if (sessionLoading) return <main className="max-w-3xl mx-auto p-6">A carregar…</main>;
   if (!uid) return <main className="max-w-3xl mx-auto p-6">Inicia sessão para ver esta página.</main>;
   return (
       <main className="max-w-3xl mx-auto p-6">
@@ -92,7 +92,7 @@ export default function PlansPage() {
             </div>
           )}
 
-          {loading ? (
+          {plansLoading ? (
             <div className="text-sm text-slate-600">A carregar…</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

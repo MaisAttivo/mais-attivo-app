@@ -126,6 +126,8 @@ export default function CoachClientProfilePage(
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [trainingAt, setTrainingAt] = useState<Date | null>(null);
+  const [dietAt, setDietAt] = useState<Date | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -263,11 +265,13 @@ export default function CoachClientProfilePage(
             qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
             const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
             const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
-            planData = { ...planData, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
+            planData = { ...planData, ...(treino ? { trainingUrl: treino.url, trainingUpdatedAt: treino.createdAt || treino.updatedAt } : {}), ...(alim ? { dietUrl: alim.url, dietUpdatedAt: alim.createdAt || alim.updatedAt } : {}) };
           } catch {}
         }
         setTrainingUrl(planData.trainingUrl || null);
         setDietUrl(planData.dietUrl || null);
+        setTrainingAt(toDate(planData.trainingUpdatedAt ?? null));
+        setDietAt(toDate(planData.dietUpdatedAt ?? null));
       } catch {}
       setPlansLoading(false);
 
@@ -313,8 +317,11 @@ export default function CoachClientProfilePage(
       const r = ref(storage, path);
       await uploadBytes(r, file, { contentType: "application/pdf" });
       const url = await getDownloadURL(r);
-      await setDoc(doc(db, "users", uid, "plans", "latest"), { [kind === "training" ? "trainingUrl" : "dietUrl"]: url, updatedAt: serverTimestamp() }, { merge: true });
-      if (kind === "training") setTrainingUrl(url); else setDietUrl(url);
+      const payload: any = { updatedAt: serverTimestamp() };
+      if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }
+      else { payload.dietUrl = url; payload.dietUpdatedAt = serverTimestamp(); }
+      await setDoc(doc(db, "users", uid, "plans", "latest"), payload, { merge: true });
+      if (kind === "training") { setTrainingUrl(url); setTrainingAt(new Date()); } else { setDietUrl(url); setDietAt(new Date()); }
     } catch (e: any) {
       const msg = e?.message || "Falha no upload.";
       if (kind === "training") setTrainingError(msg); else setDietError(msg);
@@ -465,11 +472,16 @@ export default function CoachClientProfilePage(
                     <span>Plano de Treino</span>
                   </div>
                   {trainingUrl ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={()=>setPreviewUrl(trainingUrl!)}>Ver</Button>
-                      <Button asChild size="sm" variant="outline">
-                        <a href={trainingUrl} download>Download</a>
-                      </Button>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={()=>setPreviewUrl(trainingUrl!)}>Ver</Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={trainingUrl} download>Download</a>
+                        </Button>
+                      </div>
+                      {trainingAt && (
+                        <div className="text-xs text-muted-foreground">Atualizado: {ymd(trainingAt)}</div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-muted-foreground italic">Sem plano.</div>
@@ -499,11 +511,16 @@ export default function CoachClientProfilePage(
                     <span>Sugestão Alimentar</span>
                   </div>
                   {dietUrl ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={()=>setPreviewUrl(dietUrl!)}>Ver</Button>
-                      <Button asChild size="sm" variant="outline">
-                        <a href={dietUrl} download>Download</a>
-                      </Button>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={()=>setPreviewUrl(dietUrl!)}>Ver</Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={dietUrl} download>Download</a>
+                        </Button>
+                      </div>
+                      {dietAt && (
+                        <div className="text-xs text-muted-foreground">Atualizado: {ymd(dietAt)}</div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-muted-foreground italic">Sem plano.</div>

@@ -515,8 +515,8 @@ function CoachDashboard() {
               (c.dueStatus === "overdue" || c.dueStatus === "today") && "bg-[#FFE3B3] ring-2 ring-[#B97100] text-[#B97100]"
             )}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1">
                     <div className="block truncate font-semibold group-hover:underline">
                       {c.nome}
                     </div>
@@ -524,7 +524,7 @@ function CoachDashboard() {
                       {c.email ?? "—"}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end max-w-full">
                     {c.dueStatus && (
                       <Badge variant={c.dueStatus === "overdue" ? "destructive" : "secondary"}>
                         {c.dueStatus === "overdue" ? "CI em atraso" : "CI hoje"}

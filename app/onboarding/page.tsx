@@ -149,6 +149,18 @@ export default function OnboardingPage() {
         completedAt: serverTimestamp(),
       });
 
+      const wf = toNum(workoutFrequency);
+      const fromWeight = toNum(weightKg) > 0 ? Number((toNum(weightKg) * 0.05).toFixed(2)) : null;
+      const fallbackWater = toNum(waterLitersPerDay);
+      const metaAgua = (fromWeight && fromWeight > 0 ? fromWeight : (fallbackWater > 0 ? fallbackWater : null)) as number | null;
+
+      await updateDoc(doc(db, "users", uid), {
+        workoutFrequency: wf,
+        metaAgua,
+        onboardingDone: true,
+        updatedAt: serverTimestamp(),
+      });
+
       router.push("/dashboard");
     } catch (err) {
       console.error(err);

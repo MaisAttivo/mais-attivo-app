@@ -414,6 +414,9 @@ export default function DashboardPage() {
           <EmojiCalendar uid={uid!} mode="diet" />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <EmojiCalendar uid={uid!} mode="cardio" />
+        </div>
+        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Água — média 7 dias</div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}

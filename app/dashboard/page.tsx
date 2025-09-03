@@ -407,19 +407,19 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs semana + médias 7 dias */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="col-span-2 sm:col-span-1 rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <SwitchableCalendar uid={uid!} />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Água — média 7 dias</div>
+          <div className="text-sm text-slate-700">💧 Água — média 7 dias</div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}
             {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
           </div>
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Passos — média 7 dias</div>
+          <div className="text-sm text-slate-700">👣 Passos — média 7 dias</div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>

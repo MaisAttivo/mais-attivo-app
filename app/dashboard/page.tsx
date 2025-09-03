@@ -306,6 +306,13 @@ export default function DashboardPage() {
             <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const phone = (process.env.NEXT_PUBLIC_WHATSAPP_PHONE as string | undefined) || COACH_WHATSAPP;
+              const url = `https://wa.me/${phone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`;
+              window.open(url, "_blank", "noopener,noreferrer");
+            }}>
+              Contactar Treinador
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}>
               Terminar Sessão

@@ -96,7 +96,7 @@ export default function EmojiCalendar({ uid, mode }: Props) {
 
   const cells = useMemo(() => getMonthMatrix(anchor), [anchor]);
 
-  const emoji = mode === "workout" ? "💪" : mode === "diet" ? "🔥" : "🏃";
+  const emoji = mode === "workout" ? "💪" : mode === "diet" ? "🔥" : "🏃‍♂️";
   const label = mode === "workout" ? "Treinos" : mode === "diet" ? "Alimentação" : "Cardio";
 
   return (

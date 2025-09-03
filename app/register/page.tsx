@@ -168,9 +168,9 @@ export default function RegisterPage() {
           <div
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-3xl max-h-[85dvh] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-300"
+            className="relative w-full max-w-3xl max-h-[90dvh] flex flex-col rounded-2xl bg-white shadow-2xl ring-1 ring-slate-300"
           >
-            <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center justify-between border-b px-4 py-3 sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold">Termos & Política de Privacidade</h2>
               <button
                 type="button"
@@ -181,7 +181,7 @@ export default function RegisterPage() {
                 ✕
               </button>
             </div>
-            <div className="p-4 overflow-y-auto max-h-[75dvh]">
+            <div className="p-4 overflow-y-auto">
               <PrivacyContent />
             </div>
           </div>

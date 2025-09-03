@@ -88,33 +88,37 @@ export default function PlansPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <div className="text-sm mb-1">Upload Plano de Treino (PDF)</div>
-                    <input
-                      ref={trainingInputRef}
-                      type="file"
-                      accept="application/pdf"
-                      className="sr-only"
-                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedTraining(f.name); handleUpload("training", f); e.currentTarget.value = ""; }}}
-                    />
-                    <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
-                      <Upload className="h-4 w-4" />
-                      Escolher ficheiro
-                    </Button>
-                    <div className="mt-1 text-xs text-slate-600">{selectedTraining ?? "Nenhum ficheiro selecionado"}</div>
+                    <div className="flex flex-col items-start gap-2">
+                      <input
+                        ref={trainingInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="sr-only"
+                        onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedTraining(f.name); handleUpload("training", f); e.currentTarget.value = ""; }}}
+                      />
+                      <Button size="sm" onClick={() => trainingInputRef.current?.click()}>
+                        <Upload className="h-4 w-4" />
+                        Escolher ficheiro
+                      </Button>
+                      <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedTraining ?? "Nenhum ficheiro selecionado"}</div>
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm mb-1">Upload Sugestão Alimentar (PDF)</div>
-                    <input
-                      ref={dietInputRef}
-                      type="file"
-                      accept="application/pdf"
-                      className="sr-only"
-                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedDiet(f.name); handleUpload("diet", f); e.currentTarget.value = ""; }}}
-                    />
-                    <Button size="sm" onClick={() => dietInputRef.current?.click()}>
-                      <Upload className="h-4 w-4" />
-                      Escolher ficheiro
-                    </Button>
-                    <div className="mt-1 text-xs text-slate-600">{selectedDiet ?? "Nenhum ficheiro selecionado"}</div>
+                    <div className="flex flex-col items-start gap-2">
+                      <input
+                        ref={dietInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="sr-only"
+                        onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setSelectedDiet(f.name); handleUpload("diet", f); e.currentTarget.value = ""; }}}
+                      />
+                      <Button size="sm" onClick={() => dietInputRef.current?.click()}>
+                        <Upload className="h-4 w-4" />
+                        Escolher ficheiro
+                      </Button>
+                      <div className="text-xs text-slate-600 leading-relaxed text-left max-w-full truncate">{selectedDiet ?? "Nenhum ficheiro selecionado"}</div>
+                    </div>
                   </div>
                 </div>
               )}

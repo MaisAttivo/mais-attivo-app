@@ -285,7 +285,7 @@ export default function DashboardPage() {
     }
   })();
 
-  // Streak alimentação — decoração
+  // Streak alimentação — decoraç��o
   const streakBadge = streakAlimentacao >= 2 ? "🔥" : "";
   const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
 
@@ -412,14 +412,20 @@ export default function DashboardPage() {
           <SwitchableCalendar uid={uid!} />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">💧 Água — média 7 dias</div>
+          <div className="text-sm text-slate-700">
+            💧 Água
+            <div className="text-xs text-slate-500">média 7 dias</div>
+          </div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}
             {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
           </div>
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">👣 Passos — média 7 dias</div>
+          <div className="text-sm text-slate-700">
+            👣 Passos
+            <div className="text-xs text-slate-500">média 7 dias</div>
+          </div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>

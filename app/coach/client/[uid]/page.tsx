@@ -21,12 +21,13 @@ import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Upload, FileText } from "lucide-react";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -424,29 +425,49 @@ export default function CoachClientProfilePage(
               <div className="text-muted-foreground">A carregar…</div>
             ) : (
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border p-3">
-                  <div className="font-medium mb-2">Plano de Treino</div>
+                <div className="rounded-2xl border p-4 bg-background">
+                  <div className="flex items-center gap-2 font-medium mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Plano de Treino</span>
+                  </div>
                   {trainingUrl ? (
-                    <div className="space-x-3">
-                      <a className="underline" href={trainingUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
-                      <a className="underline" href={trainingUrl} download>Download</a>
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="secondary">
+                        <a href={trainingUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={trainingUrl} download>Download</a>
+                      </Button>
                     </div>
                   ) : (
-                    <div className="text-muted-foreground">Sem plano.</div>
+                    <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
-                  <div className="mt-2"><input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("training", f);}} /></div>
+                  <div className="mt-3">
+                    <label className="block text-xs text-muted-foreground mb-1">Carregar PDF</label>
+                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("training", f);}} />
+                  </div>
                 </div>
-                <div className="rounded-xl border p-3">
-                  <div className="font-medium mb-2">Sugestão Alimentar</div>
+                <div className="rounded-2xl border p-4 bg-background">
+                  <div className="flex items-center gap-2 font-medium mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Sugestão Alimentar</span>
+                  </div>
                   {dietUrl ? (
-                    <div className="space-x-3">
-                      <a className="underline" href={dietUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
-                      <a className="underline" href={dietUrl} download>Download</a>
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="secondary">
+                        <a href={dietUrl} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={dietUrl} download>Download</a>
+                      </Button>
                     </div>
                   ) : (
-                    <div className="text-muted-foreground">Sem plano.</div>
+                    <div className="text-muted-foreground italic">Sem plano.</div>
                   )}
-                  <div className="mt-2"><input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("diet", f);}} /></div>
+                  <div className="mt-3">
+                    <label className="block text-xs text-muted-foreground mb-1">Carregar PDF</label>
+                    <Input type="file" accept="application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handlePlanUpload("diet", f);}} />
+                  </div>
                 </div>
               </div>
             )}

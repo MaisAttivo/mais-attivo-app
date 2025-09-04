@@ -261,9 +261,7 @@ export default function DashboardPage() {
     `Olá Coach! Quero marcar a avaliação. O meu check-in está para ${nextCheckin ?? "—"}.`
   )}`;
 
-  const canEditDaily =
-    !!todayDaily?.createdAt &&
-    Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
+  const canEditDaily = !!todayDaily;
 
   const lisbonWkd = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/Lisbon" }).format(new Date());
   const isWeekend = lisbonWkd === "Sat" || lisbonWkd === "Sun";

@@ -140,6 +140,9 @@ export default function InBodyPage() {
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="secondary" onClick={() => setPreviewUrl(f.url)}>Ver</Button>
                   <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-600 underline">Abrir</a>
+                  <Button size="sm" variant="destructive" aria-label="Eliminar" onClick={() => handleDelete(f.id)} disabled={deletingId === f.id}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>

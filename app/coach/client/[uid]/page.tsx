@@ -135,7 +135,7 @@ export default function CoachClientProfilePage(
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
-  const [visibleSection, setVisibleSection] = useState<"weekly" | "planos" | "fotos" | "inbody" | null>(null);
+  const [visibleSection, setVisibleSection] = useState<"weekly" | "planos" | "fotos" | "inbody" | "checkins" | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -502,6 +502,7 @@ export default function CoachClientProfilePage(
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "planos" ? null : "planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "fotos" ? null : "fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "inbody" ? null : "inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "checkins" ? null : "checkins")}>Check-ins</Button>
         </div>
 
         {/* Weekly */}
@@ -712,7 +713,7 @@ export default function CoachClientProfilePage(
         </Card>
 
         {/* Check-ins */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection !== "checkins" ? "hidden" : "")}>
           <CardHeader className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Check-ins
@@ -755,7 +756,7 @@ export default function CoachClientProfilePage(
                     <div className="text-sm">
                       <div className="font-medium">Data: {ymd(toDate(c.date ?? null))}</div>
                       <div className="text-muted-foreground">
-                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "—"}
+                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "��"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

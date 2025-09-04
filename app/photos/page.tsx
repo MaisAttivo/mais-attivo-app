@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, storage } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { ref, listAll, getMetadata, getDownloadURL, uploadBytes } from "firebase/storage";
+import { ref, listAll, getMetadata, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -34,8 +34,10 @@ export default function PhotosPage() {
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [mainIndex, setMainIndex] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
 
@@ -96,6 +98,46 @@ export default function PhotosPage() {
     return sets.some(s=> s.id.startsWith(w+"-"));
   }, [sets]);
 
+  async function blobFromCanvas(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob falhou"))), type, quality);
+    });
+  }
+
+  async function resizeForUpload(file: File): Promise<{ blob: Blob; ext: "jpg" | "png" }> {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = reject;
+        im.src = url;
+      });
+      const maxSide = 2000; // reduzir dimensão para acelerar upload
+      const ratio = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+      const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas 2D não disponível");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Fotos → preferir JPEG para melhor compressão
+      const blob = await blobFromCanvas(canvas, "image/jpeg", 0.9);
+      return { blob, ext: "jpg" };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [previews]);
+
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!uid || !storage) return;
@@ -108,15 +150,36 @@ export default function PhotosPage() {
     try {
       const w = lisbonISOWeekId();
       const setId = `${w}-${Date.now()}`;
-      const tasks = selectedFiles.map(async (file, idx) => {
-        const ext = (/\.jpe?g$/i.test(file.name) || file.type === "image/jpeg") ? "jpg" : "png";
+
+      // Pré-processar imagens (downscale/compress) para uploads mais rápidos
+      const processed = await Promise.all(selectedFiles.map(async (file) => {
+        const { blob, ext } = await resizeForUpload(file);
+        return { blob, ext, type: "image/jpeg" as const };
+      }));
+
+      const totalBytes = processed.reduce((sum, p) => sum + p.blob.size, 0);
+      const prevBytes = processed.map(() => 0);
+      let transferred = 0;
+
+      await Promise.all(processed.map(async (p, idx) => {
         const isMain = idx === mainIndex;
-        const name = `${setId}-${idx}${isMain ? "_main" : ""}.${ext}`;
+        const name = `${setId}-${idx}${isMain ? "_main" : ""}.${p.ext}`;
         const r = ref(storage, `users/${uid}/photos/${name}`);
-        await uploadBytes(r, file, { contentType: file.type || (ext === "jpg" ? "image/jpeg" : "image/png") });
-      });
-      await Promise.all(tasks);
+        const task = uploadBytesResumable(r, p.blob, { contentType: p.type });
+        await new Promise<void>((resolve, reject) => {
+          task.on("state_changed", (snap) => {
+            const delta = snap.bytesTransferred - prevBytes[idx];
+            prevBytes[idx] = snap.bytesTransferred;
+            transferred += Math.max(0, delta);
+            const pct = totalBytes > 0 ? Math.round((transferred / totalBytes) * 100) : 0;
+            setUploadProgress(pct);
+          }, reject, () => resolve());
+        });
+      }));
       setSelectedFiles([]);
+      previews.forEach((u) => URL.revokeObjectURL(u));
+      setPreviews([]);
+      setUploadProgress(0);
       setMainIndex(0);
       if (fileRef.current) fileRef.current.value = "";
       await load(uid);
@@ -143,6 +206,10 @@ export default function PhotosPage() {
         <div className="flex flex-col items-start gap-2">
           <Input ref={fileRef as any} type="file" accept="image/png,image/jpeg" multiple className="hidden" aria-hidden="true" onChange={(e)=>{
             const files = Array.from(e.currentTarget.files || []).slice(0,4);
+            // limpar previews antigos
+            previews.forEach((u)=>URL.revokeObjectURL(u));
+            const urls = files.map((f)=>URL.createObjectURL(f));
+            setPreviews(urls);
             setSelectedFiles(files);
             setMainIndex(0);
           }} />
@@ -153,6 +220,7 @@ export default function PhotosPage() {
               {selectedFiles.map((f, i)=> (
                 <label key={i} className="border rounded-xl p-2 flex flex-col items-center gap-2 cursor-pointer">
                   <input type="radio" name="main" className="self-start" checked={mainIndex===i} onChange={()=>setMainIndex(i)} />
+                  <img src={previews[i]} alt={f.name} className="h-24 w-24 object-cover rounded-lg" />
                   <div className="text-xs truncate max-w-[160px]">{f.name}</div>
                 </label>
               ))}
@@ -160,8 +228,12 @@ export default function PhotosPage() {
           )}
         </div>
         {error && <div className="text-sm text-rose-600">{error}</div>}
-        <div className="flex justify-end">
-          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek}>{uploading ? "A enviar…" : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
+        <div className="flex items-center justify-between gap-3">
+          {uploading && (
+            <div className="text-xs text-slate-600">Progresso: {uploadProgress}%</div>
+          )}
+          <div className="flex-1" />
+          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek}>{uploading ? `A enviar… ${uploadProgress}%` : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
         </div>
       </form>
 

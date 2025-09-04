@@ -135,12 +135,8 @@ export default function CoachClientProfilePage(
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
-  // Powerlifting controls
-  const [plEnabled, setPlEnabled] = useState<boolean>(false);
-  const [plLink, setPlLink] = useState<string>("");
-  const [plNotes, setPlNotes] = useState<string>("");
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
 
   useEffect(() => {
     (async () => {
@@ -151,10 +147,6 @@ export default function CoachClientProfilePage(
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
-      // Powerlifting fields (for coach controls)
-      setPlEnabled(!!u.powerlifting);
-      setPlLink((u.powerliftingLink as string) || "");
-      setPlNotes((u.powerliftingNotes as string) || "");
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -474,56 +466,6 @@ export default function CoachClientProfilePage(
           </div>
         </div>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Powerlifting</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={plEnabled}
-                onChange={async (e) => {
-                  const enabled = e.currentTarget.checked;
-                  setPlEnabled(enabled);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
-                  } catch {}
-                }}
-              />
-              <span>Ativar para este cliente</span>
-            </label>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Ligação externa (Google Sheet, app, etc.)</label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  className="border rounded-xl px-3 py-2 w-full"
-                  value={plLink}
-                  onChange={(e)=>setPlLink(e.currentTarget.value)}
-                  onBlur={async (e) => {
-                    const v = e.currentTarget.value.trim();
-                    try { await updateDoc(doc(db, "users", uid), { powerliftingLink: v || null, updatedAt: serverTimestamp() }); } catch {}
-                  }}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Notas (visíveis ao cliente)</label>
-                <textarea
-                  placeholder="Instruções, notas de treino, máximos, etc."
-                  className="border rounded-xl px-3 py-2 w-full min-h-[90px]"
-                  value={plNotes}
-                  onChange={(e)=>setPlNotes(e.currentTarget.value)}
-                  onBlur={async (e) => {
-                    const v = e.currentTarget.value;
-                    try { await updateDoc(doc(db, "users", uid), { powerliftingNotes: v || null, updatedAt: serverTimestamp() }); } catch {}
-                  }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Selector for sections */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -533,6 +475,7 @@ export default function CoachClientProfilePage(
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
+          <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
         </div>
 
         {/* Dailies */}
@@ -603,6 +546,15 @@ export default function CoachClientProfilePage(
             ) : (
               <div className="text-muted-foreground">Sem weekly registado.</div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Powerlifting (vazio por agora) */}
+        <Card className={"shadow-sm " + (visibleSection !== "powerlifting" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Powerlifting</CardTitle>
+          </CardHeader>
+          <CardContent>
           </CardContent>
         </Card>
 

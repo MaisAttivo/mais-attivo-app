@@ -641,15 +641,19 @@ export default function CoachClientProfilePage(
               <div className="text-sm text-muted-foreground">Sem fotos.</div>
             ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Início</div>
-                    <img src={photoSets[0].mainUrl} alt="Inicio" className="w-full rounded-xl" />
+                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                      <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                    </div>
                     <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
                   </div>
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Atual</div>
-                    <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="w-full rounded-xl" />
+                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                      <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                    </div>
                     <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
                   </div>
                 </div>

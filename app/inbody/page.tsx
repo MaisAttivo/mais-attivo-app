@@ -112,18 +112,35 @@ export default function InBodyPage() {
           <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 text-center text-sm text-slate-600">Sem anexos ainda.</div>
         ) : (
           files.map((f) => (
-            <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 block hover:bg-slate-50">
+            <div key={f.id} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 hover:bg-slate-50">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold">InBody</div>
-                  <div className="text-xs text-slate-500">{f.createdAt ? f.createdAt.toLocaleString() : "—"}</div>
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">InBody</div>
+                  <div className="text-xs text-slate-500 truncate">{f.createdAt ? f.createdAt.toLocaleString() : "—"}</div>
                 </div>
-                <div className="text-sm text-slate-600">Abrir</div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setPreviewUrl(f.url)}>Ver</Button>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-600 underline">Abrir</a>
+                </div>
               </div>
-            </a>
+            </div>
           ))
         )}
       </div>
+
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+          <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
+            <div className="absolute top-3 right-3 flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setPreviewUrl(null)}>Fechar</Button>
+              <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
+            </div>
+            <div className="w-full h-full overflow-auto bg-black/5 flex items-center justify-center p-4">
+              <img src={previewUrl} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

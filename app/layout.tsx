@@ -42,23 +42,30 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased attivo-bg min-h-screen`}
       >
         {showHeader && (
-          <header className="w-full py-3">
-            {clickableLogo ? (
-              <button type="button" onClick={handleLogoClick} className="block mx-auto">
+          <>
+            <header className="w-full py-3">
+              {clickableLogo ? (
+                <button type="button" onClick={handleLogoClick} className="block mx-auto">
+                  <img
+                    src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F83d1b8046a0a4d0592f0f582b2fcc9a1?format=webp&width=800"
+                    alt="Mais Attivo"
+                    className="mx-auto h-[144px] sm:h-[168px] w-auto cursor-pointer"
+                  />
+                </button>
+              ) : (
                 <img
                   src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F83d1b8046a0a4d0592f0f582b2fcc9a1?format=webp&width=800"
                   alt="Mais Attivo"
-                  className="mx-auto h-[144px] sm:h-[168px] w-auto cursor-pointer"
+                  className="mx-auto h-[144px] sm:h-[168px] w-auto"
                 />
-              </button>
-            ) : (
-              <img
-                src="https://cdn.builder.io/api/v1/image/assets%2Fd9f69681ad0a4f6986049fd020072c56%2F83d1b8046a0a4d0592f0f582b2fcc9a1?format=webp&width=800"
-                alt="Mais Attivo"
-                className="mx-auto h-[144px] sm:h-[168px] w-auto"
-              />
+              )}
+            </header>
+            {uid && role === "client" && (
+              <div className="fixed right-4 top-4 z-50" aria-label="Navegação do cliente">
+                <ClientNav />
+              </div>
             )}
-          </header>
+          </>
         )}
         {uid && role !== "coach" && active === false ? (
           <>

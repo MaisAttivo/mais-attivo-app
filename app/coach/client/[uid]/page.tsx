@@ -132,6 +132,8 @@ export default function CoachClientProfilePage(
   // InBody files
   const [inbodyLoading, setInbodyLoading] = useState<boolean>(true);
   const [inbodyFiles, setInbodyFiles] = useState<Array<{ id: string; url: string; createdAt: Date | null }>>([]);
+  const [photosLoading, setPhotosLoading] = useState<boolean>(true);
+  const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -278,6 +280,34 @@ export default function CoachClientProfilePage(
         setDietAt(toDate(planData.dietUpdatedAt ?? null));
       } catch {}
       setPlansLoading(false);
+
+      // Listar Fotos (conjuntos)
+      try {
+        if (storage) {
+          const baseRef = ref(storage, `users/${uid}/photos`);
+          const res = await listAll(baseRef);
+          const items = await Promise.all(res.items.map(async (it)=>{
+            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+            const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
+            const name = it.name; // 2025-W36-...-0_main.jpg
+            const setId = name.split("-").slice(0,3).join("-");
+            const isMain = /_main\./i.test(name);
+            return { setId, url, createdAt, isMain };
+          }));
+          const bySet = new Map<string, { createdAt: Date | null; urls: string[]; mainUrl: string }>();
+          for (const it of items) {
+            const s = bySet.get(it.setId) || { createdAt: it.createdAt, urls: [], mainUrl: "" };
+            if (!s.createdAt) s.createdAt = it.createdAt;
+            s.urls.push(it.url);
+            if (it.isMain) s.mainUrl = it.url;
+            bySet.set(it.setId, s);
+          }
+          const arr = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          setPhotoSets(arr);
+        } else {
+          setPhotoSets([]);
+        }
+      } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
       // Listar InBody do utilizador (imagens)
       try {
@@ -598,6 +628,45 @@ export default function CoachClientProfilePage(
             </div>
           </div>
         )}
+
+        {/* Fotos (progresso) */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Fotos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {photosLoading ? (
+              <div className="text-sm text-muted-foreground">A carregar…</div>
+            ) : photoSets.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Sem fotos.</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm text-slate-700 mb-2">Início</div>
+                    <img src={photoSets[0].mainUrl} alt="Inicio" className="w-full rounded-xl" />
+                    <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                  </div>
+                  <div className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm text-slate-700 mb-2">Atual</div>
+                    <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="w-full rounded-xl" />
+                    <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                  </div>
+                </div>
+                {photoSets.map((s)=> (
+                  <div key={s.id} className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
+                    <div className="flex gap-2 overflow-x-auto">
+                      {s.urls.map((u, i)=>(
+                        <img key={i} src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* InBody (imagens) */}
         <Card className="shadow-sm">

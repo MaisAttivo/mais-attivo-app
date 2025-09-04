@@ -36,7 +36,12 @@ export default function InBodyPage() {
       const items = await Promise.all(
         res.items.map(async (it) => {
           const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-          const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
+          let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
+          if (!createdAt) {
+            const base = it.name.replace(/\.png$/i, "");
+            const n = Number(base);
+            if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
+          }
           return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
         })
       );

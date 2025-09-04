@@ -46,8 +46,7 @@ export default function DailyPage() {
 
   const canEdit =
     alreadySubmitted &&
-    !!docDate &&
-    lisbonYMD(docDate) === todayId;
+    !!docDate;
 
   // Autenticação + carregar registo de hoje (se existir)
   useEffect(() => {
@@ -166,7 +165,7 @@ export default function DailyPage() {
       } else {
         // UPDATE — manter 'date' igual
         if (!canEdit || !docDate) {
-          setError("Já não é possível editar (apenas durante o dia do registo).");
+          setError("Não é possível editar este registo.");
           setSubmitting(false);
           return;
         }
@@ -224,13 +223,13 @@ export default function DailyPage() {
 
       {alreadySubmitted && !canEdit && (
         <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-800">
-          Já submeteste o feedback de hoje. A edição fica disponível até ao final do dia.
+          Já submeteste o feedback de hoje.
         </div>
       )}
 
       {alreadySubmitted && canEdit && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-amber-800">
-          Podes editar o diário enquanto for o dia de hoje.
+          Podes editar este diário.
         </div>
       )}
 

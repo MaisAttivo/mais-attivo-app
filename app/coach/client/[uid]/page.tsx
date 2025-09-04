@@ -276,6 +276,19 @@ export default function CoachClientProfilePage(
             planData = { ...planData, ...(treino ? { trainingUrl: treino.url, trainingUpdatedAt: treino.createdAt || treino.updatedAt } : {}), ...(alim ? { dietUrl: alim.url, dietUpdatedAt: alim.createdAt || alim.updatedAt } : {}) };
           } catch {}
         }
+        // Fallback direto ao Storage
+        if (!planData.trainingUrl && storage) {
+          try {
+            const r = ref(storage, `plans/${uid}/training.pdf`);
+            planData.trainingUrl = await getDownloadURL(r);
+          } catch {}
+        }
+        if (!planData.dietUrl && storage) {
+          try {
+            const r = ref(storage, `plans/${uid}/diet.pdf`);
+            planData.dietUrl = await getDownloadURL(r);
+          } catch {}
+        }
         setTrainingUrl(planData.trainingUrl || null);
         setDietUrl(planData.dietUrl || null);
         setTrainingAt(toDate(planData.trainingUpdatedAt ?? null));

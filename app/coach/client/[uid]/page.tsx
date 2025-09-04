@@ -559,6 +559,21 @@ export default function CoachClientProfilePage(
             <CardTitle>Powerlifting</CardTitle>
           </CardHeader>
           <CardContent>
+            <label className="inline-flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={plEnabled}
+                onChange={async (e) => {
+                  const enabled = e.currentTarget.checked;
+                  setPlEnabled(enabled);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                  } catch {}
+                }}
+              />
+              <span>Powerlifting:</span>
+              <span className={`font-medium ${plEnabled ? "text-emerald-600" : "text-slate-700"}`}>{plEnabled ? "True" : "False"}</span>
+            </label>
           </CardContent>
         </Card>
 

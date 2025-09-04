@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, storage } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { getDownloadURL, ref, uploadBytes, listAll, getMetadata } from "firebase/storage";
+import { getDownloadURL, ref, uploadBytes, listAll, getMetadata, deleteObject } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { X } from "lucide-react";
 
 export default function InBodyPage() {
   const router = useRouter();

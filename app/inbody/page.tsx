@@ -85,6 +85,23 @@ export default function InBodyPage() {
     }
   }
 
+  async function handleDelete(fileId: string) {
+    if (!uid) return;
+    if (!storage) { setError("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*"); return; }
+    const ok = window.confirm("Eliminar este ficheiro InBody?");
+    if (!ok) return;
+    setDeletingId(fileId);
+    try {
+      const r = ref(storage, `users/${uid}/inbody/${fileId}`);
+      await deleteObject(r);
+      await loadFiles(uid);
+    } catch (e: any) {
+      setError(e?.message || "Falha ao eliminar ficheiro.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (loading) return <div className="p-6">A carregar…</div>;
 
   return (

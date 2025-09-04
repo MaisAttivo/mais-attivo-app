@@ -23,7 +23,7 @@ export default function InBodyPage() {
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; sl: number; st: number } | null>(null);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {

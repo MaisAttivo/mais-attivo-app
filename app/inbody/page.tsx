@@ -8,7 +8,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes, listAll, getMetadata, deleteObject } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 
 export default function InBodyPage() {
   const router = useRouter();
@@ -24,6 +24,8 @@ export default function InBodyPage() {
   const [panning, setPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number; sl: number; st: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -84,6 +86,7 @@ export default function InBodyPage() {
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, file, { contentType: file.type || (ext === "jpg" ? "image/jpeg" : "image/png") });
       form.reset();
+      setSelectedName(null);
       await loadFiles(uid);
     } catch (err: any) {
       console.error(err);
@@ -124,9 +127,13 @@ export default function InBodyPage() {
       <p className="text-center text-sm text-gray-600 mb-6">Anexa aqui as tuas avaliações InBody (PNG).</p>
 
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
-        <div>
-          <Input type="file" name="inbody" accept="image/png,image/jpeg" aria-label="Carregar InBody (imagem PNG ou JPEG)" />
-          <p className="text-xs text-slate-500 mt-1">Apenas PNG, até 8MB.</p>
+        <div className="flex flex-col items-start gap-2">
+          <Input ref={fileInputRef as any} type="file" name="inbody" accept="image/png,image/jpeg" aria-label="Carregar InBody (imagem PNG ou JPEG)" className="hidden" aria-hidden="true" onChange={(e)=>{ const f=e.currentTarget.files?.[0]; setSelectedName(f ? f.name : null); }} />
+          <Button size="sm" type="button" onClick={()=>fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4" /> Escolher ficheiro
+          </Button>
+          <div className="text-xs text-slate-600 leading-relaxed max-w-full truncate">{selectedName ?? "Nenhum ficheiro selecionado"}</div>
+          <p className="text-xs text-slate-500">Apenas PNG ou JPEG, até 8MB.</p>
         </div>
         {error && <div className="text-sm text-rose-600">{error}</div>}
         <div className="flex justify-end">

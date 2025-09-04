@@ -135,7 +135,7 @@ export default function CoachClientProfilePage(
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
-  const [visibleSection, setVisibleSection] = useState<"weekly" | "planos" | "fotos" | "inbody" | "checkins" | null>(null);
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins">("daily");
 
   useEffect(() => {
     (async () => {
@@ -449,7 +449,7 @@ export default function CoachClientProfilePage(
         </div>
 
         {/* Dailies */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection !== "daily" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Últimos 7 dailies</CardTitle>
           </CardHeader>
@@ -498,11 +498,12 @@ export default function CoachClientProfilePage(
 
         {/* Selector for sections */}
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "weekly" ? null : "weekly")}>Weekly</Button>
-          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "planos" ? null : "planos")}>Planos</Button>
-          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "fotos" ? null : "fotos")}>Fotos</Button>
-          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "inbody" ? null : "inbody")}>InBody</Button>
-          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "checkins" ? null : "checkins")}>Check-ins</Button>
+          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Dailies</Button>
+          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Weekly</Button>
+          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
         </div>
 
         {/* Weekly */}
@@ -756,7 +757,7 @@ export default function CoachClientProfilePage(
                     <div className="text-sm">
                       <div className="font-medium">Data: {ymd(toDate(c.date ?? null))}</div>
                       <div className="text-muted-foreground">
-                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "��"}
+                        Próxima: {ymd(toDate(c.nextDate ?? null))} • Tipo: {c.type ?? "—"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

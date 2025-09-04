@@ -144,6 +144,17 @@ export default function LoginPage() {
           </form>
 
           {resetError && <p className="mt-3 text-xs text-rose-700">{resetError}</p>}
+
+          <div className="mt-6 pt-4 border-t border-slate-200 text-center">
+            <p className="text-sm text-slate-700">Ainda não tens conta?</p>
+            <button
+              type="button"
+              onClick={() => router.push("/register")}
+              className="mt-3 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+            >
+              Criar conta
+            </button>
+          </div>
         </div>
       </div>
 

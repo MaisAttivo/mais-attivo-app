@@ -18,6 +18,7 @@ export default function InBodyPage() {
   const [files, setFiles] = useState<Array<{ id: string; url: string; createdAt?: Date | null }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {

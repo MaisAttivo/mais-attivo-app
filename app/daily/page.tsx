@@ -46,8 +46,8 @@ export default function DailyPage() {
 
   const canEdit =
     alreadySubmitted &&
-    !!createdAt &&
-    Date.now() < createdAt.getTime() + 2 * 60 * 60 * 1000;
+    !!docDate &&
+    lisbonYMD(docDate) === todayId;
 
   // Autenticação + carregar registo de hoje (se existir)
   useEffect(() => {

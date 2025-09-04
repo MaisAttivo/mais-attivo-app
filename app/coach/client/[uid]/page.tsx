@@ -150,6 +150,7 @@ export default function CoachClientProfilePage(
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
+      setPlEnabled(!!u.powerlifting);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -422,7 +423,7 @@ export default function CoachClientProfilePage(
             <h1 className="text-2xl font-semibold truncate">{name}</h1>
             <div className="text-sm text-muted-foreground truncate">{email}</div>
             <div className="flex gap-2 mt-2 text-sm">
-              <Badge variant="outline">��ltimo CI: {lastCheckinYMD ?? "—"}</Badge>
+              <Badge variant="outline">Último CI: {lastCheckinYMD ?? "—"}</Badge>
               <Badge variant={nextDue ? "destructive" : "outline"}>
                 {nextDue && <AlertTriangle className="mr-1 h-3.5 w-3.5" />}
                 Próximo CI: {nextCheckinYMD ?? "—"}
@@ -640,7 +641,7 @@ export default function CoachClientProfilePage(
                     />
                     <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
                       <Upload className="h-4 w-4" />
-                      {uploadingDiet ? "A enviar��" : "Escolher ficheiro"}
+                      {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
                     {dietError ? (
                       <div className="text-xs text-red-600 text-left">{dietError}</div>

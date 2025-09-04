@@ -93,6 +93,7 @@ export type FilterKey =
   | "semAlimentacao5d"
   | "agua3d"
   | "treino2m"
+  | "fazerCheckin"
   | "contaInativa"
   | "semFiltro";
 
@@ -236,6 +237,7 @@ function CoachDashboard() {
     semAlimentacao5d: false,
     agua3d: false,
     treino2m: false,
+    fazerCheckin: false,
     contaInativa: false,
   });
 
@@ -386,6 +388,7 @@ function CoachDashboard() {
       if (activeFilters.semAlimentacao5d) keep = keep && filterPredicates.semAlimentacao5d(c);
       if (activeFilters.agua3d) keep = keep && filterPredicates.agua3d(c);
       if (activeFilters.treino2m) keep = keep && filterPredicates.treino2m(c);
+      if (activeFilters.fazerCheckin) keep = keep && (c.dueStatus === "today" || c.dueStatus === "overdue");
       return keep;
     });
   }, [clientes, search, activeFilters]);
@@ -403,6 +406,7 @@ function CoachDashboard() {
             semAlimentacao5d: false,
             agua3d: false,
             treino2m: false,
+            fazerCheckin: false,
             contaInativa: false,
           };
         }
@@ -413,6 +417,7 @@ function CoachDashboard() {
         next.semAlimentacao5d ||
         next.agua3d ||
         next.treino2m ||
+        next.fazerCheckin ||
         next.contaInativa;
       next.semFiltro = !someSpecific;
       return next;
@@ -492,6 +497,12 @@ function CoachDashboard() {
                   onCheckedChange={() => toggleFilter("treino2m")}
                 >
                   Treino desatualizado há ≥ 2 meses
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.fazerCheckin}
+                  onCheckedChange={() => toggleFilter("fazerCheckin")}
+                >
+                  Fazer Check-in (hoje ou em atraso)
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Conta</DropdownMenuLabel>

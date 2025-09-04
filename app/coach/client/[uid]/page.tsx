@@ -465,6 +465,54 @@ export default function CoachClientProfilePage(
           </div>
         </div>
 
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Powerlifting</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                onChange={async (e) => {
+                  const enabled = e.currentTarget.checked;
+                  try {
+                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                  } catch {}
+                }}
+                defaultChecked={false}
+              />
+              <span>Ativar para este cliente</span>
+            </label>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Ligação externa (Google Sheet, app, etc.)</label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  className="border rounded-xl px-3 py-2 w-full"
+                  onBlur={async (e) => {
+                    const v = e.currentTarget.value.trim();
+                    try { await updateDoc(doc(db, "users", uid), { powerliftingLink: v || null, updatedAt: serverTimestamp() }); } catch {}
+                  }}
+                  defaultValue={""}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium mb-1">Notas (visíveis ao cliente)</label>
+                <textarea
+                  placeholder="Instruções, notas de treino, máximos, etc."
+                  className="border rounded-xl px-3 py-2 w-full min-h-[90px]"
+                  onBlur={async (e) => {
+                    const v = e.currentTarget.value;
+                    try { await updateDoc(doc(db, "users", uid), { powerliftingNotes: v || null, updatedAt: serverTimestamp() }); } catch {}
+                  }}
+                  defaultValue={""}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Selector for sections */}
         <div className="flex flex-wrap gap-2 mb-3">
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>

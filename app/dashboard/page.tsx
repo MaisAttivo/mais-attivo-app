@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
+import SwitchableCalendar from "@/components/SwitchableCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
@@ -257,9 +258,7 @@ export default function DashboardPage() {
     `Olá Coach! Quero marcar a avaliação. O meu check-in está para ${nextCheckin ?? "—"}.`
   )}`;
 
-  const canEditDaily =
-    !!todayDaily?.createdAt &&
-    Date.now() < ((todayDaily.createdAt as Date).getTime() + 2 * 60 * 60 * 1000);
+  const canEditDaily = !!todayDaily;
 
   const lisbonWkd = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/Lisbon" }).format(new Date());
   const isWeekend = lisbonWkd === "Sat" || lisbonWkd === "Sun";
@@ -289,19 +288,9 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{displayName}</h1>
-        {waPhone && (
-          <a
-            href={`https://wa.me/${waPhone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-[20px] border-[2px] border-[#706800] text-[#706800] bg-white px-3 py-1.5 text-sm shadow hover:bg-[#FFF4D1]"
-            title="Enviar mensagem no WhatsApp"
-          >
-            <span aria-hidden>🟢</span>
-            WhatsApp
-          </a>
-        )}
+        <div className="w-10" />
+        <h1 className="text-2xl font-semibold text-center flex-1">{displayName}</h1>
+        <div className="w-10" />
       </div>
 
       {(needsDaily || needsWeekly) && (
@@ -354,7 +343,7 @@ export default function DashboardPage() {
                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
                 title="Marcar avaliação (WhatsApp)"
               >
-                <span aria-hidden>🟢</span>
+                <span aria-hidden>��</span>
                 <span>WhatsApp</span>
               </a>
             )}
@@ -365,46 +354,40 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Pesos médios + alinhamento com objetivo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Peso atual + média na mesma card */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">
-            Peso médio — semana atual {objetivoPeso ? `(objetivo: ${objetivoPeso})` : ""}
-          </div>
-          <div className={`text-2xl font-semibold ${pesoAlignClass}`}>
-            {pesoMedioSemanaAtual !== null ? `${pesoMedioSemanaAtual} kg` : "—"}
-          </div>
-          {pesoMedioSemanaAnterior != null && (
-            <div className="text-xs text-gray-500 mt-1">
-              vs semana anterior: {pesoMedioSemanaAnterior} kg
-            </div>
-          )}
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Peso médio — semana anterior</div>
+          <div className="text-sm text-slate-700">Peso</div>
           <div className="text-2xl font-semibold">
-            {pesoMedioSemanaAnterior !== null ? `${pesoMedioSemanaAnterior} kg` : "—"}
+            {todayDaily?.weight != null ? `${todayDaily.weight} kg` : lastDaily?.weight != null ? `${lastDaily.weight} kg` : "—"}
+          </div>
+          <div className="text-xs text-slate-500 mt-1">
+            média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
+            <div className="text-xs text-slate-500 mt-0.5">semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : "—"}</div>
           </div>
         </div>
       </div>
 
       {/* KPIs semana + médias 7 dias */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="workout" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="col-span-2 md:col-span-1 rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
+          <SwitchableCalendar uid={uid!} />
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <EmojiCalendar uid={uid!} mode="diet" />
-        </div>
-        <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Água — média 7 dias</div>
+          <div className="text-sm text-slate-700">
+            💧 Água
+            <div className="text-xs text-slate-500">média 7 dias</div>
+          </div>
           <div className="text-2xl font-semibold">
             {aguaMedia7 != null ? aguaMedia7 : "—"}
             {latestMetaAgua != null ? ` / ${latestMetaAgua}` : ""}
           </div>
         </div>
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
-          <div className="text-sm text-slate-700">Passos — média 7 dias</div>
+          <div className="text-sm text-slate-700">
+            👣 Passos
+            <div className="text-xs text-slate-500">média 7 dias</div>
+          </div>
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>
@@ -414,7 +397,7 @@ export default function DashboardPage() {
       {!needsDaily && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
-            <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
+            <div className="text-sm text-slate-700">Feedback Diário de hoje ({todayId})</div>
             <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
           </div>
           <div className="flex gap-2">
@@ -428,7 +411,7 @@ export default function DashboardPage() {
               </Link>
             ) : (
               <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
-                Criar daily
+                Criar Feedback Diário
               </Link>
             )}
           </div>
@@ -439,9 +422,9 @@ export default function DashboardPage() {
       {!needsWeekly && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
-            <div className="text-sm text-slate-700">Weekly desta semana</div>
+            <div className="text-sm text-slate-700">Feedback Semanal</div>
             <div className="text-lg">
-              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
+              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "Disponivel durante o fim-de-semana"}
             </div>
           </div>
           {!weekly.done && isWeekend && (

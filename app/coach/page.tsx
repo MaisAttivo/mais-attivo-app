@@ -60,12 +60,14 @@ type Cliente = {
   id: string;
   nome: string;
   email?: string;
+  active?: boolean;
   ultimoDF?: DailyFeedback | null;
   metaAguaLitros: number;
   diasDesdeUltimoDF?: number | null;
   diasSemTreinar?: number | null;
   diasSemAlimentacaoOK?: number | null;
   diasSemAguaOK?: number | null;
+  diasPlanoTreino?: number | null;
   nextCheckinYMD?: string | null;
   dueStatus?: "today" | "overdue" | null;
 };
@@ -90,6 +92,9 @@ export type FilterKey =
   | "semTreino5d"
   | "semAlimentacao5d"
   | "agua3d"
+  | "treino2m"
+  | "fazerCheckin"
+  | "contaInativa"
   | "semFiltro";
 
 function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number) {
@@ -131,6 +136,7 @@ const filterPredicates: Record<Exclude<FilterKey, "semFiltro">, (c: Cliente) => 
   semTreino5d: (c) => (c.diasSemTreinar ?? Infinity) >= 5,
   semAlimentacao5d: (c) => (c.diasSemAlimentacaoOK ?? Infinity) >= 5,
   agua3d: (c) => (c.diasSemAguaOK ?? Infinity) >= 3,
+  treino2m: (c) => (c.diasPlanoTreino ?? Infinity) >= 60,
 };
 
 /* ========= Helpers: nome + meta de água ========= */
@@ -230,6 +236,9 @@ function CoachDashboard() {
     semTreino5d: false,
     semAlimentacao5d: false,
     agua3d: false,
+    treino2m: false,
+    fazerCheckin: false,
+    contaInativa: false,
   });
 
   async function fetchClientes() {
@@ -242,6 +251,7 @@ function CoachDashboard() {
         .map((d) => ({
           id: d.id,
           email: d.get("email") ?? undefined,
+          active: typeof d.get("active") === "boolean" ? (d.get("active") as boolean) : true,
         }));
 
       const twoWeeksAgo = new Date();
@@ -297,16 +307,45 @@ function CoachDashboard() {
 
           const m = getDerivedMetricsFromHistory(history, metaAgua);
 
+          // Plano de treino: última atualização
+          let diasPlanoTreino: number | null = null;
+          try {
+            const pSnap = await getDoc(doc(db, "users", u.id, "plans", "latest"));
+            let dt: Date | null = null;
+            if (pSnap.exists()) {
+              const d: any = pSnap.data();
+              const ts = d.trainingUpdatedAt ?? d.updatedAt ?? null;
+              dt = ts?.toDate?.() ?? null;
+            }
+            if (!dt) {
+              try {
+                const pAll = await getDocs(collection(db, `users/${u.id}/plans`));
+                let best: Date | null = null;
+                pAll.forEach((docu) => {
+                  const d: any = docu.data();
+                  const isTraining = d.type === "treino" || d.type === "training";
+                  if (!isTraining) return;
+                  const cand = (d.updatedAt?.toDate?.() ?? d.createdAt?.toDate?.() ?? null) as Date | null;
+                  if (cand && (!best || cand.getTime() > best.getTime())) best = cand;
+                });
+                dt = best;
+              } catch {}
+            }
+            if (dt) diasPlanoTreino = daysBetween(new Date(), dt);
+          } catch {}
+
           return {
             id: u.id,
             nome: nomeFinal,
             email: u.email,
+            active: u.active,
             ultimoDF: m.last ?? null,
             metaAguaLitros: metaAgua,
             diasDesdeUltimoDF: Number.isFinite(m.diasDesdeUltimoDF) ? m.diasDesdeUltimoDF : null,
             diasSemTreinar: Number.isFinite(m.diasSemTreinar) ? m.diasSemTreinar : null,
             diasSemAlimentacaoOK: Number.isFinite(m.diasSemAlimentacaoOK) ? m.diasSemAlimentacaoOK : null,
             diasSemAguaOK: Number.isFinite(m.diasSemAguaOK) ? m.diasSemAguaOK : null,
+            diasPlanoTreino: Number.isFinite(diasPlanoTreino as number) ? (diasPlanoTreino as number) : null,
             nextCheckinYMD,
             dueStatus,
           } as Cliente;
@@ -332,7 +371,14 @@ function CoachDashboard() {
       term ? `${c.nome} ${c.email ?? ""}`.toLowerCase().includes(term) : true
     );
 
-    const anySpecific = Object.entries(activeFilters).some(([k, v]) => k !== "semFiltro" && v);
+    // Por omissão, esconder contas inativas
+    if (!activeFilters.contaInativa) {
+      list = list.filter((c) => c.active !== false);
+    } else {
+      list = list.filter((c) => c.active === false);
+    }
+
+    const anySpecific = Object.entries(activeFilters).some(([k, v]) => k !== "semFiltro" && k !== "contaInativa" && v);
     if (!anySpecific) return list;
 
     return list.filter((c) => {
@@ -341,14 +387,38 @@ function CoachDashboard() {
       if (activeFilters.semTreino5d) keep = keep && filterPredicates.semTreino5d(c);
       if (activeFilters.semAlimentacao5d) keep = keep && filterPredicates.semAlimentacao5d(c);
       if (activeFilters.agua3d) keep = keep && filterPredicates.agua3d(c);
+      if (activeFilters.treino2m) keep = keep && filterPredicates.treino2m(c);
+      if (activeFilters.fazerCheckin) keep = keep && (c.dueStatus === "today" || c.dueStatus === "overdue");
       return keep;
     });
   }, [clientes, search, activeFilters]);
 
   function toggleFilter(key: FilterKey) {
     setActiveFilters((prev) => {
-      const next = { ...prev, [key]: !prev[key] } as typeof prev;
-      const someSpecific = next.inativos4d || next.semTreino5d || next.semAlimentacao5d || next.agua3d;
+      let next = { ...prev, [key]: !prev[key] } as typeof prev;
+      if (key === "semFiltro") {
+        const enabled = next.semFiltro;
+        if (enabled) {
+          next = {
+            ...next,
+            inativos4d: false,
+            semTreino5d: false,
+            semAlimentacao5d: false,
+            agua3d: false,
+            treino2m: false,
+            fazerCheckin: false,
+            contaInativa: false,
+          };
+        }
+      }
+      const someSpecific =
+        next.inativos4d ||
+        next.semTreino5d ||
+        next.semAlimentacao5d ||
+        next.agua3d ||
+        next.treino2m ||
+        next.fazerCheckin ||
+        next.contaInativa;
       next.semFiltro = !someSpecific;
       return next;
     });
@@ -422,6 +492,26 @@ function CoachDashboard() {
                 >
                   Sem meta de água há ≥ 3 dias
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.treino2m}
+                  onCheckedChange={() => toggleFilter("treino2m")}
+                >
+                  Treino desatualizado há ≥ 2 meses
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.fazerCheckin}
+                  onCheckedChange={() => toggleFilter("fazerCheckin")}
+                >
+                  Fazer Check-in (hoje ou em atraso)
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Conta</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={activeFilters.contaInativa}
+                  onCheckedChange={() => toggleFilter("contaInativa")}
+                >
+                  Inativos (conta desativada)
+                </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -436,8 +526,8 @@ function CoachDashboard() {
               (c.dueStatus === "overdue" || c.dueStatus === "today") && "bg-[#FFE3B3] ring-2 ring-[#B97100] text-[#B97100]"
             )}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1">
                     <div className="block truncate font-semibold group-hover:underline">
                       {c.nome}
                     </div>
@@ -445,7 +535,7 @@ function CoachDashboard() {
                       {c.email ?? "—"}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end max-w-full">
                     {c.dueStatus && (
                       <Badge variant={c.dueStatus === "overdue" ? "destructive" : "secondary"}>
                         {c.dueStatus === "overdue" ? "CI em atraso" : "CI hoje"}

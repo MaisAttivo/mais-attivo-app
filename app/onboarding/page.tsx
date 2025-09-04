@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 type YesNoPT = "Sim" | "Não";
@@ -91,6 +91,9 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
+      const wf = Math.max(0, parseInt(String(workoutFrequency as any), 10) || 0);
+      const weightN = toNum(weightKg);
+      const metaAguaCalc = weightN > 0 ? Number((weightN * 0.05).toFixed(2)) : 4;
       await addDoc(collection(db, `users/${uid}/questionnaire`), {
         // pessoais
         fullName: fullName.trim(),
@@ -105,7 +108,7 @@ export default function OnboardingPage() {
         doesOtherActivity: yesNoToBool(doesOtherActivity),
         otherActivityDetails: otherActivityDetails.trim(),
 
-        workoutFrequency: toNum(workoutFrequency),
+        workoutFrequency: wf,
 
         hasInjury: yesNoToBool(hasInjury),
         injuryDetails: injuryDetails.trim(),
@@ -149,7 +152,14 @@ export default function OnboardingPage() {
         completedAt: serverTimestamp(),
       });
 
-      router.push("/client/dashboard");
+      await updateDoc(doc(db, "users", uid), {
+        workoutFrequency: wf,
+        metaAgua: metaAguaCalc,
+        onboardingDone: true,
+        updatedAt: serverTimestamp(),
+      });
+
+      router.push("/dashboard");
     } catch (err) {
       console.error(err);
       setError("Não foi possível guardar o questionário.");

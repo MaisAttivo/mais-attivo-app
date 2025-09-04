@@ -282,28 +282,11 @@ export default function WeeklyPage() {
               {saving ? "A guardar…" : "Guardar weekly"}
             </button>
 
-            {/* Voltar à dashboard (inline) */}
-            <Link
-              href="/dashboard"
-              className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-            >
-              Voltar à dashboard
-            </Link>
+
           </div>
         </div>
       )}
 
-      {/* Botão fixo em baixo (sempre visível) */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
-        <div className="max-w-2xl mx-auto">
-          <Link
-            href="/dashboard"
-            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-          >
-            ⬅️ Voltar à dashboard
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

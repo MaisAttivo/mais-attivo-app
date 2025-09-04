@@ -38,13 +38,15 @@ export default function DailyPage() {
   const [createdAt, setCreatedAt] = useState<Date | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
+  const [hasConsent, setHasConsent] = useState<boolean>(true);
+  const [consentChecked, setConsentChecked] = useState<boolean>(false);
+
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
 
   const canEdit =
     alreadySubmitted &&
-    !!createdAt &&
-    Date.now() < createdAt.getTime() + 2 * 60 * 60 * 1000;
+    !!docDate;
 
   // Autenticação + carregar registo de hoje (se existir)
   useEffect(() => {
@@ -54,6 +56,13 @@ export default function DailyPage() {
         return;
       }
       setUid(user.uid);
+
+      try {
+        const uSnap = await getDoc(doc(db, "users", user.uid));
+        const data: any = uSnap.exists() ? uSnap.data() : {};
+        const consent = !!(data?.healthConsentAt || data?.healthDataConsentAt || (data?.healthDataExplicitConsent === true));
+        setHasConsent(consent);
+      } catch {}
 
       const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
       const snap = await getDoc(ref);
@@ -107,6 +116,29 @@ export default function DailyPage() {
     setSubmitting(true);
 
     try {
+      // se faltar consentimento, recolhe-o agora
+      if (!hasConsent) {
+        if (!consentChecked) {
+          setError("Confirma o consentimento para tratamento de dados de saúde.");
+          setSubmitting(false);
+          return;
+        }
+        try {
+          await updateDoc(doc(db, "users", uid), {
+            healthConsentAt: serverTimestamp(),
+            healthDataConsentAt: serverTimestamp(),
+            healthDataExplicitConsent: true,
+            updatedAt: serverTimestamp(),
+            active: true,
+          });
+          setHasConsent(true);
+        } catch (e) {
+          setError("Não foi possível registar o consentimento. Tenta novamente.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const ref = doc(db, `users/${uid}/dailyFeedback/${todayId}`);
 
       if (!alreadySubmitted) {
@@ -133,7 +165,7 @@ export default function DailyPage() {
       } else {
         // UPDATE — manter 'date' igual
         if (!canEdit || !docDate) {
-          setError("Já não é possível editar (janela de 2 horas expirada).");
+          setError("Não é possível editar este registo.");
           setSubmitting(false);
           return;
         }
@@ -191,13 +223,13 @@ export default function DailyPage() {
 
       {alreadySubmitted && !canEdit && (
         <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-800">
-          Já submeteste o feedback de hoje. A edição esteve disponível por 2 horas.
+          Já submeteste o feedback de hoje.
         </div>
       )}
 
       {alreadySubmitted && canEdit && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-amber-800">
-          Podes editar o diário de hoje (janela de 2 horas).
+          Podes editar este diário.
         </div>
       )}
 
@@ -297,6 +329,13 @@ export default function DailyPage() {
           />
         </div>
 
+        {!hasConsent && (
+          <label className="flex items-start gap-2 text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+            <input type="checkbox" checked={consentChecked} onChange={(e)=>setConsentChecked(e.currentTarget.checked)} />
+            <span>Autorizo o tratamento dos meus dados de saúde para efeitos de acompanhamento e planos. Posso retirar este consentimento a qualquer momento.</span>
+          </label>
+        )}
+
         {error && <p className="text-red-600">{error}</p>}
         {savedMsg && <p className="text-green-700">{savedMsg}</p>}
 
@@ -309,28 +348,11 @@ export default function DailyPage() {
             {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
           </button>
 
-          {/* Voltar à dashboard (inline) */}
-          <Link
-            href="/dashboard"
-            className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-          >
-            Voltar à dashboard
-          </Link>
+
         </div>
       </form>
       </div>
 
-      {/* Botão fixo em baixo (sempre visível) */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
-        <div className="max-w-xl mx-auto">
-          <Link
-            href="/dashboard"
-            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-          >
-            ⬅️ Voltar à dashboard
-          </Link>
-        </div>
-      </div>
     </main>
   );
 }

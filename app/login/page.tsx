@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { ensureUserDoc } from "@/lib/ensureUserDoc";
 
@@ -14,12 +14,15 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
     setMsg(null);
+    setResetError(null);
 
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
@@ -112,20 +115,66 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
-            >
-              {loading ? "A entrar…" : "Entrar"}
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={async () => {
+                  setResetError(null);
+                  if (!email.trim()) { setResetError("Indica o teu email em cima."); return; }
+                  try {
+                    await sendPasswordResetEmail(auth, email.trim());
+                    setResetOpen(true);
+                  } catch (e: any) {
+                    setResetError("Não foi possível enviar. Verifica o email.");
+                  }
+                }}
+                className="text-sm underline text-slate-700 hover:text-slate-900"
+              >
+                Esqueci-me da palavra‑passe
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {loading ? "A entrar…" : "Entrar"}
+              </button>
+            </div>
           </form>
 
-          <p className="mt-4 text-xs text-slate-500">
-            Dica: confirma no Firebase Auth que o método Email/Password está ativo.
-          </p>
+          {resetError && <p className="mt-3 text-xs text-rose-700">{resetError}</p>}
+
+          <div className="mt-6 pt-4 border-t border-slate-200 text-center">
+            <p className="text-sm text-slate-700">Ainda não tens conta?</p>
+            <button
+              type="button"
+              onClick={() => router.push("/register")}
+              className="mt-3 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+            >
+              Criar conta
+            </button>
+          </div>
         </div>
       </div>
+
+      {resetOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="rounded-2xl bg-white shadow-xl ring-1 ring-slate-300 p-6 max-w-sm w-full text-center">
+            <h2 className="text-lg font-semibold mb-1">Email enviado</h2>
+            <p className="text-sm text-slate-700">
+              Enviámos um email para redefinir a palavra‑passe. Verifica também a pasta de SPAM/Lixo.
+            </p>
+            <button
+              type="button"
+              onClick={() => setResetOpen(false)}
+              className="mt-4 rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

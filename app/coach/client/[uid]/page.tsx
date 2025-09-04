@@ -2,7 +2,7 @@
 
 "use client";
 
-import { use, useEffect, useState, type ChangeEvent } from "react";
+import { use, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -14,17 +14,19 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
+import { ref, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Upload, FileText, X } from "lucide-react";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -90,6 +92,8 @@ export default function CoachClientProfilePage(
   // Header info
   const [name, setName] = useState<string>("Cliente");
   const [email, setEmail] = useState<string>("—");
+  const [active, setActive] = useState<boolean>(true);
+  const [savingActive, setSavingActive] = useState<boolean>(false);
   const [lastCheckinYMD, setLastCheckinYMD] = useState<string | null>(null);
   const [nextCheckinYMD, setNextCheckinYMD] = useState<string | null>(null);
   const [nextDue, setNextDue] = useState<boolean>(false);
@@ -109,6 +113,34 @@ export default function CoachClientProfilePage(
   const [noteById, setNoteById] = useState<Record<string, string>>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
 
+  // Planos PDF
+  const [trainingUrl, setTrainingUrl] = useState<string | null>(null);
+  const [dietUrl, setDietUrl] = useState<string | null>(null);
+  const [plansLoading, setPlansLoading] = useState<boolean>(true);
+  const trainingInputRef = useRef<HTMLInputElement>(null);
+  const dietInputRef = useRef<HTMLInputElement>(null);
+  const [trainingSelected, setTrainingSelected] = useState<string | null>(null);
+  const [dietSelected, setDietSelected] = useState<string | null>(null);
+  const [uploadingTraining, setUploadingTraining] = useState(false);
+  const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [dietError, setDietError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);
+  const [trainingAt, setTrainingAt] = useState<Date | null>(null);
+  const [dietAt, setDietAt] = useState<Date | null>(null);
+
+  // InBody files
+  const [inbodyLoading, setInbodyLoading] = useState<boolean>(true);
+  const [inbodyFiles, setInbodyFiles] = useState<Array<{ id: string; url: string; createdAt: Date | null }>>([]);
+  const [photosLoading, setPhotosLoading] = useState<boolean>(true);
+  const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
+
+
+  // Powerlifting flag
+  const [plEnabled, setPlEnabled] = useState<boolean>(false);
+
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -117,6 +149,8 @@ export default function CoachClientProfilePage(
       const uSnap = await getDoc(doc(db, "users", uid));
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
+      setActive(typeof u.active === "boolean" ? u.active : true);
+      setPlEnabled(!!u.powerlifting);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -233,6 +267,94 @@ export default function CoachClientProfilePage(
       setMetaAgua(meta);
       setMetaSource(source);
 
+      // Carregar planos (PDFs)
+      try {
+        const planSnap = await getDoc(doc(db, "users", uid, "plans", "latest"));
+        let planData: any = planSnap.data() || {};
+        if ((!planData.trainingUrl || !planData.dietUrl)) {
+          try {
+            const qs = await getDocs(collection(db, `users/${uid}/plans`));
+            const all: any[] = [];
+            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
+            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
+            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
+            planData = { ...planData, ...(treino ? { trainingUrl: treino.url, trainingUpdatedAt: treino.createdAt || treino.updatedAt } : {}), ...(alim ? { dietUrl: alim.url, dietUpdatedAt: alim.createdAt || alim.updatedAt } : {}) };
+          } catch {}
+        }
+        // Fallback direto ao Storage
+        if (!planData.trainingUrl && storage) {
+          try {
+            const r = ref(storage, `plans/${uid}/training.pdf`);
+            planData.trainingUrl = await getDownloadURL(r);
+          } catch {}
+        }
+        if (!planData.dietUrl && storage) {
+          try {
+            const r = ref(storage, `plans/${uid}/diet.pdf`);
+            planData.dietUrl = await getDownloadURL(r);
+          } catch {}
+        }
+        setTrainingUrl(planData.trainingUrl || null);
+        setDietUrl(planData.dietUrl || null);
+        setTrainingAt(toDate(planData.trainingUpdatedAt ?? null));
+        setDietAt(toDate(planData.dietUpdatedAt ?? null));
+      } catch {}
+      setPlansLoading(false);
+
+      // Listar Fotos (conjuntos)
+      try {
+        if (storage) {
+          const baseRef = ref(storage, `users/${uid}/photos`);
+          const res = await listAll(baseRef);
+          const items = await Promise.all(res.items.map(async (it)=>{
+            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+            const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
+            const name = it.name; // 2025-W36-...-0_main.jpg
+            const setId = name.split("-").slice(0,3).join("-");
+            const isMain = /_main\./i.test(name);
+            return { setId, url, createdAt, isMain };
+          }));
+          const bySet = new Map<string, { createdAt: Date | null; urls: string[]; mainUrl: string }>();
+          for (const it of items) {
+            const s = bySet.get(it.setId) || { createdAt: it.createdAt, urls: [], mainUrl: "" };
+            if (!s.createdAt) s.createdAt = it.createdAt;
+            s.urls.push(it.url);
+            if (it.isMain) s.mainUrl = it.url;
+            bySet.set(it.setId, s);
+          }
+          const arr = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          setPhotoSets(arr);
+        } else {
+          setPhotoSets([]);
+        }
+      } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
+
+      // Listar InBody do utilizador (imagens)
+      try {
+        if (storage) {
+          const dirRef = ref(storage, `users/${uid}/inbody`);
+          const res = await listAll(dirRef);
+          const items = await Promise.all(res.items.map(async (it) => {
+            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+            let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
+            if (!createdAt) {
+              const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
+              const n = Number(base);
+              if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
+            }
+            return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
+          }));
+          items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
+          setInbodyFiles(items);
+        } else {
+          setInbodyFiles([]);
+        }
+      } catch {
+        setInbodyFiles([]);
+      } finally {
+        setInbodyLoading(false);
+      }
+
       setLoading(false);
     })();
   }, [uid]);
@@ -242,15 +364,19 @@ export default function CoachClientProfilePage(
     setSavingNoteId(checkinId);
     try {
       const noteRef = doc(db, `users/${uid}/checkins/${checkinId}/coachNotes/default`);
-      await setDoc(
-        noteRef,
-        {
+      const snap = await getDoc(noteRef);
+      if (snap.exists()) {
+        await updateDoc(noteRef, {
           privateComment: text,
           updatedAt: serverTimestamp(),
+        });
+      } else {
+        await setDoc(noteRef, {
+          privateComment: text,
           createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+          updatedAt: serverTimestamp(),
+        });
+      }
     } catch (e) {
       console.error("save note error", e);
     } finally {
@@ -260,6 +386,34 @@ export default function CoachClientProfilePage(
 
   const novoCheckinHref = `/checkin?clientId=${uid}`;
   const editarUltimoHref = checkins[0]?.id ? `/checkin?clientId=${uid}&checkinId=${checkins[0].id}` : "";
+
+  async function handlePlanUpload(kind: "training" | "diet", file: File) {
+    try {
+      if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) throw new Error("Apenas PDFs são permitidos.");
+      if (file.size > 20 * 1024 * 1024) throw new Error("Ficheiro demasiado grande (máx. 20MB).");
+
+      if (kind === "training") { setUploadingTraining(true); setTrainingError(null); }
+      else { setUploadingDiet(true); setDietError(null); }
+
+      const path = `plans/${uid}/${kind}.pdf`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file, { contentType: "application/pdf" });
+      const url = await getDownloadURL(r);
+      const payload: any = { updatedAt: serverTimestamp() };
+      if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }
+      else { payload.dietUrl = url; payload.dietUpdatedAt = serverTimestamp(); }
+      await setDoc(doc(db, "users", uid, "plans", "latest"), payload, { merge: true });
+      if (kind === "training") { setTrainingUrl(url); setTrainingAt(new Date()); } else { setDietUrl(url); setDietAt(new Date()); }
+    } catch (e: any) {
+      const msg = e?.message || "Falha no upload.";
+      if (kind === "training") setTrainingError(msg); else setDietError(msg);
+      console.error("Upload plano falhou", e);
+    } finally {
+      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+    }
+  }
 
   return (
     <CoachGuard>
@@ -280,7 +434,28 @@ export default function CoachClientProfilePage(
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={active}
+                onChange={async (e) => {
+                  const val = e.currentTarget.checked;
+                  setActive(val);
+                  setSavingActive(true);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
+                  } catch (err) {
+                    setActive(!val);
+                    console.error("toggle active error", err);
+                  } finally {
+                    setSavingActive(false);
+                  }
+                }}
+              />
+              <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
+            </label>
+
             {editarUltimoHref && (
               <Link href={editarUltimoHref}>
                 <Button variant="secondary">Editar último check-in</Button>
@@ -289,14 +464,26 @@ export default function CoachClientProfilePage(
             <Link href={novoCheckinHref}>
               <Button>Novo check-in</Button>
             </Link>
-            <Link href="/coach" className="text-sm underline ml-2">
-              ← Voltar
+            <Link href="/coach" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 ml-2">
+              <span>⬅️</span> Voltar
             </Link>
           </div>
         </div>
 
+
+        {/* Selector for sections */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
+          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
+          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
+          <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
+        </div>
+
         {/* Dailies */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection !== "daily" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Últimos 7 dailies</CardTitle>
           </CardHeader>
@@ -343,8 +530,9 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
+
         {/* Weekly */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection !== "weekly" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Weekly (último)</CardTitle>
           </CardHeader>
@@ -365,8 +553,217 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
+        {/* Powerlifting (vazio por agora) */}
+        <Card className={"shadow-sm " + (visibleSection !== "powerlifting" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Powerlifting</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <label className="inline-flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={plEnabled}
+                onChange={async (e) => {
+                  const enabled = e.currentTarget.checked;
+                  setPlEnabled(enabled);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                  } catch {}
+                }}
+              />
+              <span>Powerlifting:</span>
+              <span className={`font-medium ${plEnabled ? "text-emerald-600" : "text-slate-700"}`}>{plEnabled ? "True" : "False"}</span>
+            </label>
+          </CardContent>
+        </Card>
+
+        {/* Planos (PDFs) */}
+        <Card className={"shadow-sm " + (visibleSection !== "planos" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Planos (PDF)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm">
+            {plansLoading ? (
+              <div className="text-muted-foreground">A carregar…</div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-2xl border p-4 bg-background">
+                  <div className="flex items-center gap-2 font-medium mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Plano de Treino</span>
+                  </div>
+                  {trainingUrl ? (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={()=>setPreview({ url: trainingUrl!, kind: "pdf" })}>Ver</Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={trainingUrl} download>Download</a>
+                        </Button>
+                      </div>
+                      {trainingAt && (
+                        <div className="text-xs text-muted-foreground">Atualizado: {ymd(trainingAt)}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground italic">Sem plano.</div>
+                  )}
+                  <div className="mt-3 flex flex-col items-start gap-2">
+                    <input
+                      ref={trainingInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden" aria-hidden="true"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setTrainingSelected(f.name); handlePlanUpload("training", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => trainingInputRef.current?.click()} disabled={uploadingTraining}>
+                      <Upload className="h-4 w-4" />
+                      {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
+                    </Button>
+                    {trainingError ? (
+                      <div className="text-xs text-red-600 text-left">{trainingError}</div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{trainingSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-2xl border p-4 bg-background">
+                  <div className="flex items-center gap-2 font-medium mb-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Sugestão Alimentar</span>
+                  </div>
+                  {dietUrl ? (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={()=>setPreview({ url: dietUrl!, kind: "pdf" })}>Ver</Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={dietUrl} download>Download</a>
+                        </Button>
+                      </div>
+                      {dietAt && (
+                        <div className="text-xs text-muted-foreground">Atualizado: {ymd(dietAt)}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground italic">Sem plano.</div>
+                  )}
+                  <div className="mt-3 flex flex-col items-start gap-2">
+                    <input
+                      ref={dietInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden" aria-hidden="true"
+                      onChange={(e)=>{const f=e.currentTarget.files?.[0]; if(f){ setDietSelected(f.name); handlePlanUpload("diet", f); e.currentTarget.value = ""; }}}
+                    />
+                    <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
+                      <Upload className="h-4 w-4" />
+                      {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
+                    </Button>
+                    {dietError ? (
+                      <div className="text-xs text-red-600 text-left">{dietError}</div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground leading-relaxed text-left max-w-full truncate">{dietSelected ?? "Nenhum ficheiro selecionado"}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {preview && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
+              <div className="absolute top-3 right-3 flex gap-2">
+                <Button size="sm" variant="outline" asChild><a href={preview.url} download>Download</a></Button>
+                <Button size="sm" variant="secondary" onClick={()=>setPreview(null)}><X className="h-4 w-4" />Fechar</Button>
+              </div>
+              {preview.kind === "pdf" ? (
+                <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                  <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={preview.url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
+                </object>
+              ) : (
+                <div className="w-full h-full overflow-auto bg-black/5 flex items-center justify-center p-4">
+                  <img src={preview.url} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Fotos (progresso) */}
+        <Card className={"shadow-sm " + (visibleSection !== "fotos" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Fotos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {photosLoading ? (
+              <div className="text-sm text-muted-foreground">A carregar…</div>
+            ) : photoSets.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Sem fotos.</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm text-slate-700 mb-2">Início</div>
+                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                      <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                  </div>
+                  <div className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm text-slate-700 mb-2">Atual</div>
+                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                      <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                  </div>
+                </div>
+                {photoSets.map((s)=> (
+                  <div key={s.id} className="rounded-2xl border p-4 bg-background">
+                    <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
+                    <div className="flex gap-2 overflow-x-auto">
+                      {s.urls.map((u, i)=>(
+                        <img key={i} src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* InBody (imagens) */}
+        <Card className={"shadow-sm " + (visibleSection !== "inbody" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>InBody</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {inbodyLoading ? (
+              <div className="text-sm text-muted-foreground">A carregar…</div>
+            ) : inbodyFiles.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Sem anexos.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {inbodyFiles.map((f) => (
+                  <div key={f.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium">InBody</div>
+                      <div className="text-xs text-muted-foreground">{f.createdAt ? f.createdAt.toLocaleString() : "—"}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={()=>setPreview({ url: f.url, kind: "image" })}>Ver</Button>
+                      <Button asChild size="sm" variant="outline"><a href={f.url} target="_blank" rel="noopener noreferrer">Abrir</a></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Check-ins */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection !== "checkins" ? "hidden" : "")}>
           <CardHeader className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Check-ins
@@ -480,7 +877,7 @@ function K({
   const arrow = (() => {
     if (delta == null) return null;
     if (delta > 0) return "↑";
-    if (delta < 0) return "↓";
+    if (delta < 0) return "��";
     return "→";
   })();
 

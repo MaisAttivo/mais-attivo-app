@@ -7,7 +7,7 @@ import { lisbonYMD } from "@/lib/utils";
 
 type Props = {
   uid: string;
-  mode: "workout" | "diet";
+  mode: "workout" | "diet" | "cardio";
 };
 
 type DayInfo = {
@@ -82,7 +82,8 @@ export default function EmojiCalendar({ uid, mode }: Props) {
           const dateVal = data.date?.toDate?.() as Date | undefined;
           if (!dateVal) return;
           const id = toLisbonYMD(dateVal);
-          const has = mode === "workout" ? Boolean(data.treinou ?? data.didWorkout) : Boolean(data.alimentacao100);
+          const cardioVal = typeof data.cardio === "string" ? data.cardio === "sim" : Boolean(data.cardio ?? data.didCardio);
+          const has = mode === "workout" ? Boolean(data.treinou ?? data.didWorkout) : mode === "diet" ? Boolean(data.alimentacao100) : Boolean(cardioVal);
           res[id] = { id, has };
         });
         if (alive) setDays(res);
@@ -95,13 +96,13 @@ export default function EmojiCalendar({ uid, mode }: Props) {
 
   const cells = useMemo(() => getMonthMatrix(anchor), [anchor]);
 
-  const emoji = mode === "workout" ? "💪" : "🔥";
-  const label = mode === "workout" ? "Treinos" : "Alimentação";
+  const emoji = mode === "workout" ? "💪" : mode === "diet" ? "🔥" : "🏃‍♂️";
+  const label = mode === "workout" ? "Treinos" : mode === "diet" ? "Alimentação" : "Cardio";
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-base">{label} — {title}</div>
+        <div className="font-semibold text-base">{title}</div>
         <div className="flex items-center gap-1.5">
           <button
             type="button"

@@ -40,7 +40,7 @@ export default function InBodyPage() {
           const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
           let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
           if (!createdAt) {
-            const base = it.name.replace(/\.png$/i, "");
+            const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
             const n = Number(base);
             if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
           }
@@ -68,14 +68,16 @@ export default function InBodyPage() {
       if (!input || !input.files || input.files.length === 0) { setError("Seleciona um ficheiro PNG."); setSubmitting(false); return; }
 
       const file = input.files[0];
-      if (file.type !== "image/png") { setError("Apenas PNG é permitido."); setSubmitting(false); return; }
+      const allowed = ["image/png", "image/jpeg", "image/jpg"];
+      if (!allowed.includes(file.type)) { setError("Apenas PNG ou JPEG são permitidos."); setSubmitting(false); return; }
       if (file.size > 8 * 1024 * 1024) { setError("Máx. 8MB."); setSubmitting(false); return; }
 
       if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
       const ts = Date.now();
-      const path = `users/${uid}/inbody/${ts}.png`;
+      const ext = (/\.jpe?g$/i.test(file.name) || file.type === "image/jpeg" || file.type === "image/jpg") ? "jpg" : "png";
+      const path = `users/${uid}/inbody/${ts}.${ext}`;
       const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file, { contentType: "image/png" });
+      await uploadBytes(storageRef, file, { contentType: file.type || (ext === "jpg" ? "image/jpeg" : "image/png") });
       form.reset();
       await loadFiles(uid);
     } catch (err: any) {
@@ -118,7 +120,7 @@ export default function InBodyPage() {
 
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
         <div>
-          <Input type="file" name="inbody" accept="image/png" aria-label="Carregar InBody (PNG)" />
+          <Input type="file" name="inbody" accept="image/png,image/jpeg" aria-label="Carregar InBody (imagem PNG ou JPEG)" />
           <p className="text-xs text-slate-500 mt-1">Apenas PNG, até 8MB.</p>
         </div>
         {error && <div className="text-sm text-rose-600">{error}</div>}

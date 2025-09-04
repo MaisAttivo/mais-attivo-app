@@ -6,6 +6,7 @@ import { useSession } from "@/lib/auth";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import "./globals.css";
+import ClientNav from "@/components/ui/ClientNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -125,9 +125,13 @@ export default function CoachClientProfilePage(
   const [uploadingDiet, setUploadingDiet] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);
   const [trainingAt, setTrainingAt] = useState<Date | null>(null);
   const [dietAt, setDietAt] = useState<Date | null>(null);
+
+  // InBody files
+  const [inbodyLoading, setInbodyLoading] = useState<boolean>(true);
+  const [inbodyFiles, setInbodyFiles] = useState<Array<{ id: string; url: string; createdAt: Date | null }>>([]);
 
   useEffect(() => {
     (async () => {
@@ -274,6 +278,32 @@ export default function CoachClientProfilePage(
         setDietAt(toDate(planData.dietUpdatedAt ?? null));
       } catch {}
       setPlansLoading(false);
+
+      // Listar InBody do utilizador (imagens)
+      try {
+        if (storage) {
+          const dirRef = ref(storage, `users/${uid}/inbody`);
+          const res = await listAll(dirRef);
+          const items = await Promise.all(res.items.map(async (it) => {
+            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+            let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
+            if (!createdAt) {
+              const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
+              const n = Number(base);
+              if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
+            }
+            return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
+          }));
+          items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
+          setInbodyFiles(items);
+        } else {
+          setInbodyFiles([]);
+        }
+      } catch {
+        setInbodyFiles([]);
+      } finally {
+        setInbodyLoading(false);
+      }
 
       setLoading(false);
     })();
@@ -474,7 +504,7 @@ export default function CoachClientProfilePage(
                   {trainingUrl ? (
                     <div className="flex flex-col gap-1">
                       <div className="flex flex-wrap gap-2">
-                        <Button size="sm" onClick={()=>setPreviewUrl(trainingUrl!)}>Ver</Button>
+                        <Button size="sm" onClick={()=>setPreview({ url: trainingUrl!, kind: "pdf" })}>Ver</Button>
                         <Button asChild size="sm" variant="outline">
                           <a href={trainingUrl} download>Download</a>
                         </Button>
@@ -513,7 +543,7 @@ export default function CoachClientProfilePage(
                   {dietUrl ? (
                     <div className="flex flex-col gap-1">
                       <div className="flex flex-wrap gap-2">
-                        <Button size="sm" onClick={()=>setPreviewUrl(dietUrl!)}>Ver</Button>
+                        <Button size="sm" onClick={()=>setPreview({ url: dietUrl!, kind: "pdf" })}>Ver</Button>
                         <Button asChild size="sm" variant="outline">
                           <a href={dietUrl} download>Download</a>
                         </Button>
@@ -549,19 +579,54 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
-        {previewUrl && (
+        {preview && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
             <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
               <div className="absolute top-3 right-3 flex gap-2">
-                <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
-                <Button size="sm" variant="secondary" onClick={()=>setPreviewUrl(null)}><X className="h-4 w-4" />Fechar</Button>
+                <Button size="sm" variant="outline" asChild><a href={preview.url} download>Download</a></Button>
+                <Button size="sm" variant="secondary" onClick={()=>setPreview(null)}><X className="h-4 w-4" />Fechar</Button>
               </div>
-              <object data={previewUrl} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
-                <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={previewUrl} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
-              </object>
+              {preview.kind === "pdf" ? (
+                <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                  <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={preview.url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
+                </object>
+              ) : (
+                <div className="w-full h-full overflow-auto bg-black/5 flex items-center justify-center p-4">
+                  <img src={preview.url} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
+                </div>
+              )}
             </div>
           </div>
         )}
+
+        {/* InBody (imagens) */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>InBody</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {inbodyLoading ? (
+              <div className="text-sm text-muted-foreground">A carregar…</div>
+            ) : inbodyFiles.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Sem anexos.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {inbodyFiles.map((f) => (
+                  <div key={f.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium">InBody</div>
+                      <div className="text-xs text-muted-foreground">{f.createdAt ? f.createdAt.toLocaleString() : "—"}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={()=>setPreview({ url: f.url, kind: "image" })}>Ver</Button>
+                      <Button asChild size="sm" variant="outline"><a href={f.url} target="_blank" rel="noopener noreferrer">Abrir</a></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Check-ins */}
         <Card className="shadow-sm">

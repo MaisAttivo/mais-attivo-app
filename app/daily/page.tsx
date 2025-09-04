@@ -166,7 +166,7 @@ export default function DailyPage() {
       } else {
         // UPDATE — manter 'date' igual
         if (!canEdit || !docDate) {
-          setError("Já não é possível editar (janela de 2 horas expirada).");
+          setError("Já não é possível editar (apenas durante o dia do registo).");
           setSubmitting(false);
           return;
         }

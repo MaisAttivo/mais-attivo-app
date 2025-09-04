@@ -27,16 +27,30 @@ export default function CoachGuard({ children }: { children: React.ReactNode }) 
       }
 
       try {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        const role = snap.exists() ? (snap.get("role") as string | undefined) : undefined;
+        const token = await u.getIdTokenResult();
+        const claims: any = token.claims || {};
+        const allowedByClaims = (claims.role === "coach" || claims.role === "admin" || claims.coach === true);
 
-        if (role === "coach") {
+        if (allowedByClaims) {
           setState({ checking: false, allowed: true });
-        } else {
+          return;
+        }
+
+        // Fallback: tentar Firestore apenas se necessário
+        try {
+          const snap = await getDoc(doc(db, "users", u.uid));
+          const role = snap.exists() ? (snap.get("role") as string | undefined) : undefined;
+          const ok = role === "coach" || role === "admin";
+          setState({ checking: false, allowed: ok });
+          if (!ok && !redirected.current) {
+            redirected.current = true;
+            router.replace("/");
+          }
+        } catch {
           setState({ checking: false, allowed: false });
           if (!redirected.current) {
             redirected.current = true;
-            router.replace("/"); // sem permissões → home
+            router.replace("/");
           }
         }
       } catch {

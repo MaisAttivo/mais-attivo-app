@@ -224,13 +224,13 @@ export default function DailyPage() {
 
       {alreadySubmitted && !canEdit && (
         <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-800">
-          Já submeteste o feedback de hoje. A edição esteve disponível por 2 horas.
+          Já submeteste o feedback de hoje. A edição fica disponível até ao final do dia.
         </div>
       )}
 
       {alreadySubmitted && canEdit && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-amber-800">
-          Podes editar o diário de hoje (janela de 2 horas).
+          Podes editar o diário enquanto for o dia de hoje.
         </div>
       )}
 

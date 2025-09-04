@@ -135,6 +135,8 @@ export default function CoachClientProfilePage(
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
+  const [visibleSection, setVisibleSection] = useState<"weekly" | "planos" | "fotos" | "inbody" | null>(null);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -494,8 +496,16 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
+        {/* Selector for sections */}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "weekly" ? null : "weekly")}>Weekly</Button>
+          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "planos" ? null : "planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "fotos" ? null : "fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection(visibleSection === "inbody" ? null : "inbody")}>InBody</Button>
+        </div>
+
         {/* Weekly */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "weekly" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Weekly (último)</CardTitle>
           </CardHeader>
@@ -517,7 +527,7 @@ export default function CoachClientProfilePage(
         </Card>
 
         {/* Planos (PDFs) */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "planos" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Planos (PDF)</CardTitle>
           </CardHeader>
@@ -630,7 +640,7 @@ export default function CoachClientProfilePage(
         )}
 
         {/* Fotos (progresso) */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "fotos" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Fotos</CardTitle>
           </CardHeader>
@@ -673,7 +683,7 @@ export default function CoachClientProfilePage(
         </Card>
 
         {/* InBody (imagens) */}
-        <Card className="shadow-sm">
+        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "inbody" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>InBody</CardTitle>
           </CardHeader>

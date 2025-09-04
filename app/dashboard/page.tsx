@@ -11,9 +11,6 @@ import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import EmojiCalendar from "@/components/EmojiCalendar";
 import SwitchableCalendar from "@/components/SwitchableCalendar";
 import { onAuthStateChanged } from "firebase/auth";
-import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   doc,
   getDoc,
@@ -346,7 +343,7 @@ export default function DashboardPage() {
                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
                 title="Marcar avaliação (WhatsApp)"
               >
-                <span aria-hidden>🟢</span>
+                <span aria-hidden>��</span>
                 <span>WhatsApp</span>
               </a>
             )}

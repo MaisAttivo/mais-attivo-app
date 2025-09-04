@@ -146,6 +146,12 @@ export default function CoachClientProfilePage(
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
+      // Powerlifting fields (for coach controls)
+      try {
+        const plEnabled = !!u.powerlifting;
+        // set default values into inputs via defaultValue; nothing to set in state needed unless UI should be controlled
+        (plEnabled);
+      } catch {}
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);

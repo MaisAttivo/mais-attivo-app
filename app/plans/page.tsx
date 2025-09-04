@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
@@ -18,9 +19,16 @@ function PdfCard({ title, url, onPreview }: { title: string; url?: string | null
       </CardHeader>
       <CardContent>
         {url ? (
-          <div className="flex gap-2">
-            <Button size="sm" onClick={()=>onPreview && url && onPreview(url)}>Ver</Button>
-            <Button asChild size="sm" variant="outline"><a href={url} download>Download</a></Button>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button size="sm" onClick={()=>onPreview && url && onPreview(url)}>Ver</Button>
+              <Button asChild size="sm" variant="outline"><a href={url} download>Download</a></Button>
+            </div>
+            <div className="rounded-lg border overflow-hidden">
+              <object data={url} type="application/pdf" className="w-full h-48" aria-label="Pré-visualização PDF">
+                <div className="p-2 text-xs text-muted-foreground">Não foi possível mostrar a pré-visualização. Use o botão Ver.</div>
+              </object>
+            </div>
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">Sem plano.</div>
@@ -139,7 +147,12 @@ export default function PlansPage() {
   return (
       <main className="max-w-3xl mx-auto p-6">
         <div>
-          <h1 className="text-2xl font-semibold mb-4">Planos</h1>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h1 className="text-2xl font-semibold">Planos</h1>
+            <Link href="/dashboard">
+              <Button variant="outline">Voltar ao dashboard</Button>
+            </Link>
+          </div>
 
           {isCoach && (
             <div className="mb-4 p-3 rounded-lg border border-slate-300 bg-slate-50">

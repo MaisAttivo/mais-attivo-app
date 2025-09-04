@@ -135,6 +135,11 @@ export default function CoachClientProfilePage(
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
+  // Powerlifting controls
+  const [plEnabled, setPlEnabled] = useState<boolean>(false);
+  const [plLink, setPlLink] = useState<string>("");
+  const [plNotes, setPlNotes] = useState<string>("");
+
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins">("daily");
 
   useEffect(() => {
@@ -147,11 +152,9 @@ export default function CoachClientProfilePage(
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
       // Powerlifting fields (for coach controls)
-      try {
-        const plEnabled = !!u.powerlifting;
-        // set default values into inputs via defaultValue; nothing to set in state needed unless UI should be controlled
-        (plEnabled);
-      } catch {}
+      setPlEnabled(!!u.powerlifting);
+      setPlLink((u.powerliftingLink as string) || "");
+      setPlNotes((u.powerliftingNotes as string) || "");
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -479,13 +482,14 @@ export default function CoachClientProfilePage(
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
+                checked={plEnabled}
                 onChange={async (e) => {
                   const enabled = e.currentTarget.checked;
+                  setPlEnabled(enabled);
                   try {
                     await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
                   } catch {}
                 }}
-                defaultChecked={false}
               />
               <span>Ativar para este cliente</span>
             </label>
@@ -496,11 +500,12 @@ export default function CoachClientProfilePage(
                   type="url"
                   placeholder="https://..."
                   className="border rounded-xl px-3 py-2 w-full"
+                  value={plLink}
+                  onChange={(e)=>setPlLink(e.currentTarget.value)}
                   onBlur={async (e) => {
                     const v = e.currentTarget.value.trim();
                     try { await updateDoc(doc(db, "users", uid), { powerliftingLink: v || null, updatedAt: serverTimestamp() }); } catch {}
                   }}
-                  defaultValue={""}
                 />
               </div>
               <div className="sm:col-span-2">
@@ -508,11 +513,12 @@ export default function CoachClientProfilePage(
                 <textarea
                   placeholder="Instruções, notas de treino, máximos, etc."
                   className="border rounded-xl px-3 py-2 w-full min-h-[90px]"
+                  value={plNotes}
+                  onChange={(e)=>setPlNotes(e.currentTarget.value)}
                   onBlur={async (e) => {
                     const v = e.currentTarget.value;
                     try { await updateDoc(doc(db, "users", uid), { powerliftingNotes: v || null, updatedAt: serverTimestamp() }); } catch {}
                   }}
-                  defaultValue={""}
                 />
               </div>
             </div>

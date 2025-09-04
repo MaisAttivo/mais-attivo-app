@@ -348,28 +348,11 @@ export default function DailyPage() {
             {submitting ? "A enviar..." : alreadySubmitted ? "Guardar alterações" : "Enviar feedback de hoje"}
           </button>
 
-          {/* Voltar à dashboard (inline) */}
-          <Link
-            href="/dashboard"
-            className="flex-1 text-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-          >
-            Voltar à dashboard
-          </Link>
+
         </div>
       </form>
       </div>
 
-      {/* Botão fixo em baixo (sempre visível) */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur border-t p-3">
-        <div className="max-w-xl mx-auto">
-          <Link
-            href="/dashboard"
-            className="w-full inline-flex justify-center rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-          >
-            ⬅️ Voltar à dashboard
-          </Link>
-        </div>
-      </div>
     </main>
   );
 }

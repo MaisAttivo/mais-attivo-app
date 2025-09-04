@@ -149,8 +149,8 @@ export default function PlansPage() {
         <div>
           <div className="flex items-center justify-between gap-3 mb-4">
             <h1 className="text-2xl font-semibold">Planos</h1>
-            <Link href="/dashboard">
-              <Button variant="outline">Voltar ao dashboard</Button>
+            <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+              <span>⬅️</span> Voltar à dashboard
             </Link>
           </div>
 

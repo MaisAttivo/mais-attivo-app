@@ -196,7 +196,7 @@ export default function PhotosPage() {
   return (
     <main className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/dashboard" className="text-sm underline">← Voltar</Link>
+        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"><span>⬅️</span> Voltar à dashboard</Link>
         <h1 className="text-2xl font-semibold">Fotos</h1>
         <div className="w-10" />
       </div>

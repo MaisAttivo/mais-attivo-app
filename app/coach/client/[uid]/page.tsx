@@ -459,8 +459,8 @@ export default function CoachClientProfilePage(
             <Link href={novoCheckinHref}>
               <Button>Novo check-in</Button>
             </Link>
-            <Link href="/coach" className="text-sm underline ml-2">
-              ← Voltar
+            <Link href="/coach" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 ml-2">
+              <span>⬅️</span> Voltar
             </Link>
           </div>
         </div>

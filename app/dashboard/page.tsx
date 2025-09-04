@@ -426,7 +426,7 @@ export default function DashboardPage() {
       {!needsDaily && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
-            <div className="text-sm text-slate-700">Daily de hoje ({todayId})</div>
+            <div className="text-sm text-slate-700">Feedback Diário de hoje ({todayId})</div>
             <div className="text-lg">{todayDaily ? "✅ Preenchido" : "⛔ Em falta"}</div>
           </div>
           <div className="flex gap-2">
@@ -440,7 +440,7 @@ export default function DashboardPage() {
               </Link>
             ) : (
               <Link href="/daily" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">
-                Criar daily
+                Criar Feedback Diário
               </Link>
             )}
           </div>
@@ -451,9 +451,9 @@ export default function DashboardPage() {
       {!needsWeekly && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
-            <div className="text-sm text-slate-700">Weekly desta semana</div>
+            <div className="text-sm text-slate-700">Feedback Semanal</div>
             <div className="text-lg">
-              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "— (disponível ao fim-de-semana)"}
+              {weekly.done ? "✅ Preenchido" : isWeekend ? "⛔ Em falta" : "Disponivel durante o fim-de-semana"}
             </div>
           </div>
           {!weekly.done && isWeekend && (

@@ -448,6 +448,16 @@ export default function CoachClientProfilePage(
           </div>
         </div>
 
+        {/* Selector for sections */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
+          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
+          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
+        </div>
+
         {/* Dailies */}
         <Card className={"shadow-sm " + (visibleSection !== "daily" ? "hidden" : "")}>
           <CardHeader>
@@ -496,15 +506,6 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
-        {/* Selector for sections */}
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Dailies</Button>
-          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Weekly</Button>
-          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
-          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
-          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
-          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
-        </div>
 
         {/* Weekly */}
         <Card className={"shadow-sm " + (visibleSection !== "weekly" ? "hidden" : "")}>

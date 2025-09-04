@@ -307,6 +307,7 @@ export default function DashboardPage() {
             <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/photos")}>Fotos</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
             <DropdownMenuItem onClick={() => {
               const phone = (process.env.NEXT_PUBLIC_WHATSAPP_PHONE as string | undefined) || COACH_WHATSAPP;

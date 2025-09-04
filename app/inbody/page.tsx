@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, db, storage } from "@/lib/firebase";
+import { auth, storage } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref, uploadBytes, listAll, getMetadata } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -29,15 +28,24 @@ export default function InBodyPage() {
   }, [router]);
 
   async function loadFiles(userId: string) {
-    const q = query(collection(db, `users/${userId}/inbody`), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    const list: Array<{ id: string; url: string; createdAt?: Date | null }> = [];
-    snap.forEach((d) => {
-      const data: any = d.data();
-      const createdAt: Date | null = data.createdAt?.toDate?.() ?? null;
-      if (typeof data.url === "string") list.push({ id: d.id, url: data.url, createdAt });
-    });
-    setFiles(list);
+    if (!storage) { setError("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*"); return; }
+    const dirRef = ref(storage, `users/${userId}/inbody`);
+    try {
+      const res = await listAll(dirRef);
+      const items = await Promise.all(
+        res.items.map(async (it) => {
+          const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+          const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
+          return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
+        })
+      );
+      // sort desc by createdAt or name
+      items.sort((a, b) => ((b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)) || (b.id.localeCompare(a.id)));
+      setFiles(items);
+    } catch (e: any) {
+      setError(e?.message || "Falha a listar ficheiros.");
+      setFiles([]);
+    }
   }
 
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
@@ -54,20 +62,11 @@ export default function InBodyPage() {
       if (file.type !== "image/png") { setError("Apenas PNG é permitido."); setSubmitting(false); return; }
       if (file.size > 8 * 1024 * 1024) { setError("Máx. 8MB."); setSubmitting(false); return; }
 
+      if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
       const ts = Date.now();
       const path = `users/${uid}/inbody/${ts}.png`;
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, file, { contentType: "image/png" });
-      const url = await getDownloadURL(storageRef);
-
-      await addDoc(collection(db, `users/${uid}/inbody`), {
-        url,
-        storagePath: path,
-        fileName: file.name,
-        size: file.size,
-        createdAt: serverTimestamp(),
-      });
-
       (e.currentTarget as HTMLFormElement).reset();
       await loadFiles(uid);
     } catch (err: any) {

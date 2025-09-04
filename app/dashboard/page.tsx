@@ -293,33 +293,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="w-10" />
         <h1 className="text-2xl font-semibold text-center flex-1">{displayName}</h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" aria-label="Menu">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Navegação</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/photos")}>Fotos</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              const phone = (process.env.NEXT_PUBLIC_WHATSAPP_PHONE as string | undefined) || COACH_WHATSAPP;
-              const url = `https://wa.me/${phone}?text=${encodeURIComponent("Olá! Tenho uma dúvida:")}`;
-              window.open(url, "_blank", "noopener,noreferrer");
-            }}>
-              Contactar Treinador
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}>
-              Terminar Sessão
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="w-10" />
       </div>
 
       {(needsDaily || needsWeekly) && (

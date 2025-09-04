@@ -505,7 +505,7 @@ export default function CoachClientProfilePage(
         </div>
 
         {/* Weekly */}
-        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "weekly" ? "hidden" : "")}>
+        <Card className={"shadow-sm " + (visibleSection !== "weekly" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Weekly (último)</CardTitle>
           </CardHeader>
@@ -527,7 +527,7 @@ export default function CoachClientProfilePage(
         </Card>
 
         {/* Planos (PDFs) */}
-        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "planos" ? "hidden" : "")}>
+        <Card className={"shadow-sm " + (visibleSection !== "planos" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Planos (PDF)</CardTitle>
           </CardHeader>
@@ -640,7 +640,7 @@ export default function CoachClientProfilePage(
         )}
 
         {/* Fotos (progresso) */}
-        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "fotos" ? "hidden" : "")}>
+        <Card className={"shadow-sm " + (visibleSection !== "fotos" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>Fotos</CardTitle>
           </CardHeader>
@@ -683,7 +683,7 @@ export default function CoachClientProfilePage(
         </Card>
 
         {/* InBody (imagens) */}
-        <Card className={"shadow-sm " + (visibleSection && visibleSection !== "inbody" ? "hidden" : "")}>
+        <Card className={"shadow-sm " + (visibleSection !== "inbody" ? "hidden" : "")}>
           <CardHeader>
             <CardTitle>InBody</CardTitle>
           </CardHeader>

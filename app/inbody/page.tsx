@@ -172,7 +172,7 @@ export default function InBodyPage() {
             </div>
             <div
               ref={containerRef}
-              className="w-full h-full overflow-auto bg-black/5 cursor-"
+              className="w-full h-full overflow-auto bg-black/5 cursor-grab"
               onWheel={(e) => {
                 if (e.ctrlKey) {
                   e.preventDefault();

@@ -63,7 +63,8 @@ export default function InBodyPage() {
     setSubmitting(true);
 
     try {
-      const input = (e.currentTarget.elements.namedItem("inbody") as HTMLInputElement) || null;
+      const form = e.currentTarget as HTMLFormElement;
+      const input = (form.elements.namedItem("inbody") as HTMLInputElement) || null;
       if (!input || !input.files || input.files.length === 0) { setError("Seleciona um ficheiro PNG."); setSubmitting(false); return; }
 
       const file = input.files[0];
@@ -75,7 +76,7 @@ export default function InBodyPage() {
       const path = `users/${uid}/inbody/${ts}.png`;
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, file, { contentType: "image/png" });
-      (e.currentTarget as HTMLFormElement).reset();
+      form.reset();
       await loadFiles(uid);
     } catch (err: any) {
       console.error(err);

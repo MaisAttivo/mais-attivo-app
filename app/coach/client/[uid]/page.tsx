@@ -346,15 +346,19 @@ export default function CoachClientProfilePage(
     setSavingNoteId(checkinId);
     try {
       const noteRef = doc(db, `users/${uid}/checkins/${checkinId}/coachNotes/default`);
-      await setDoc(
-        noteRef,
-        {
+      const snap = await getDoc(noteRef);
+      if (snap.exists()) {
+        await updateDoc(noteRef, {
           privateComment: text,
           updatedAt: serverTimestamp(),
+        });
+      } else {
+        await setDoc(noteRef, {
+          privateComment: text,
           createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+          updatedAt: serverTimestamp(),
+        });
+      }
     } catch (e) {
       console.error("save note error", e);
     } finally {

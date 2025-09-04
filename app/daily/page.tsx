@@ -38,6 +38,9 @@ export default function DailyPage() {
   const [createdAt, setCreatedAt] = useState<Date | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
+  const [hasConsent, setHasConsent] = useState<boolean>(true);
+  const [consentChecked, setConsentChecked] = useState<boolean>(false);
+
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState("");
 
@@ -54,6 +57,12 @@ export default function DailyPage() {
         return;
       }
       setUid(user.uid);
+
+      try {
+        const uSnap = await getDoc(doc(db, "users", user.uid));
+        const data: any = uSnap.exists() ? uSnap.data() : {};
+        setHasConsent(!!data?.healthConsentAt);
+      } catch {}
 
       const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
       const snap = await getDoc(ref);
@@ -107,6 +116,27 @@ export default function DailyPage() {
     setSubmitting(true);
 
     try {
+      // se faltar consentimento, recolhe-o agora
+      if (!hasConsent) {
+        if (!consentChecked) {
+          setError("Confirma o consentimento para tratamento de dados de saúde.");
+          setSubmitting(false);
+          return;
+        }
+        try {
+          await updateDoc(doc(db, "users", uid), {
+            healthConsentAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            active: true,
+          });
+          setHasConsent(true);
+        } catch (e) {
+          setError("Não foi possível registar o consentimento. Tenta novamente.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const ref = doc(db, `users/${uid}/dailyFeedback/${todayId}`);
 
       if (!alreadySubmitted) {
@@ -296,6 +326,13 @@ export default function DailyPage() {
             disabled={alreadySubmitted && !canEdit}
           />
         </div>
+
+        {!hasConsent && (
+          <label className="flex items-start gap-2 text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+            <input type="checkbox" checked={consentChecked} onChange={(e)=>setConsentChecked(e.currentTarget.checked)} />
+            <span>Autorizo o tratamento dos meus dados de saúde para efeitos de acompanhamento e planos. Posso retirar este consentimento a qualquer momento.</span>
+          </label>
+        )}
 
         {error && <p className="text-red-600">{error}</p>}
         {savedMsg && <p className="text-green-700">{savedMsg}</p>}

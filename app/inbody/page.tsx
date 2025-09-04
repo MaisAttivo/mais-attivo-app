@@ -162,11 +162,61 @@ export default function InBodyPage() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
           <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
             <div className="absolute top-3 right-3 flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setPreviewUrl(null)}>Fechar</Button>
+              <Button size="sm" variant="outline" onClick={() => setZoom((z)=>Math.max(0.5, +(z-0.25).toFixed(2)))}>-</Button>
+              <Button size="sm" variant="outline" onClick={() => setZoom((z)=>Math.min(5, +(z+0.25).toFixed(2)))}>+</Button>
+              <Button size="sm" variant="outline" onClick={() => setZoom(1)}>Reset</Button>
+              <Button size="sm" variant="secondary" onClick={() => { setPreviewUrl(null); setZoom(1); }}>
+                Fechar
+              </Button>
               <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
             </div>
-            <div className="w-full h-full overflow-auto bg-black/5 flex items-center justify-center p-4">
-              <img src={previewUrl} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
+            <div
+              ref={containerRef}
+              className="w-full h-full overflow-auto bg-black/5 cursor-"
+              onWheel={(e) => {
+                if (e.ctrlKey) {
+                  e.preventDefault();
+                  setZoom((z)=>{
+                    const nz = e.deltaY > 0 ? z - 0.1 : z + 0.1;
+                    return Math.min(5, Math.max(0.5, +nz.toFixed(2)));
+                  });
+                }
+              }}
+              onMouseDown={(e) => {
+                if (!containerRef.current) return;
+                setPanning(true);
+                setPanStart({ x: e.clientX, y: e.clientY, sl: containerRef.current.scrollLeft, st: containerRef.current.scrollTop });
+                (e.currentTarget as HTMLDivElement).style.cursor = "grabbing";
+              }}
+              onMouseMove={(e) => {
+                if (!panning || !panStart || !containerRef.current) return;
+                const dx = e.clientX - panStart.x;
+                const dy = e.clientY - panStart.y;
+                containerRef.current.scrollLeft = panStart.sl - dx;
+                containerRef.current.scrollTop = panStart.st - dy;
+              }}
+              onMouseUp={(e) => {
+                setPanning(false);
+                (e.currentTarget as HTMLDivElement).style.cursor = "auto";
+              }}
+              onMouseLeave={(e) => {
+                setPanning(false);
+                (e.currentTarget as HTMLDivElement).style.cursor = "auto";
+              }}
+            >
+              <div className="min-w-full min-h-full flex items-center justify-center p-4">
+                <img
+                  src={previewUrl}
+                  alt="InBody"
+                  onLoad={(ev) => {
+                    const img = ev.currentTarget;
+                    setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
+                  }}
+                  style={{ width: imgSize ? Math.max(100, Math.round(imgSize.w * zoom)) : undefined }}
+                  className="rounded-lg shadow select-none"
+                  draggable={false}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -61,7 +61,8 @@ export default function DailyPage() {
       try {
         const uSnap = await getDoc(doc(db, "users", user.uid));
         const data: any = uSnap.exists() ? uSnap.data() : {};
-        setHasConsent(!!data?.healthConsentAt);
+        const consent = !!(data?.healthConsentAt || data?.healthDataConsentAt || (data?.healthDataExplicitConsent === true));
+        setHasConsent(consent);
       } catch {}
 
       const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
@@ -126,6 +127,8 @@ export default function DailyPage() {
         try {
           await updateDoc(doc(db, "users", uid), {
             healthConsentAt: serverTimestamp(),
+            healthDataConsentAt: serverTimestamp(),
+            healthDataExplicitConsent: true,
             updatedAt: serverTimestamp(),
             active: true,
           });

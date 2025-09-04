@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, limit, orderBy, serverTimestamp, setDoc } from "firebase/firestore";
@@ -48,6 +49,14 @@ export default function PlansPage() {
   const [uploadingDiet, setUploadingDiet] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
+  const search = useSearchParams();
+
+  // Prefill client UID in coach mode via query (?clientId or ?uid)
+  useEffect(() => {
+    if (!isCoach) return;
+    const qpUid = (search?.get("clientId") || search?.get("uid") || "").trim();
+    if (qpUid && !targetUid) setTargetUid(qpUid);
+  }, [isCoach, search, targetUid, setTargetUid]);
 
   useEffect(() => {
     if (!effectiveUid) return;
@@ -55,24 +64,40 @@ export default function PlansPage() {
     (async () => {
       setPlansLoading(true);
       try {
-        const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
-        let data: any = snap.data() || {};
-        // Fallback: procurar docs estruturados em users/{uid}/plans
+        let data: any = {};
+        // Try Firestore doc users/{uid}/plans/latest
+        try {
+          const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
+          data = snap.data() || {};
+        } catch {}
+
+        // Fallback: subcollection docs with type/url
         if ((!data.trainingUrl || !data.dietUrl)) {
           try {
-            let qs = await getDocs(
-              // tentar por createdAt, senão por __name__
-              collection(db, "users", effectiveUid, "plans")
-            );
-            // procurar por type/url
+            const qs = await getDocs(collection(db, "users", effectiveUid, "plans"));
             const all: any[] = [];
             qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
-            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
-            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
+            const treino = all.find(d => (d.type === "treino" || d.type === "training") && d.url);
+            const alim = all.find(d => (d.type === "alimentacao" || d.type === "diet") && d.url);
             data = { ...data, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
           } catch {}
         }
-        if (alive) setPlan(data || { trainingUrl: null, dietUrl: null });
+
+        // Fallback: direct Storage URLs at plans/{uid}/{kind}.pdf
+        if (!data.trainingUrl) {
+          try {
+            const r = ref(storage, `plans/${effectiveUid}/training.pdf`);
+            data.trainingUrl = await getDownloadURL(r);
+          } catch {}
+        }
+        if (!data.dietUrl) {
+          try {
+            const r = ref(storage, `plans/${effectiveUid}/diet.pdf`);
+            data.dietUrl = await getDownloadURL(r);
+          } catch {}
+        }
+
+        if (alive) setPlan({ trainingUrl: data.trainingUrl || null, dietUrl: data.dietUrl || null });
       } finally {
         if (alive) setPlansLoading(false);
       }

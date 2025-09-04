@@ -141,19 +141,23 @@ export default function PhotosPage() {
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
         <div className="text-sm text-slate-600">Envia até 4 fotos (1x por semana). Escolhe a principal.</div>
         <div className="flex flex-col items-start gap-2">
-          <Input ref={fileRef as any} type="file" accept="image/png,image/jpeg" multiple onChange={(e)=>{
+          <Input ref={fileRef as any} type="file" accept="image/png,image/jpeg" multiple className="hidden" aria-hidden="true" onChange={(e)=>{
             const files = Array.from(e.currentTarget.files || []).slice(0,4);
             setSelectedFiles(files);
             setMainIndex(0);
           }} />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-            {selectedFiles.map((f, i)=> (
-              <label key={i} className="border rounded-xl p-2 flex flex-col items-center gap-2 cursor-pointer">
-                <input type="radio" name="main" className="self-start" checked={mainIndex===i} onChange={()=>setMainIndex(i)} />
-                <div className="text-xs truncate max-w-[160px]">{f.name}</div>
-              </label>
-            ))}
-          </div>
+          <Button size="sm" type="button" onClick={()=>fileRef.current?.click()}>Escolher ficheiros</Button>
+          <div className="text-xs text-slate-600 leading-relaxed max-w-full truncate">{selectedFiles.length ? selectedFiles.map(f=>f.name).join(", ") : "Nenhum ficheiro selecionado"}</div>
+          {selectedFiles.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+              {selectedFiles.map((f, i)=> (
+                <label key={i} className="border rounded-xl p-2 flex flex-col items-center gap-2 cursor-pointer">
+                  <input type="radio" name="main" className="self-start" checked={mainIndex===i} onChange={()=>setMainIndex(i)} />
+                  <div className="text-xs truncate max-w-[160px]">{f.name}</div>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
         {error && <div className="text-sm text-rose-600">{error}</div>}
         <div className="flex justify-end">
@@ -161,12 +165,14 @@ export default function PhotosPage() {
         </div>
       </form>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700 mb-2">Início</div>
           {firstSet ? (
             <button className="w-full text-left" onClick={()=>setOpenSet({ id: firstSet.id, urls: firstSet.list.map(x=>x.url) })}>
-              <img src={firstSet.main.url} alt="Inicio" className="w-full rounded-xl object-cover" />
+              <div className="relative w-full h-56 bg-slate-100 rounded-xl overflow-hidden">
+                <img src={firstSet.main.url} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+              </div>
               <div className="text-xs text-slate-500 mt-1">{firstSet.createdAt?.toLocaleString() ?? "—"}</div>
             </button>
           ) : (
@@ -177,7 +183,9 @@ export default function PhotosPage() {
           <div className="text-sm text-slate-700 mb-2">Atual</div>
           {lastSet ? (
             <button className="w-full text-left" onClick={()=>setOpenSet({ id: lastSet.id, urls: lastSet.list.map(x=>x.url) })}>
-              <img src={lastSet.main.url} alt="Atual" className="w-full rounded-xl object-cover" />
+              <div className="relative w-full h-56 bg-slate-100 rounded-xl overflow-hidden">
+                <img src={lastSet.main.url} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+              </div>
               <div className="text-xs text-slate-500 mt-1">{lastSet.createdAt?.toLocaleString() ?? "—"}</div>
             </button>
           ) : (

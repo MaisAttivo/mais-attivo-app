@@ -140,6 +140,7 @@ export default function CoachClientProfilePage(
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
   const [imgConsent, setImgConsent] = useState<boolean>(false);
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
+  const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
 
@@ -155,6 +156,7 @@ export default function CoachClientProfilePage(
       setPlEnabled(!!u.powerlifting);
       setImgConsent(!!u.imageUseConsent);
       setImgConsentAt(toDate(u.imageUseConsentAt ?? null));
+      setCoachOverride(!!u.imageUploadAllowedByCoach);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -461,6 +463,40 @@ export default function CoachClientProfilePage(
                 }}
               />
               <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
+            </label>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imgConsent}
+                onChange={async (e) => {
+                  const val = e.currentTarget.checked;
+                  setImgConsent(val);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { imageUseConsent: val, imageUseConsentAt: serverTimestamp(), updatedAt: serverTimestamp() });
+                  } catch (err) {
+                    setImgConsent(!val);
+                  }
+                }}
+              />
+              <span>Consent. fotos</span>
+            </label>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={coachOverride}
+                onChange={async (e) => {
+                  const val = e.currentTarget.checked;
+                  setCoachOverride(val);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { imageUploadAllowedByCoach: val, updatedAt: serverTimestamp() });
+                  } catch (err) {
+                    setCoachOverride(!val);
+                  }
+                }}
+              />
+              <span>Permitir upload de fotos</span>
             </label>
 
             {editarUltimoHref && (

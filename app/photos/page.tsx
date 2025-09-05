@@ -51,6 +51,15 @@ export default function PhotosPage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) { router.replace("/login"); return; }
       setUid(u.uid);
+      try {
+        if (db) {
+          const us = await getDoc(doc(db, "users", u.uid));
+          const d: any = us.data() || {};
+          setImgConsent(!!d.imageUseConsent);
+          const at: any = d.imageUseConsentAt;
+          setImgConsentAt(at?.toDate ? at.toDate() : null);
+        }
+      } catch {}
       await load(u.uid);
       setLoading(false);
     });

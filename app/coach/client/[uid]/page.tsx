@@ -484,6 +484,24 @@ export default function CoachClientProfilePage(
               <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
             </label>
 
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={plEnabled}
+                onChange={async (e) => {
+                  const val = e.currentTarget.checked;
+                  setPlEnabled(val);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { powerlifting: val, updatedAt: serverTimestamp() });
+                  } catch (err) {
+                    setPlEnabled(!val);
+                    console.error("toggle powerlifting error", err);
+                  }
+                }}
+              />
+              <span>Powerlifting</span>
+            </label>
+
             {editarUltimoHref && (
               <Link href={editarUltimoHref}>
                 <Button variant="secondary">Editar último check-in</Button>

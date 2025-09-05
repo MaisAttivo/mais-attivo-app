@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // ===== Helpers de datas (UTC) =====
 function isoWeekYear(date: Date) {
@@ -43,7 +43,6 @@ type WeeklyData = {
   stressLevels: string;
   dietChallenges: string;
   workoutChallenges: string;
-  pesoAtualKg?: number | "";
 };
 
 export default function WeeklyPage() {
@@ -60,7 +59,6 @@ export default function WeeklyPage() {
     stressLevels: "",
     dietChallenges: "",
     workoutChallenges: "",
-    pesoAtualKg: "",
   });
   const [loadingDoc, setLoadingDoc] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -94,7 +92,6 @@ export default function WeeklyPage() {
             stressLevels: d.stressLevels || "",
             dietChallenges: d.dietChallenges || "",
             workoutChallenges: d.workoutChallenges || "",
-            pesoAtualKg: typeof d.pesoAtualKg === "number" ? d.pesoAtualKg : "",
           });
         } else {
           setForm((f) => ({ ...f, weekEndDate: new Date() }));
@@ -127,21 +124,10 @@ export default function WeeklyPage() {
           stressLevels: form.stressLevels.trim(),
           dietChallenges: form.dietChallenges.trim(),
           workoutChallenges: form.workoutChallenges.trim(),
-          pesoAtualKg: form.pesoAtualKg === "" ? null : Number(form.pesoAtualKg),
           createdAt: serverTimestamp(),
         },
         { merge: true }
       );
-
-      // Atualiza metaAgua a partir do peso (5%), se fornecido
-      const nWeight = Number(form.pesoAtualKg);
-      if (Number.isFinite(nWeight) && nWeight > 0) {
-        const metaAgua = Number((nWeight * 0.05).toFixed(2));
-        await updateDoc(doc(db, "users", uid), {
-          metaAgua,
-          updatedAt: serverTimestamp(),
-        });
-      }
 
       setToast({ type: "success", msg: "Weekly guardado." });
       router.replace("/dashboard");
@@ -255,24 +241,6 @@ export default function WeeklyPage() {
                 disabled={!canFillThisWeekend}
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Peso atual (kg) — opcional</label>
-            <input
-              type="number"
-              step="0.1"
-              placeholder="Ex: 74.5"
-              value={form.pesoAtualKg as any}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, pesoAtualKg: (e.target as HTMLInputElement).valueAsNumber as any }))
-              }
-              className="border rounded-xl px-3 py-2 w-full"
-              disabled={!canFillThisWeekend}
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Se preencheres, a meta de água (em <code>users</code>) é atualizada para 5% do teu peso.
-            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">

@@ -542,7 +542,7 @@ export default function CoachClientProfilePage(
             <h1 className="text-2xl font-semibold truncate">{name}</h1>
             <div className="text-sm text-muted-foreground truncate">{email}</div>
             <div className="flex gap-2 mt-2 text-sm">
-              <Badge variant="outline">Último CI: {lastCheckinYMD ?? "—"}</Badge>
+              <Badge variant="outline">��ltimo CI: {lastCheckinYMD ?? "—"}</Badge>
               <Badge variant={nextDue ? "destructive" : "outline"}>
                 {nextDue && <AlertTriangle className="mr-1 h-3.5 w-3.5" />}
                 Próximo CI: {nextCheckinYMD ?? "—"}
@@ -949,6 +949,7 @@ export default function CoachClientProfilePage(
               </div>
               {preview.kind === "pdf" ? (
                 <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                  <iframe className="w-full h-full" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(preview.url)} title="Pré-visualização PDF (alternativa)"></iframe>
                   <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={preview.url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
                 </object>
               ) : (

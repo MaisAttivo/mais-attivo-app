@@ -2,8 +2,9 @@
 
 "use client";
 
-import { use, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -98,11 +99,9 @@ function epley1RM(weight: number, reps: number) {
   return +(weight * (1 + r / 30)).toFixed(1);
 }
 
-export default function CoachClientProfilePage(
-  props: { params: Promise<{ uid: string }> }
-) {
-  // Next 15: params é uma Promise → usar React.use()
-  const { uid } = use(props.params);
+export default function CoachClientProfilePage() {
+  const params = useParams<{ uid: string }>();
+  const uid = params?.uid as string;
 
   const [loading, setLoading] = useState(true);
 
@@ -542,7 +541,7 @@ export default function CoachClientProfilePage(
             <h1 className="text-2xl font-semibold truncate">{name}</h1>
             <div className="text-sm text-muted-foreground truncate">{email}</div>
             <div className="flex gap-2 mt-2 text-sm">
-              <Badge variant="outline">��ltimo CI: {lastCheckinYMD ?? "—"}</Badge>
+              <Badge variant="outline">Último CI: {lastCheckinYMD ?? "—"}</Badge>
               <Badge variant={nextDue ? "destructive" : "outline"}>
                 {nextDue && <AlertTriangle className="mr-1 h-3.5 w-3.5" />}
                 Próximo CI: {nextCheckinYMD ?? "—"}
@@ -1169,7 +1168,7 @@ function K({
   const arrow = (() => {
     if (delta == null) return null;
     if (delta > 0) return "↑";
-    if (delta < 0) return "��";
+    if (delta < 0) return "↓";
     return "→";
   })();
 

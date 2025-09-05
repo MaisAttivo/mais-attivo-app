@@ -35,6 +35,26 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
     return { xMin: minX - xPad, xMax: maxX + xPad, yMin: yPad ? minY - yPad : minY - 1, yMax: yPad ? maxY + yPad : maxY + 1 };
   }, [flat, hasData]);
 
+  const yTicks = useMemo(() => {
+    const count = 4;
+    const span = yMax - yMin;
+    if (!isFinite(span) || span <= 0) return [yMin, yMax];
+    const step = span / count;
+    const arr: number[] = [];
+    for (let i = 0; i <= count; i++) arr.push(yMin + step * i);
+    return arr;
+  }, [yMin, yMax]);
+
+  const xTicks = useMemo(() => {
+    const count = 3;
+    const span = xMax - xMin;
+    if (!isFinite(span) || span <= 0) return [xMin, xMax];
+    const step = span / count;
+    const arr: number[] = [];
+    for (let i = 0; i <= count; i++) arr.push(xMin + step * i);
+    return arr;
+  }, [xMin, xMax]);
+
   function xScale(x: number) {
     if (xMax === xMin) return 0;
     return ((x - xMin) / (xMax - xMin)) * (width - 24) + 12; // 12px padding
@@ -66,6 +86,28 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
         <div className="text-sm text-slate-500">Sem dados.</div>
       ) : (
         <svg width={width} height={height} role="img" aria-label="gráfico de evolução">
+          {/* Eixos */}
+          <line x1={12} y1={height - 12} x2={width - 12} y2={height - 12} stroke="#e5e7eb" strokeWidth={1} />
+          <line x1={12} y1={12} x2={12} y2={height - 12} stroke="#e5e7eb" strokeWidth={1} />
+          {/* Ticks Y */}
+          {yTicks.map((yv, i) => (
+            <g key={`y-${i}`}>
+              <line x1={10} x2={12} y1={yScale(yv)} y2={yScale(yv)} stroke="#cbd5e1" />
+              <text x={8} y={yScale(yv) + 3} textAnchor="end" fontSize={10} fill="#64748b">{Math.round(yv * 100) / 100}</text>
+            </g>
+          ))}
+          {/* Ticks X */}
+          {xTicks.map((xv, i) => {
+            const dt = new Date(xv);
+            const label = isFinite(dt.getTime()) ? new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "2-digit" }).format(dt) : String(Math.round(xv));
+            return (
+              <g key={`x-${i}`}>
+                <line y1={height - 12} y2={height - 10} x1={xScale(xv)} x2={xScale(xv)} stroke="#cbd5e1" />
+                <text y={height - 2} x={xScale(xv)} textAnchor="middle" fontSize={10} fill="#64748b">{label}</text>
+              </g>
+            );
+          })}
+
           {series.map((s, idx) => (
             <g key={idx}>
               <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
@@ -98,7 +140,7 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
           {tip.label}
         </div>
       )}
-      {series.length > 1 && (
+      {series.length >= 1 && (
         <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-700">
           {series.map((s, i) => (
             <div key={i} className="inline-flex items-center gap-1">

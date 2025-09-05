@@ -140,6 +140,11 @@ export default function CoachClientProfilePage(
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
 
 
+  // Powerlifting data
+  type PlExercise = "agachamento" | "supino" | "levantamento";
+  type PlEntry = { id: string; exercise: PlExercise; weight: number; reps: number; createdAt: Date | null };
+  const [plByEx, setPlByEx] = useState<Record<PlExercise, PlEntry[]>>({ agachamento: [], supino: [], levantamento: [] });
+
   // Powerlifting flag
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
 
@@ -708,7 +713,7 @@ export default function CoachClientProfilePage(
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
-                    <div className="text-sm text-slate-700 mb-2">Início</div>
+                    <div className="text-sm text-slate-700 mb-2">In��cio</div>
                     <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
                       <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
                     </div>

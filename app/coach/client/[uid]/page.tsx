@@ -18,6 +18,7 @@ import {
   setDoc,
   updateDoc,
   Timestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
@@ -479,6 +480,39 @@ export default function CoachClientProfilePage() {
     })();
   }, [uid]);
 
+  // Powerlifting: realtime subscription to keep table always updated
+  useEffect(() => {
+    if (!uid) return;
+    try {
+      const base = collection(db, "users", uid, "powerlifting");
+      const unsub = onSnapshot(base, (qs) => {
+        const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
+        qs.docs.forEach((d) => {
+          const obj: any = d.data();
+          const ex = (obj.exercise as PLExercise) || null;
+          if (!ex || !(ex === "agachamento" || ex === "supino" || ex === "levantamento")) return;
+          const rec: PR = {
+            id: d.id,
+            exercise: ex,
+            weight: Number(obj.weight) || 0,
+            reps: Math.max(1, Math.floor(Number(obj.reps) || 1)),
+            createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+          };
+          result[ex].push(rec);
+        });
+        (Object.keys(result) as PLExercise[]).forEach((e) => {
+          result[e].sort(
+            (a, b) => epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+          );
+        });
+        setPlPrs(result);
+      });
+      return () => unsub();
+    } catch {
+      // ignore
+    }
+  }, [uid]);
+
   async function saveCoachNote(checkinId: string) {
     const text = (noteById[checkinId] ?? "").trim();
     setSavingNoteId(checkinId);
@@ -542,7 +576,7 @@ export default function CoachClientProfilePage() {
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold truncate">{name}</h1>
             <div className="text-sm text-muted-foreground truncate">{email}</div>
-            <div className="flex gap-2 mt-2 text-sm">
+            <div className="flex flex-wrap gap-2 mt-2 text-sm">
               <Badge variant="outline">Último CI: {lastCheckinYMD ?? "—"}</Badge>
               <Badge variant={nextDue ? "destructive" : "outline"}>
                 {nextDue && <AlertTriangle className="mr-1 h-3.5 w-3.5" />}

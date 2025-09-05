@@ -216,6 +216,43 @@ export default function PhotosPage() {
         <div className="w-10" />
       </div>
 
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <input
+            id="image-consent"
+            type="checkbox"
+            className="mt-1"
+            checked={imgConsent}
+            onChange={async (e) => {
+              const next = e.currentTarget.checked;
+              setSavingConsent(true);
+              try {
+                if (db && uid) {
+                  await updateDoc(doc(db, "users", uid), {
+                    imageUseConsent: next,
+                    imageUseSocialCensored: next,
+                    imageUseConsentAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                  });
+                  setImgConsent(next);
+                  setImgConsentAt(new Date());
+                }
+              } catch (err: any) {
+                setError(err?.message || "Falha a atualizar consentimento.");
+              } finally {
+                setSavingConsent(false);
+              }
+            }}
+          />
+          <label htmlFor="image-consent" className="text-sm text-slate-700 leading-relaxed">
+            Autorizo a utilização das minhas imagens para acompanhamento e marketing, desde que com o rosto tapado.
+            <div className="text-xs text-slate-500 mt-1">{imgConsentAt ? `Última alteração: ${imgConsentAt.toLocaleString()}` : ""}</div>
+          </label>
+          <div className="flex-1" />
+          {savingConsent && <div className="text-xs text-slate-500">A guardar…</div>}
+        </div>
+      </div>
+
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
         <div className="text-sm text-slate-600">Envia até 4 fotos (1x por semana). Escolhe a principal.</div>
         <div className="flex flex-col items-start gap-2">

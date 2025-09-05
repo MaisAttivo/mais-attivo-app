@@ -78,7 +78,8 @@ service cloud.firestore {
           inSetOrMissing('objetivoPeso', ['perda','ganho']) && stringOrMissing('name') &&
           stringOrMissing('email') && boolOrMissing('onboardingDone') &&
           numericOrMissing('workoutFrequency') && numericNullOrMissing('metaAgua') &&
-          numericNullOrMissing('startWeight') && timestampOrMissing('updatedAt');
+          numericNullOrMissing('startWeight') && timestampOrMissing('updatedAt') &&
+          boolOrMissing('imageUseConsent') && boolOrMissing('imageUseSocialCensored') && timestampOrMissing('imageUseConsentAt');
       }
       function roleUnchangedByUser() { return !('role' in request.resource.data) || (resource.data.role == request.resource.data.role); }
       function activeUnchangedByUser() { return !('active' in request.resource.data) || (resource.data.active == request.resource.data.active); }
@@ -94,6 +95,12 @@ service cloud.firestore {
             (!('healthDataExplicitConsent' in resource.data) && ('healthDataExplicitConsent' in request.resource.data) && (request.resource.data.healthDataExplicitConsent == true))
           ) &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['healthConsentAt','healthDataConsentAt','healthDataExplicitConsent','updatedAt','active'])
+        )
+        ||
+        (
+          // Permitir cliente (ativo) gerir consentimento de imagens, sem depender de health consent
+          isUser(userId) && isActive(userId) &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['imageUseConsent','imageUseSocialCensored','imageUseConsentAt','updatedAt'])
         )
         ||
         (

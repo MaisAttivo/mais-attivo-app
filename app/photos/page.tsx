@@ -37,6 +37,7 @@ export default function PhotosPage() {
   const [imgConsent, setImgConsent] = useState<boolean>(false);
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
   const [savingConsent, setSavingConsent] = useState(false);
+  const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);

@@ -9,7 +9,7 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, serverTimestamp, setD
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, ArrowLeft } from "lucide-react";
 
 function PdfCard({ title, url, onPreview }: { title: string; url?: string | null; onPreview?: (url: string)=>void }) {
   return (
@@ -149,9 +149,9 @@ export default function PlansPage() {
         <div>
           <div className="flex items-center justify-between gap-3 mb-4">
             <h1 className="text-2xl font-semibold">Planos</h1>
-            <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-              <span>⬅️</span> Voltar à dashboard
-            </Link>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link>
+            </Button>
           </div>
 
           {isCoach && (

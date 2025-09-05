@@ -7,6 +7,7 @@ import { auth, storage, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref, listAll, getMetadata, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
@@ -214,7 +215,7 @@ export default function PhotosPage() {
   return (
     <main className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"><span>⬅️</span> Voltar à dashboard</Link>
+        <Button asChild variant="ghost" size="sm"><Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link></Button>
         <h1 className="text-2xl font-semibold">Fotos</h1>
         <div className="w-10" />
       </div>

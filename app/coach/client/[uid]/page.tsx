@@ -12,6 +12,7 @@ import {
   limit,
   orderBy,
   query,
+  where,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -81,6 +82,21 @@ type Weekly = {
   workoutChallenges?: string;
 };
 
+type PLExercise = "agachamento" | "supino" | "levantamento";
+
+type PR = {
+  id: string;
+  exercise: PLExercise;
+  weight: number;
+  reps: number;
+  createdAt?: Date | null;
+};
+
+function epley1RM(weight: number, reps: number) {
+  const r = Math.max(1, Math.min(12, Math.floor(reps)));
+  return +(weight * (1 + r / 30)).toFixed(1);
+}
+
 export default function CoachClientProfilePage(
   props: { params: Promise<{ uid: string }> }
 ) {
@@ -143,6 +159,35 @@ export default function CoachClientProfilePage(
   const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
+
+  const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
+
+  async function loadPlAll(userId: string) {
+    try {
+      const base = collection(db, "users", userId, "powerlifting");
+      const ex: PLExercise[] = ["agachamento", "supino", "levantamento"];
+      const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
+      for (const e of ex) {
+        const qs = await getDocs(query(base, where("exercise", "==", e)));
+        result[e] = qs.docs
+          .map((d) => {
+            const obj: any = d.data();
+            return {
+              id: d.id,
+              exercise: obj.exercise,
+              weight: obj.weight,
+              reps: obj.reps,
+              createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+            } as PR;
+          })
+          .sort(
+            (a, b) =>
+              epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+          );
+      }
+      setPlPrs(result);
+    } catch {}
+  }
 
   useEffect(() => {
     (async () => {
@@ -360,6 +405,8 @@ export default function CoachClientProfilePage(
       } finally {
         setInbodyLoading(false);
       }
+
+      await loadPlAll(uid);
 
       setLoading(false);
     })();
@@ -602,7 +649,74 @@ export default function CoachClientProfilePage(
           <CardHeader>
             <CardTitle>Powerlifting</CardTitle>
           </CardHeader>
-          <CardContent></CardContent>
+          <CardContent>
+            {!plEnabled ? (
+              <div className="text-sm text-muted-foreground">Powerlifting desativado para este cliente.</div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium mb-2">3 Exercícios em Destaque</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
+                      const best = plPrs[e][0] || null;
+                      const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
+                      return (
+                        <div key={e} className="rounded-2xl border p-4 bg-background">
+                          <div className="text-sm font-medium mb-1">{label}</div>
+                          {best ? (
+                            <div className="text-sm text-slate-700">
+                              Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
+                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best.weight, best.reps)} kg</div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Sem registos</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
+                    const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
+                    const list = [...plPrs[e]].sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+                    return (
+                      <div key={e} className="rounded-2xl border p-4 bg-background">
+                        <div className="text-sm font-medium mb-2">{label} — Histórico</div>
+                        {list.length === 0 ? (
+                          <div className="text-sm text-muted-foreground">Sem registos.</div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="text-left text-muted-foreground">
+                                <tr>
+                                  <th className="py-2 pr-4">Data</th>
+                                  <th className="py-2 pr-4">Peso</th>
+                                  <th className="py-2 pr-4">Reps</th>
+                                  <th className="py-2 pr-4">1RM Estimada (Epley)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {list.map((p) => (
+                                  <tr key={p.id} className="border-t">
+                                    <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
+                                    <td className="py-2 pr-4">{p.weight} kg</td>
+                                    <td className="py-2 pr-4">{p.reps}</td>
+                                    <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Planos (PDFs) */}
@@ -800,7 +914,7 @@ export default function CoachClientProfilePage(
                 className="inline-flex"
                 title={
                   "Legenda das setas:\n" +
-                  "• Peso: seta preta (↑ subiu, ↓ desceu).\n" +
+                  "�� Peso: seta preta (↑ subiu, ↓ desceu).\n" +
                   "• Massa muscular: ↑ verde (bom), ↓ vermelho.\n" +
                   "• Massa gorda: ↑ vermelho, ↓ verde (bom)."
                 }

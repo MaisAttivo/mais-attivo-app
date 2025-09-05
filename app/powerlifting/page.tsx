@@ -16,6 +16,7 @@ import {
   where,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 type Exercise = "agachamento" | "supino" | "levantamento";
 
@@ -124,9 +125,9 @@ export default function PowerliftingPage() {
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <div>
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-          <span>⬅️</span> Voltar à dashboard
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link>
+        </Button>
       </div>
 
       <h1 className="text-2xl font-semibold text-center">Powerlifting</h1>
@@ -239,7 +240,7 @@ function LiftCard(props: {
                 <th className="py-2 pr-4">Data</th>
                 <th className="py-2 pr-4">Peso</th>
                 <th className="py-2 pr-4">Reps</th>
-                <th className="py-2 pr-4">1RM (Epley)</th>
+                <th className="py-2 pr-4">1RM Estimada (Epley)</th>
               </tr>
             </thead>
             <tbody>

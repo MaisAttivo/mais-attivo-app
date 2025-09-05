@@ -8,6 +8,8 @@ import { lisbonYMD } from "@/lib/utils";
 type Props = {
   uid: string;
   mode: "workout" | "diet" | "cardio";
+  fixedAnchor?: Date;
+  showNav?: boolean;
 };
 
 type DayInfo = {
@@ -50,15 +52,17 @@ function getMonthMatrix(monthAnchor: Date) {
   return cells;
 }
 
-export default function EmojiCalendar({ uid, mode }: Props) {
+export default function EmojiCalendar({ uid, mode, fixedAnchor, showNav = true }: Props) {
   const [anchor, setAnchor] = useState<Date>(() => getMonthStart(new Date()));
   const [loading, setLoading] = useState(false);
   const [days, setDays] = useState<Record<string, DayInfo>>({});
 
+  const effectiveAnchor = useMemo(() => (fixedAnchor ? getMonthStart(fixedAnchor) : anchor), [fixedAnchor, anchor]);
+
   const title = useMemo(() => {
     const fmt = new Intl.DateTimeFormat("pt-PT", { month: "long", year: "numeric", timeZone: "Europe/Lisbon" });
-    return fmt.format(anchor);
-  }, [anchor]);
+    return fmt.format(effectiveAnchor);
+  }, [effectiveAnchor]);
 
   const todayYMD = useMemo(() => toLisbonYMD(new Date()), []);
 
@@ -67,8 +71,8 @@ export default function EmojiCalendar({ uid, mode }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const monthStart = getMonthStart(anchor);
-        const monthEnd = getMonthEnd(anchor);
+        const monthStart = getMonthStart(effectiveAnchor);
+        const monthEnd = getMonthEnd(effectiveAnchor);
         const q = query(
           collection(db, `users/${uid}/dailyFeedback`),
           where("date", ">=", monthStart),
@@ -92,9 +96,9 @@ export default function EmojiCalendar({ uid, mode }: Props) {
       }
     })();
     return () => { alive = false; };
-  }, [uid, anchor, mode]);
+  }, [uid, effectiveAnchor, mode]);
 
-  const cells = useMemo(() => getMonthMatrix(anchor), [anchor]);
+  const cells = useMemo(() => getMonthMatrix(effectiveAnchor), [effectiveAnchor]);
 
   const emoji = mode === "workout" ? "💪" : mode === "diet" ? "🔥" : "🏃‍♂️";
   const label = mode === "workout" ? "Treinos" : mode === "diet" ? "Alimentação" : "Cardio";
@@ -103,29 +107,31 @@ export default function EmojiCalendar({ uid, mode }: Props) {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <div className="font-semibold text-base">{title}</div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setAnchor((d) => addMonths(d, -1))}
-            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
-            aria-label="Mês anterior"
-            title="Mês anterior"
-          >←</button>
-          <button
-            type="button"
-            onClick={() => setAnchor(getMonthStart(new Date()))}
-            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
-            aria-label="Hoje"
-            title="Hoje"
-          >Hoje</button>
-          <button
-            type="button"
-            onClick={() => setAnchor((d) => addMonths(d, 1))}
-            className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
-            aria-label="Próximo mês"
-            title="Próximo mês"
-          >→</button>
-        </div>
+        {showNav && !fixedAnchor && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setAnchor((d) => addMonths(d, -1))}
+              className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
+              aria-label="Mês anterior"
+              title="Mês anterior"
+            >←</button>
+            <button
+              type="button"
+              onClick={() => setAnchor(getMonthStart(new Date()))}
+              className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
+              aria-label="Hoje"
+              title="Hoje"
+            >Hoje</button>
+            <button
+              type="button"
+              onClick={() => setAnchor((d) => addMonths(d, 1))}
+              className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50"
+              aria-label="Próximo mês"
+              title="Próximo mês"
+            >→</button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] text-slate-600">

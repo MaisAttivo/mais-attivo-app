@@ -14,4 +14,8 @@
       
     }
   ]
+  ,
+  "storage": {
+    "rules": "storage.rules"
+  }
 }

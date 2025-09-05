@@ -131,7 +131,8 @@ function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number
   return { diasDesdeUltimoDF, diasSemTreinar, diasSemAlimentacaoOK, diasSemAguaOK, last };
 }
 
-const filterPredicates: Record<Exclude<FilterKey, "semFiltro">, (c: Cliente) => boolean> = {
+type PredicateKey = "inativos4d" | "semTreino5d" | "semAlimentacao5d" | "agua3d" | "treino2m";
+const filterPredicates: Record<PredicateKey, (c: Cliente) => boolean> = {
   inativos4d: (c) => (c.diasDesdeUltimoDF ?? Infinity) >= 4,
   semTreino5d: (c) => (c.diasSemTreinar ?? Infinity) >= 5,
   semAlimentacao5d: (c) => (c.diasSemAlimentacaoOK ?? Infinity) >= 5,

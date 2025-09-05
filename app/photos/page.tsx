@@ -160,6 +160,7 @@ export default function PhotosPage() {
     if (!uid || !storage) return;
     if (selectedFiles.length === 0) { setError("Seleciona até 4 imagens."); return; }
     if (selectedFiles.length > 4) { setError("Máx. 4 imagens por envio."); return; }
+    if (!imgConsent && !coachOverride) { setError("Para enviar fotos, aceita o consentimento de imagens ou pede ao coach autorização."); return; }
     if (alreadyThisWeek) { setError("Já enviaste fotos esta semana. Tenta na próxima semana."); return; }
 
     setError(null);

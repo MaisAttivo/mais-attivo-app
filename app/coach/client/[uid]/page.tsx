@@ -138,6 +138,8 @@ export default function CoachClientProfilePage(
 
   // Powerlifting flag
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
+  const [imgConsent, setImgConsent] = useState<boolean>(false);
+  const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
 
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
 
@@ -151,6 +153,8 @@ export default function CoachClientProfilePage(
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
       setPlEnabled(!!u.powerlifting);
+      setImgConsent(!!u.imageUseConsent);
+      setImgConsentAt(toDate(u.imageUseConsentAt ?? null));
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -432,6 +436,9 @@ export default function CoachClientProfilePage(
               {workoutFrequency != null && (
                 <Badge variant="secondary">Treinos/semana: {workoutFrequency}</Badge>
               )}
+              <Badge variant={imgConsent ? "secondary" : "destructive"}>
+                Consent. fotos: {imgConsent ? "Sim" : "Não"}{imgConsentAt ? ` • ${ymd(imgConsentAt)}` : ""}
+              </Badge>
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap justify-end">

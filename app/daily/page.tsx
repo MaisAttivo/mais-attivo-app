@@ -311,7 +311,7 @@ export default function DailyPage() {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Cumpriu Alimentação sem lixo?</label>
+          <label className="block font-medium mb-1">Cumpriu alimentação sem falhas?</label>
           <div className="flex items-center gap-3">
             <input
               id="food100"

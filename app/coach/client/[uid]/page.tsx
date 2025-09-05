@@ -491,6 +491,7 @@ export default function CoachClientProfilePage(
             <Link href={novoCheckinHref}>
               <Button>Novo check-in</Button>
             </Link>
+            <Button variant="outline" onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
             <Link href="/coach" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 ml-2">
               <span>⬅️</span> Voltar
             </Link>

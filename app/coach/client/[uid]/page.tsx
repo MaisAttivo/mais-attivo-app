@@ -150,6 +150,7 @@ export default function CoachClientProfilePage(
   const [inbodyFiles, setInbodyFiles] = useState<Array<{ id: string; url: string; createdAt: Date | null }>>([]);
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
+  const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
 
 
   // Powerlifting flag
@@ -855,25 +856,31 @@ export default function CoachClientProfilePage(
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Início</div>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[0].id, urls: photoSets[0].urls })}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                    </button>
                   </div>
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Atual</div>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[photoSets.length-1].id, urls: photoSets[photoSets.length-1].urls })}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                    </button>
                   </div>
                 </div>
                 {photoSets.map((s)=> (
                   <div key={s.id} className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
                     <div className="flex gap-2 overflow-x-auto">
-                      {s.urls.map((u, i)=>(
-                        <img key={i} src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                      {s.urls.map((u, i)=> (
+                        <button key={i} onClick={()=>setOpenSet({ id: s.id, urls: s.urls })} className="shrink-0">
+                          <img src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -882,6 +889,21 @@ export default function CoachClientProfilePage(
             )}
           </CardContent>
         </Card>
+
+        {openSet && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
+              <div className="sticky top-2 right-2 flex justify-end">
+                <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {openSet.urls.map((u, i)=> (
+                  <img key={i} src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* InBody (imagens) */}
         <Card className={"shadow-sm " + (visibleSection !== "inbody" ? "hidden" : "")}>

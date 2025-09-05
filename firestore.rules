@@ -79,7 +79,8 @@ service cloud.firestore {
           stringOrMissing('email') && boolOrMissing('onboardingDone') &&
           numericOrMissing('workoutFrequency') && numericNullOrMissing('metaAgua') &&
           numericNullOrMissing('startWeight') && timestampOrMissing('updatedAt') &&
-          boolOrMissing('imageUseConsent') && boolOrMissing('imageUseSocialCensored') && timestampOrMissing('imageUseConsentAt');
+          boolOrMissing('imageUseConsent') && boolOrMissing('imageUseSocialCensored') && timestampOrMissing('imageUseConsentAt') &&
+          boolOrMissing('imageUploadAllowedByCoach');
       }
       function roleUnchangedByUser() { return !('role' in request.resource.data) || (resource.data.role == request.resource.data.role); }
       function activeUnchangedByUser() { return !('active' in request.resource.data) || (resource.data.active == request.resource.data.active); }

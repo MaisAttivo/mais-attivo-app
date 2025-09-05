@@ -131,14 +131,22 @@ function getDerivedMetricsFromHistory(history: DailyFeedback[], metaAgua: number
   return { diasDesdeUltimoDF, diasSemTreinar, diasSemAlimentacaoOK, diasSemAguaOK, last };
 }
 
-type PredicateKey = "inativos4d" | "semTreino5d" | "semAlimentacao5d" | "agua3d" | "treino2m";
-const filterPredicates: Record<PredicateKey, (c: Cliente) => boolean> = {
-  inativos4d: (c) => (c.diasDesdeUltimoDF ?? Infinity) >= 4,
-  semTreino5d: (c) => (c.diasSemTreinar ?? Infinity) >= 5,
-  semAlimentacao5d: (c) => (c.diasSemAlimentacaoOK ?? Infinity) >= 5,
-  agua3d: (c) => (c.diasSemAguaOK ?? Infinity) >= 3,
-  treino2m: (c) => (c.diasPlanoTreino ?? Infinity) >= 60,
-};
+type RealFilterKey = "inativos4d" | "semTreino5d" | "semAlimentacao5d" | "agua3d" | "treino2m";
+
+const num = (v: unknown, fb = Infinity) => (typeof v === "number" && Number.isFinite(v) ? v : fb);
+
+const filterPredicates: Partial<Record<RealFilterKey, (c: Cliente) => boolean>> = {
+  inativos4d: (c) => num(c.diasDesdeUltimoDF) >= 4,
+  semTreino5d: (c) => num(c.diasSemTreinar) >= 5,
+  semAlimentacao5d: (c) => num(c.diasSemAlimentacaoOK) >= 5,
+  agua3d: (c) => num(c.diasSemAguaOK) >= 3,
+  treino2m: (c) => num(c.diasPlanoTreino) >= 60,
+} as const;
+
+function aplicarFiltro(c: Cliente, ativo: RealFilterKey): boolean {
+  const pred = filterPredicates[ativo];
+  return pred ? pred(c) : true;
+}
 
 /* ========= Helpers: nome + meta de água ========= */
 
@@ -384,11 +392,11 @@ function CoachDashboard() {
 
     return list.filter((c) => {
       let keep = true;
-      if (activeFilters.inativos4d) keep = keep && filterPredicates.inativos4d(c);
-      if (activeFilters.semTreino5d) keep = keep && filterPredicates.semTreino5d(c);
-      if (activeFilters.semAlimentacao5d) keep = keep && filterPredicates.semAlimentacao5d(c);
-      if (activeFilters.agua3d) keep = keep && filterPredicates.agua3d(c);
-      if (activeFilters.treino2m) keep = keep && filterPredicates.treino2m(c);
+      if (activeFilters.inativos4d) keep = keep && aplicarFiltro(c, "inativos4d");
+      if (activeFilters.semTreino5d) keep = keep && aplicarFiltro(c, "semTreino5d");
+      if (activeFilters.semAlimentacao5d) keep = keep && aplicarFiltro(c, "semAlimentacao5d");
+      if (activeFilters.agua3d) keep = keep && aplicarFiltro(c, "agua3d");
+      if (activeFilters.treino2m) keep = keep && aplicarFiltro(c, "treino2m");
       if (activeFilters.fazerCheckin) keep = keep && (c.dueStatus === "today" || c.dueStatus === "overdue");
       return keep;
     });
@@ -468,7 +476,7 @@ function CoachDashboard() {
                   Sem filtro específico
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>Condições</DropdownMenuLabel>
+                <DropdownMenuLabel>Condiç��es</DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
                   checked={activeFilters.inativos4d}
                   onCheckedChange={() => toggleFilter("inativos4d")}

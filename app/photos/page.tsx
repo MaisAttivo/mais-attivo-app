@@ -59,6 +59,7 @@ export default function PhotosPage() {
           setImgConsent(!!d.imageUseConsent);
           const at: any = d.imageUseConsentAt;
           setImgConsentAt(at?.toDate ? at.toDate() : null);
+          setCoachOverride(!!d.imageUploadAllowedByCoach);
         }
       } catch {}
       await load(u.uid);

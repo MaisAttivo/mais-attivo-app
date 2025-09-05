@@ -12,6 +12,7 @@ import {
   limit,
   orderBy,
   query,
+  where,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info, Upload, FileText, X } from "lucide-react";
+import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -81,6 +82,21 @@ type Weekly = {
   workoutChallenges?: string;
 };
 
+type PLExercise = "agachamento" | "supino" | "levantamento";
+
+type PR = {
+  id: string;
+  exercise: PLExercise;
+  weight: number;
+  reps: number;
+  createdAt?: Date | null;
+};
+
+function epley1RM(weight: number, reps: number) {
+  const r = Math.max(1, Math.min(12, Math.floor(reps)));
+  return +(weight * (1 + r / 30)).toFixed(1);
+}
+
 export default function CoachClientProfilePage(
   props: { params: Promise<{ uid: string }> }
 ) {
@@ -134,12 +150,46 @@ export default function CoachClientProfilePage(
   const [inbodyFiles, setInbodyFiles] = useState<Array<{ id: string; url: string; createdAt: Date | null }>>([]);
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
+  const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
 
 
   // Powerlifting flag
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
+  const [imgConsent, setImgConsent] = useState<boolean>(false);
+  const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
+  const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
+
+  const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
+  const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
+
+  async function loadPlAll(userId: string) {
+    try {
+      const base = collection(db, "users", userId, "powerlifting");
+      const ex: PLExercise[] = ["agachamento", "supino", "levantamento"];
+      const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
+      for (const e of ex) {
+        const qs = await getDocs(query(base, where("exercise", "==", e)));
+        result[e] = qs.docs
+          .map((d) => {
+            const obj: any = d.data();
+            return {
+              id: d.id,
+              exercise: obj.exercise,
+              weight: obj.weight,
+              reps: obj.reps,
+              createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+            } as PR;
+          })
+          .sort(
+            (a, b) =>
+              epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+          );
+      }
+      setPlPrs(result);
+    } catch {}
+  }
 
   useEffect(() => {
     (async () => {
@@ -151,6 +201,9 @@ export default function CoachClientProfilePage(
       setEmail(u.email ?? "—");
       setActive(typeof u.active === "boolean" ? u.active : true);
       setPlEnabled(!!u.powerlifting);
+      setImgConsent(!!u.imageUseConsent);
+      setImgConsentAt(toDate(u.imageUseConsentAt ?? null));
+      setCoachOverride(!!u.imageUploadAllowedByCoach);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -355,6 +408,8 @@ export default function CoachClientProfilePage(
         setInbodyLoading(false);
       }
 
+      await loadPlAll(uid);
+
       setLoading(false);
     })();
   }, [uid]);
@@ -432,41 +487,82 @@ export default function CoachClientProfilePage(
               {workoutFrequency != null && (
                 <Badge variant="secondary">Treinos/semana: {workoutFrequency}</Badge>
               )}
+              <Badge variant={imgConsent ? "secondary" : "destructive"}>
+                Consent. fotos: {imgConsent ? "Sim" : "Não"}{imgConsentAt ? ` • ${ymd(imgConsentAt)}` : ""}
+              </Badge>
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={active}
-                onChange={async (e) => {
-                  const val = e.currentTarget.checked;
-                  setActive(val);
-                  setSavingActive(true);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
-                  } catch (err) {
-                    setActive(!val);
-                    console.error("toggle active error", err);
-                  } finally {
-                    setSavingActive(false);
-                  }
-                }}
-              />
-              <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
-            </label>
+          <div className="flex flex-col items-stretch gap-2 w-full sm:w-auto sm:items-end">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={async (e) => {
+                    const val = e.currentTarget.checked;
+                    setActive(val);
+                    setSavingActive(true);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
+                    } catch (err) {
+                      setActive(!val);
+                      console.error("toggle active error", err);
+                    } finally {
+                      setSavingActive(false);
+                    }
+                  }}
+                />
+                <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
+              </label>
 
-            {editarUltimoHref && (
-              <Link href={editarUltimoHref}>
-                <Button variant="secondary">Editar último check-in</Button>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={coachOverride}
+                  onChange={async (e) => {
+                    const val = e.currentTarget.checked;
+                    setCoachOverride(val);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { imageUploadAllowedByCoach: val, updatedAt: serverTimestamp() });
+                    } catch (err) {
+                      setCoachOverride(!val);
+                    }
+                  }}
+                />
+                <span>Permitir upload de fotos</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={plEnabled}
+                  onChange={async (e) => {
+                    const enabled = e.currentTarget.checked;
+                    setPlEnabled(enabled);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                    } catch {
+                      setPlEnabled(!enabled);
+                    }
+                  }}
+                />
+                <span>Powerlifting</span>
+              </label>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              {editarUltimoHref && (
+                <Link href={editarUltimoHref} className="w-full sm:w-auto">
+                  <Button variant="secondary" className="w-full sm:w-auto">Editar último check-in</Button>
+                </Link>
+              )}
+              <Link href={novoCheckinHref} className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Novo check-in</Button>
               </Link>
-            )}
-            <Link href={novoCheckinHref}>
-              <Button>Novo check-in</Button>
-            </Link>
-            <Link href="/coach" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 ml-2">
-              <span>⬅️</span> Voltar
-            </Link>
+              <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
+                <Link href="/coach"><ArrowLeft className="h-4 w-4" />Voltar</Link>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -491,41 +587,65 @@ export default function CoachClientProfilePage(
             {dailies.length === 0 ? (
               <div className="text-sm text-muted-foreground">Sem registos.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-muted-foreground">
-                    <tr>
-                      <th className="py-2 pr-4">Data</th>
-                      <th className="py-2 pr-4">Peso (kg)</th>
-                      <th className="py-2 pr-4">Água (L)</th>
-                      <th className="py-2 pr-4">Passos</th>
-                      <th className="py-2 pr-4">Treino</th>
-                      <th className="py-2 pr-4">Alim. 100%</th>
-                      <th className="py-2 pr-4">Notas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailies.map((d) => {
-                      const w = num(d.weight) ?? num(d.peso);
-                      const agua = num(d.waterLiters) ?? num(d.aguaLitros);
-                      return (
-                        <tr key={d.id} className="border-t">
-                          <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
-                          <td className="py-2 pr-4">{w != null ? w : "—"}</td>
-                          <td className="py-2 pr-4">
-                            {agua != null ? agua : "—"}
-                            {num(d.metaAgua) != null && ` / ${d.metaAgua}`}
-                          </td>
-                          <td className="py-2 pr-4">{num(d.steps) ?? num(d.passos) ?? "—"}</td>
-                          <td className="py-2 pr-4">{(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</td>
-                          <td className="py-2 pr-4">{d.alimentacao100 ? "Sim" : "—"}</td>
-                          <td className="py-2 pr-4">{d.notes ?? "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-muted-foreground">
+                      <tr>
+                        <th className="py-2 pr-4">Data</th>
+                        <th className="py-2 pr-4">Peso (kg)</th>
+                        <th className="py-2 pr-4">Água (L)</th>
+                        <th className="py-2 pr-4">Passos</th>
+                        <th className="py-2 pr-4">Treino</th>
+                        <th className="py-2 pr-4">Alim. 100%</th>
+                        <th className="py-2 pr-4">Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailies.map((d) => {
+                        const w = num(d.weight) ?? num(d.peso);
+                        const agua = num(d.waterLiters) ?? num(d.aguaLitros);
+                        return (
+                          <tr key={d.id} className="border-t">
+                            <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
+                            <td className="py-2 pr-4">{w != null ? w : "—"}</td>
+                            <td className="py-2 pr-4">
+                              {agua != null ? agua : "—"}
+                              {num(d.metaAgua) != null && ` / ${d.metaAgua}`}
+                            </td>
+                            <td className="py-2 pr-4">{num(d.steps) ?? num(d.passos) ?? "—"}</td>
+                            <td className="py-2 pr-4">{(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</td>
+                            <td className="py-2 pr-4">{d.alimentacao100 ? "Sim" : "—"}</td>
+                            <td className="py-2 pr-4 break-words">{d.notes ?? "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="sm:hidden space-y-2">
+                  {dailies.map((d) => {
+                    const w = num(d.weight) ?? num(d.peso);
+                    const agua = num(d.waterLiters) ?? num(d.aguaLitros);
+                    return (
+                      <div key={d.id} className="rounded-xl border p-3 text-sm">
+                        <div className="font-medium mb-1">{ymd(toDate(d.date ?? null))}</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><span className="text-muted-foreground">Peso:</span> {w != null ? w : "—"}</div>
+                          <div><span className="text-muted-foreground">Água:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
+                          <div><span className="text-muted-foreground">Passos:</span> {num(d.steps) ?? num(d.passos) ?? "—"}</div>
+                          <div><span className="text-muted-foreground">Treino:</span> {(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</div>
+                          <div><span className="text-muted-foreground">Alim.:</span> {d.alimentacao100 ? "Sim" : "—"}</div>
+                          {d.notes ? (
+                            <div className="col-span-2 break-words"><span className="text-muted-foreground">Notas:</span> {d.notes}</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -559,21 +679,93 @@ export default function CoachClientProfilePage(
             <CardTitle>Powerlifting</CardTitle>
           </CardHeader>
           <CardContent>
-            <label className="inline-flex items-center gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={plEnabled}
-                onChange={async (e) => {
-                  const enabled = e.currentTarget.checked;
-                  setPlEnabled(enabled);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
-                  } catch {}
-                }}
-              />
-              <span>Powerlifting:</span>
-              <span className={`font-medium ${plEnabled ? "text-emerald-600" : "text-slate-700"}`}>{plEnabled ? "True" : "False"}</span>
-            </label>
+            {!plEnabled ? (
+              <div className="text-sm text-muted-foreground">Powerlifting desativado para este cliente.</div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
+                      const best = plPrs[e][0] || null;
+                      const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
+                      return (
+                        <div key={e} className="rounded-2xl border p-4 bg-background">
+                          <div className="text-sm font-medium mb-1">{label}</div>
+                          {best ? (
+                            <div className="text-sm text-slate-700">
+                              Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
+                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best.weight, best.reps)} kg</div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Sem registos</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
+                    const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
+                    const list = [...plPrs[e]].sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+                    const visible = list.slice(0, plShowCount[e]);
+                    return (
+                      <div key={e} className="rounded-2xl border p-4 bg-background">
+                        <div className="text-sm font-medium mb-2">{label} — Histórico</div>
+                        {list.length === 0 ? (
+                          <div className="text-sm text-muted-foreground">Sem registos.</div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="hidden sm:block overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead className="text-left text-muted-foreground">
+                                  <tr>
+                                    <th className="py-2 pr-4">Data</th>
+                                    <th className="py-2 pr-4">Peso</th>
+                                    <th className="py-2 pr-4">Reps</th>
+                                    <th className="py-2 pr-4">1RM Estimada (Epley)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {visible.map((p) => (
+                                    <tr key={p.id} className="border-t">
+                                      <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
+                                      <td className="py-2 pr-4">{p.weight} kg</td>
+                                      <td className="py-2 pr-4">{p.reps}</td>
+                                      <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <div className="sm:hidden space-y-2">
+                              {visible.map((p) => (
+                                <div key={p.id} className="rounded-xl border p-3 text-sm">
+                                  <div className="font-medium mb-1">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div><span className="text-muted-foreground">Peso:</span> {p.weight} kg</div>
+                                    <div><span className="text-muted-foreground">Reps:</span> {p.reps}</div>
+                                    <div className="col-span-2"><span className="text-muted-foreground">1RM Est.:</span> {epley1RM(p.weight, p.reps)} kg</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {list.length > plShowCount[e] && (
+                              <div className="flex justify-center">
+                                <Button size="sm" variant="outline" onClick={() => setPlShowCount((s)=>({ ...s, [e]: s[e] + 10 }))}>Ver mais…</Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -705,25 +897,31 @@ export default function CoachClientProfilePage(
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Início</div>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[0].id, urls: photoSets[0].urls })}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
+                    </button>
                   </div>
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Atual</div>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[photoSets.length-1].id, urls: photoSets[photoSets.length-1].urls })}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
+                    </button>
                   </div>
                 </div>
                 {photoSets.map((s)=> (
                   <div key={s.id} className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
-                    <div className="flex gap-2 overflow-x-auto">
-                      {s.urls.map((u, i)=>(
-                        <img key={i} src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                    <div className="flex flex-wrap gap-2">
+                      {s.urls.map((u, i)=> (
+                        <button key={i} onClick={()=>setOpenSet({ id: s.id, urls: s.urls })} className="shrink-0">
+                          <img src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -732,6 +930,21 @@ export default function CoachClientProfilePage(
             )}
           </CardContent>
         </Card>
+
+        {openSet && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
+              <div className="sticky top-2 right-2 flex justify-end">
+                <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {openSet.urls.map((u, i)=> (
+                  <img key={i} src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* InBody (imagens) */}
         <Card className={"shadow-sm " + (visibleSection !== "inbody" ? "hidden" : "")}>

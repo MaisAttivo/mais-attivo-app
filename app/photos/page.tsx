@@ -3,11 +3,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, storage } from "@/lib/firebase";
+import { auth, storage, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref, listAll, getMetadata, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 function lisbonISOWeekId(d = new Date()) {
   const dt = new Date(d);
@@ -32,6 +34,12 @@ export default function PhotosPage() {
   const [items, setItems] = useState<PhotoItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Consentimento de uso de imagens
+  const [imgConsent, setImgConsent] = useState<boolean>(false);
+  const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
+  const [savingConsent, setSavingConsent] = useState(false);
+  const [coachOverride, setCoachOverride] = useState<boolean>(false);
+
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -45,6 +53,16 @@ export default function PhotosPage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) { router.replace("/login"); return; }
       setUid(u.uid);
+      try {
+        if (db) {
+          const us = await getDoc(doc(db, "users", u.uid));
+          const d: any = us.data() || {};
+          setImgConsent(!!d.imageUseConsent);
+          const at: any = d.imageUseConsentAt;
+          setImgConsentAt(at?.toDate ? at.toDate() : null);
+          setCoachOverride(!!d.imageUploadAllowedByCoach);
+        }
+      } catch {}
       await load(u.uid);
       setLoading(false);
     });
@@ -143,6 +161,7 @@ export default function PhotosPage() {
     if (!uid || !storage) return;
     if (selectedFiles.length === 0) { setError("Seleciona até 4 imagens."); return; }
     if (selectedFiles.length > 4) { setError("Máx. 4 imagens por envio."); return; }
+    if (!imgConsent && !coachOverride) { setError("Para enviar fotos, aceita o consentimento de imagens ou pede ao coach autorização."); return; }
     if (alreadyThisWeek) { setError("Já enviaste fotos esta semana. Tenta na próxima semana."); return; }
 
     setError(null);
@@ -196,9 +215,46 @@ export default function PhotosPage() {
   return (
     <main className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"><span>⬅️</span> Voltar à dashboard</Link>
+        <Button asChild variant="ghost" size="sm"><Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link></Button>
         <h1 className="text-2xl font-semibold">Fotos</h1>
         <div className="w-10" />
+      </div>
+
+      <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <input
+            id="image-consent"
+            type="checkbox"
+            className="mt-1"
+            checked={imgConsent}
+            onChange={async (e) => {
+              const next = e.currentTarget.checked;
+              setSavingConsent(true);
+              try {
+                if (db && uid) {
+                  await updateDoc(doc(db, "users", uid), {
+                    imageUseConsent: next,
+                    imageUseSocialCensored: next,
+                    imageUseConsentAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                  });
+                  setImgConsent(next);
+                  setImgConsentAt(new Date());
+                }
+              } catch (err: any) {
+                setError(err?.message || "Falha a atualizar consentimento.");
+              } finally {
+                setSavingConsent(false);
+              }
+            }}
+          />
+          <label htmlFor="image-consent" className="text-sm text-slate-700 leading-relaxed">
+            Autorizo a utilização das minhas imagens para acompanhamento e marketing, desde que com o rosto tapado.
+            <div className="text-xs text-slate-500 mt-1">{imgConsentAt ? `Última alteração: ${imgConsentAt.toLocaleString()}` : ""}</div>
+          </label>
+          <div className="flex-1" />
+          {savingConsent && <div className="text-xs text-slate-500">A guardar…</div>}
+        </div>
       </div>
 
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
@@ -232,8 +288,11 @@ export default function PhotosPage() {
           {uploading && (
             <div className="text-xs text-slate-600">Progresso: {uploadProgress}%</div>
           )}
+          <div className="text-xs text-slate-600">
+            {!imgConsent && !coachOverride ? "Uploads bloqueados: aceita o consentimento ou pede autorização ao coach." : ""}
+          </div>
           <div className="flex-1" />
-          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek}>{uploading ? `A enviar… ${uploadProgress}%` : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
+          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek || (!imgConsent && !coachOverride)}>{uploading ? `A enviar… ${uploadProgress}%` : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
         </div>
       </form>
 

@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { lisbonYMD } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -64,45 +66,49 @@ export default function DailyPage() {
         setHasConsent(consent);
       } catch {}
 
-      const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() as any;
+      try {
+        const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as any;
 
-        setWeightKg(
-          typeof data.peso === "number"
-            ? data.peso
-            : typeof data.weightKg === "number"
-            ? data.weightKg
-            : ""
-        );
-        setWaterLiters(
-          typeof data.aguaLitros === "number"
-            ? data.aguaLitros
-            : typeof data.waterLiters === "number"
-            ? data.waterLiters
-            : ""
-        );
-        setSteps(
-          typeof data.passos === "number"
-            ? data.passos
-            : typeof data.steps === "number"
-            ? data.steps
-            : ""
-        );
-        setTrained(Boolean(data.treinou ?? data.trained));
-        const cardioStr: string =
-          typeof data.cardio === "string" ? data.cardio : data.cardio === true ? "sim" : "";
-        setDidCardio(cardioStr === "sim");
-        setFood100(Boolean(data.alimentacao100));
-        setNotes(data.outraAtividade ?? data.notes ?? "");
+          setWeightKg(
+            typeof data.peso === "number"
+              ? data.peso
+              : typeof data.weightKg === "number"
+              ? data.weightKg
+              : ""
+          );
+          setWaterLiters(
+            typeof data.aguaLitros === "number"
+              ? data.aguaLitros
+              : typeof data.waterLiters === "number"
+              ? data.waterLiters
+              : ""
+          );
+          setSteps(
+            typeof data.passos === "number"
+              ? data.passos
+              : typeof data.steps === "number"
+              ? data.steps
+              : ""
+          );
+          setTrained(Boolean(data.treinou ?? data.trained));
+          const cardioStr: string =
+            typeof data.cardio === "string" ? data.cardio : data.cardio === true ? "sim" : "";
+          setDidCardio(cardioStr === "sim");
+          setFood100(Boolean(data.alimentacao100));
+          setNotes(data.outraAtividade ?? data.notes ?? "");
 
-        setDocDate(data.date?.toDate?.() || null);
-        setCreatedAt(data.createdAt?.toDate?.() || null);
-        setAlreadySubmitted(true);
+          setDocDate(data.date?.toDate?.() || null);
+          setCreatedAt(data.createdAt?.toDate?.() || null);
+          setAlreadySubmitted(true);
+        }
+      } catch (e) {
+        console.warn("Daily load error:", e);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
     return () => unsub();
   }, [router, todayId]);
@@ -213,9 +219,9 @@ export default function DailyPage() {
     <main className="relative max-w-xl mx-auto p-6 pb-24">
       {/* BACK (topo) */}
       <div className="mb-4">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-          <span>⬅️</span> Voltar à dashboard
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link>
+        </Button>
       </div>
 
       <h1 className="text-3xl font-bold mb-2 text-center">Feedback Diário</h1>
@@ -305,7 +311,7 @@ export default function DailyPage() {
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Alimentação 100%?</label>
+          <label className="block font-medium mb-1">Cumpriu alimentação sem falhas?</label>
           <div className="flex items-center gap-3">
             <input
               id="food100"

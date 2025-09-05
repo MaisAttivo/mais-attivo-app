@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+    function isCoach() {
+      return isSignedIn() && (
+        request.auth.token.role == 'coach' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.coach == true
+      );
+    }
+    function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function isPdf() { return request.resource.contentType == 'application/pdf'; }
+    function isImage() { return request.resource.contentType in ['image/png','image/jpeg']; }
+    function canUploadPhotos(uid) {
+      return (
+        get(/databases/(default)/documents/users/$(uid)).data.imageUseConsent == true ||
+        get(/databases/(default)/documents/users/$(uid)).data.imageUploadAllowedByCoach == true
+      );
+    }
+
+    // Planos (PDF)
+    match /plans/{uid}/{fileName} {
+      allow read, list: if isCoach() || isSelf(uid);
+      allow write: if isCoach() && isPdf() && fileName.matches('.*\.pdf$');
+    }
+
+    // InBody (PNG/JPEG até 8MB)
+    match /users/{uid}/inbody/{fileName} {
+      allow read, list: if isCoach() || isSelf(uid);
+      allow write: if (isCoach() || isSelf(uid))
+                   && isImage()
+                   && request.resource.size < 8 * 1024 * 1024
+                   && fileName.matches('.*\.(png|jpe?g)$');
+    }
+
+    // Weekly Feedback (PNG/JPEG até 8MB)
+    match /users/{uid}/weekly/{fileName} {
+      allow read, list: if isCoach() || isSelf(uid);
+      allow write: if (isCoach() || isSelf(uid))
+                   && isImage()
+                   && request.resource.size < 8 * 1024 * 1024
+                   && fileName.matches('.*\.(png|jpe?g)$');
+    }
+
+    // Photos (PNG/JPEG até 8MB) — requer consentimento do cliente OU override do coach
+    match /users/{uid}/photos/{fileName} {
+      allow read, list: if isCoach() || isSelf(uid);
+      allow write: if isImage()
+                   && request.resource.size < 8 * 1024 * 1024
+                   && fileName.matches('.*\.(png|jpe?g)$')
+                   && (
+                        isCoach() || (isSelf(uid) && canUploadPhotos(uid))
+                      );
+    }
+
+    match /{path=**} { allow read, write: if false; }
+  }
+}

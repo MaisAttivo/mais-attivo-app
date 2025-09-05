@@ -1,0 +1,229 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* Helpers */
+    function signedIn() { return request.auth != null; }
+    function isUser(userId) { return signedIn() && request.auth.uid == userId; }
+    function isCoach() {
+      return signedIn() && (
+        request.auth.token.coach == true ||
+        request.auth.token.role == "coach" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "coach")
+      );
+    }
+    function isCoachOrAdmin() {
+      return signedIn() && (
+        request.auth.token.role in ['coach','admin'] ||
+        request.auth.token.coach == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coach','admin'])
+      );
+    }
+    function canReadUserData(userId) { return isUser(userId) || isCoachOrAdmin(); }
+    function isActive(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)) &&
+        (!('active' in get(/databases/$(database)/documents/users/$(userId)).data) ||
+          get(/databases/$(database)/documents/users/$(userId)).data.active == true);
+    }
+    function hasHealthConsent(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)) &&
+        (get(/databases/$(database)/documents/users/$(userId)).data.healthConsentAt is timestamp ||
+          get(/databases/$(database)/documents/users/$(userId)).data.healthDataConsentAt is timestamp ||
+          get(/databases/$(database)/documents/users/$(userId)).data.healthDataExplicitConsent == true);
+    }
+    function clientCanWrite(userId) { return isUser(userId) && isActive(userId) && hasHealthConsent(userId); }
+
+    /* Coach/Admin override (pode tudo) */
+    match /{document=**} { allow read, write: if isCoachOrAdmin(); }
+
+    /* Validators */
+    function numericOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is number; }
+    function numericNullOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is number || request.resource.data[field] == null; }
+    function stringOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is string; }
+    function boolOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is bool; }
+    function timestampOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is timestamp; }
+    function inSetOrMissing(field, set) { return !(field in request.resource.data) || (request.resource.data[field] in set); }
+    function enumOrMissing(field, set) { return inSetOrMissing(field, set); }
+
+    /* /config */
+    match /config/{docId} {
+      allow read: if signedIn();
+      function validAppSettings() {
+        return !('whatsappNumber' in request.resource.data) ||
+          (request.resource.data.whatsappNumber is string &&
+            request.resource.data.whatsappNumber.matches('^[0-9]{10,15}$'));
+      }
+      allow create, update, delete: if isCoachOrAdmin() && validAppSettings();
+    }
+
+    /* /users */
+    match /users/{userId} {
+      allow read: if canReadUserData(userId);
+
+      function validUserCreate() {
+        return inSetOrMissing('role', ['client']) &&
+          stringOrMissing('email') && stringOrMissing('name') &&
+          boolOrMissing('onboardingDone') && numericOrMissing('workoutFrequency') &&
+          numericNullOrMissing('metaAgua') && numericNullOrMissing('startWeight') &&
+          boolOrMissing('notificationsEnabled') && stringOrMissing('devicePlatform') &&
+          timestampOrMissing('createdAt') && timestampOrMissing('updatedAt') && boolOrMissing('active');
+      }
+      allow create: if isUser(userId) && validUserCreate();
+
+      function validUserUpdateCommon() {
+        return timestampOrMissing('lastCheckinDate') && timestampOrMissing('nextCheckinDate') &&
+          inSetOrMissing('objetivoPeso', ['perda','ganho']) && stringOrMissing('name') &&
+          stringOrMissing('email') && boolOrMissing('onboardingDone') &&
+          numericOrMissing('workoutFrequency') && numericNullOrMissing('metaAgua') &&
+          numericNullOrMissing('startWeight') && timestampOrMissing('updatedAt') &&
+          boolOrMissing('imageUseConsent') && boolOrMissing('imageUseSocialCensored') && timestampOrMissing('imageUseConsentAt') &&
+          boolOrMissing('imageUploadAllowedByCoach');
+      }
+      function roleUnchangedByUser() { return !('role' in request.resource.data) || (resource.data.role == request.resource.data.role); }
+      function activeUnchangedByUser() { return !('active' in request.resource.data) || (resource.data.active == request.resource.data.active); }
+      function activeIfPresentIsBool() { return !('active' in request.resource.data) || (request.resource.data.active is bool); }
+      function createdAtUnchanged() { return !('createdAt' in request.resource.data) || (request.resource.data.createdAt == resource.data.createdAt); }
+
+      allow update: if
+        (
+          isUser(userId) &&
+          (
+            (!('healthConsentAt' in resource.data) && ('healthConsentAt' in request.resource.data) && (request.resource.data.healthConsentAt is timestamp)) ||
+            (!('healthDataConsentAt' in resource.data) && ('healthDataConsentAt' in request.resource.data) && (request.resource.data.healthDataConsentAt is timestamp)) ||
+            (!('healthDataExplicitConsent' in resource.data) && ('healthDataExplicitConsent' in request.resource.data) && (request.resource.data.healthDataExplicitConsent == true))
+          ) &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['healthConsentAt','healthDataConsentAt','healthDataExplicitConsent','updatedAt','active'])
+        )
+        ||
+        (
+          // Cliente pode gerir consentimento de imagens (ou retirar) sem depender de health consent
+          isUser(userId) && isActive(userId) &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['imageUseConsent','imageUseSocialCensored','imageUseConsentAt','updatedAt'])
+        )
+        ||
+        (
+          isCoachOrAdmin() &&
+          validUserUpdateCommon() &&
+          activeIfPresentIsBool() &&
+          createdAtUnchanged()
+        )
+        ||
+        (
+          clientCanWrite(userId) &&
+          validUserUpdateCommon() &&
+          roleUnchangedByUser() &&
+          activeUnchangedByUser() &&
+          createdAtUnchanged()
+        );
+
+      allow delete: if false;
+
+      /* /users/{uid}/dailyFeedback */
+      match /dailyFeedback/{dateId} {
+        allow read: if canReadUserData(userId);
+
+        function validDailyCreate() {
+          return !exists(/databases/$(database)/documents/users/$(userId)/dailyFeedback/$(dateId)) &&
+            request.resource.data.date is timestamp &&
+            request.resource.data.createdAt is timestamp;
+        }
+        allow create: if clientCanWrite(userId) && validDailyCreate();
+
+        // Sem limite temporal para editar (removida a restrição)
+        allow update: if clientCanWrite(userId);
+
+        allow delete: if false;
+      }
+
+      /* /users/{uid}/weeklyFeedback */
+      match /weeklyFeedback/{weekId} {
+        allow read: if canReadUserData(userId);
+        function validWeekly() {
+          return timestampOrMissing('weekEndDate') && stringOrMissing('howWasTheWeek') &&
+            stringOrMissing('energyLevels') && stringOrMissing('sleepQuality') &&
+            stringOrMissing('stressLevels') && stringOrMissing('dietChallenges') &&
+            stringOrMissing('workoutChallenges') && numericNullOrMissing('pesoAtualKg') &&
+            timestampOrMissing('createdAt') && stringOrMissing('weekId');
+        }
+        allow create: if clientCanWrite(userId) &&
+          !exists(/databases/$(database)/documents/users/$(userId)/weeklyFeedback/$(weekId)) &&
+          validWeekly();
+        allow update: if clientCanWrite(userId) && validWeekly();
+        allow delete: if false;
+      }
+
+      /* /users/{uid}/questionnaire */
+      match /questionnaire/{qid} {
+        allow read: if canReadUserData(userId);
+        function validQuestionnaire() { return
+          stringOrMissing('fullName') && numericOrMissing('age') && numericOrMissing('heightCm') &&
+          numericOrMissing('weightKg') && numericOrMissing('metaAgua') && stringOrMissing('occupation') &&
+          stringOrMissing('goal') && numericOrMissing('workoutFrequency') && stringOrMissing('mealRoutine') &&
+          boolOrMissing('doesOtherActivity') && stringOrMissing('otherActivityDetails') &&
+          boolOrMissing('hasInjury') && stringOrMissing('injuryDetails') &&
+          boolOrMissing('mobilityIssues') && stringOrMissing('mobilityDetails') &&
+          boolOrMissing('hasPain') && stringOrMissing('painLocation') &&
+          boolOrMissing('takesMedication') && stringOrMissing('medication') &&
+          boolOrMissing('intestinalIssues') && stringOrMissing('intestinalDetails') &&
+          boolOrMissing('hasDiagnosedDisease') && stringOrMissing('diagnosedDisease') &&
+          boolOrMissing('hasFoodAllergy') && stringOrMissing('foodAllergy') &&
+          stringOrMissing('foodsDisliked') && stringOrMissing('foodsLiked') &&
+          boolOrMissing('takesSupplements') && stringOrMissing('supplements') &&
+          numericOrMissing('waterLitersPerDay') && stringOrMissing('sleepQuality') &&
+          numericOrMissing('sleepHours') && boolOrMissing('drinksAlcohol') &&
+          stringOrMissing('alcoholFrequency') && stringOrMissing('questionnaireVersion') &&
+          timestampOrMissing('createdAt') && timestampOrMissing('updatedAt'); }
+        allow create: if clientCanWrite(userId) && validQuestionnaire();
+        allow update: if clientCanWrite(userId) && validQuestionnaire();
+        allow delete: if false;
+      }
+
+      /* /users/{uid}/checkins */
+      match /checkins/{checkinId} {
+        allow read: if canReadUserData(userId);
+        function validCheckinPayload() {
+          return timestampOrMissing('date') && timestampOrMissing('nextDate') &&
+            enumOrMissing('type', ['online','presencial']) && stringOrMissing('commentPublic') &&
+            (numericNullOrMissing('peso') || numericNullOrMissing('weight')) &&
+            numericNullOrMissing('massaMuscular') && numericNullOrMissing('massaGorda') &&
+            numericNullOrMissing('metaAgua') && inSetOrMissing('objetivoPeso', ['perda','ganho']) &&
+            timestampOrMissing('createdAt') && timestampOrMissing('updatedAt') && stringOrMissing('createdBy');
+        }
+        allow create: if isCoachOrAdmin() && validCheckinPayload() && (request.resource.data.createdBy is string);
+        allow update: if isCoachOrAdmin() && validCheckinPayload() && (request.resource.data.createdBy == resource.data.createdBy);
+        allow delete: if isCoachOrAdmin();
+
+        match /coachNotes/{noteId} {
+          allow list, get, read: if isCoachOrAdmin();
+          function validNote() { return
+            stringOrMissing('privateComment') && stringOrMissing('coachId') &&
+            timestampOrMissing('createdAt') && timestampOrMissing('updatedAt'); }
+          allow create: if isCoachOrAdmin() && validNote();
+          allow update: if isCoachOrAdmin() && validNote() && (resource.data.createdAt == request.resource.data.createdAt);
+          allow delete: if isCoachOrAdmin();
+        }
+      }
+
+      /* /users/{uid}/plans */
+      match /plans/{planId} {
+        allow read: if canReadUserData(userId);
+        allow create, update, delete: if isCoachOrAdmin();
+      }
+
+      /* /users/{uid}/powerlifting */
+      match /powerlifting/{prId} {
+        allow read: if canReadUserData(userId);
+        function validPR() {
+          return enumOrMissing('exercise', ['agachamento','supino','levantamento']) &&
+            (request.resource.data.weight is number && request.resource.data.weight > 0) &&
+            (request.resource.data.reps is number && request.resource.data.reps >= 1 && request.resource.data.reps <= 20) &&
+            timestampOrMissing('createdAt');
+        }
+        allow create: if clientCanWrite(userId) && validPR();
+        allow update, delete: if isCoachOrAdmin();
+      }
+    }
+  }
+}

@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -169,9 +171,9 @@ export default function WeeklyPage() {
 
       {/* BACK (topo) */}
       <div>
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-          <span>⬅️</span> Voltar à dashboard
-        </Link>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/dashboard"><ArrowLeft className="h-4 w-4" />Voltar à dashboard</Link>
+        </Button>
       </div>
 
       <h1 className="text-2xl font-semibold">Weekly feedback</h1>

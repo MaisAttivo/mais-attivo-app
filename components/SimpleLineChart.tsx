@@ -7,6 +7,7 @@ export type Series = { name: string; color: string; points: { x: number; y: numb
 export default function SimpleLineChart({ series, height = 180 }: { series: Series[]; height?: number }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number>(360);
+  const [tip, setTip] = useState<{ x: number; y: number; label: string } | null>(null);
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -31,7 +32,7 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
     const maxY = Math.max(...ys);
     const yPad = (maxY - minY) * 0.1 || 1;
     const xPad = (maxX - minX) * 0.02 || 1;
-    return { xMin: minX - xPad, xMax: maxX + xPad, yMin: minY - yPad, yMax: maxY + yPad };
+    return { xMin: minX - xPad, xMax: maxX + xPad, yMin: yPad ? minY - yPad : minY - 1, yMax: yPad ? maxY + yPad : maxY + 1 };
   }, [flat, hasData]);
 
   function xScale(x: number) {
@@ -49,8 +50,18 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
     return sorted.map((p, i) => `${i === 0 ? "M" : "L"}${xScale(p.x)},${yScale(p.y)}`).join(" ");
   }
 
+  function handleShowTip(sName: string, color: string, p: { x: number; y: number }) {
+    const dt = new Date(p.x);
+    const dateText = isFinite(dt.getTime()) ? new Intl.DateTimeFormat("pt-PT", { year: "numeric", month: "2-digit", day: "2-digit" }).format(dt) : String(p.x);
+    const valText = typeof p.y === "number" ? p.y.toString() : String(p.y);
+    const label = `${sName ? sName + " — " : ""}${dateText}: ${valText}`;
+    const cx = xScale(p.x);
+    const cy = yScale(p.y);
+    setTip({ x: cx, y: cy, label });
+  }
+
   return (
-    <div ref={wrapRef} className="w-full">
+    <div ref={wrapRef} className="w-full relative">
       {!hasData ? (
         <div className="text-sm text-slate-500">Sem dados.</div>
       ) : (
@@ -59,11 +70,33 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
             <g key={idx}>
               <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
               {s.points.map((p, i) => (
-                <circle key={i} cx={xScale(p.x)} cy={yScale(p.y)} r={3} fill={s.color} />
+                <circle
+                  key={i}
+                  cx={xScale(p.x)}
+                  cy={yScale(p.y)}
+                  r={4}
+                  fill={s.color}
+                  className="cursor-pointer"
+                  onMouseEnter={() => handleShowTip(s.name, s.color, p)}
+                  onMouseMove={() => handleShowTip(s.name, s.color, p)}
+                  onMouseLeave={() => setTip(null)}
+                  onClick={() => handleShowTip(s.name, s.color, p)}
+                  onTouchStart={() => handleShowTip(s.name, s.color, p)}
+                />
               ))}
             </g>
           ))}
         </svg>
+      )}
+      {tip && (
+        <div
+          className="absolute -translate-x-1/2 -translate-y-full bg-white text-slate-800 text-xs px-2 py-1 rounded-xl shadow-lg ring-2 ring-slate-400 pointer-events-none"
+          style={{ left: tip.x, top: tip.y - 6 }}
+          role="status"
+          aria-live="polite"
+        >
+          {tip.label}
+        </div>
       )}
       {series.length > 1 && (
         <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-700">

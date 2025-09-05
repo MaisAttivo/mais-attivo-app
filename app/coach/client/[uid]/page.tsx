@@ -39,6 +39,10 @@ const toDateFlexible = (v: any): Date | null => {
 };
 const ymd = (d: Date | null | undefined) => (d ? lisbonYMD(d) : "—");
 const todayLisbonYMD = () => lisbonTodayYMD();
+function epley1RM(weight: number, reps: number) {
+  const r = Math.max(1, Math.min(12, Math.floor(reps || 1)));
+  return +(weight * (1 + r / 30)).toFixed(1);
+}
 
 type Daily = {
   id: string;

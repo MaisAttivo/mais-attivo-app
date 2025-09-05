@@ -338,6 +338,24 @@ export default function CoachClientProfilePage(
         }
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
+      // Carregar Powerlifting PRs
+      try {
+        const plSnap = await getDocs(collection(db, `users/${uid}/powerlifting`));
+        const entries: PlEntry[] = plSnap.docs.map((d) => {
+          const x: any = d.data();
+          const createdAt = x.createdAt?.toDate ? x.createdAt.toDate() : null;
+          return { id: d.id, exercise: (x.exercise as PlExercise), weight: Number(x.weight)||0, reps: Number(x.reps)||1, createdAt };
+        });
+        const grouped: Record<PlExercise, PlEntry[]> = { agachamento: [], supino: [], levantamento: [] };
+        for (const it of entries) {
+          if (it.exercise === "agachamento" || it.exercise === "supino" || it.exercise === "levantamento") grouped[it.exercise].push(it);
+        }
+        (Object.keys(grouped) as PlExercise[]).forEach((k) => {
+          grouped[k].sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || (epley1RM(b.weight,b.reps)-epley1RM(a.weight,a.reps)));
+        });
+        setPlByEx(grouped);
+      } catch {}
+
       // Listar InBody do utilizador (imagens)
       try {
         if (storage) {
@@ -713,7 +731,7 @@ export default function CoachClientProfilePage(
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
-                    <div className="text-sm text-slate-700 mb-2">In��cio</div>
+                    <div className="text-sm text-slate-700 mb-2">Início</div>
                     <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
                       <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
                     </div>

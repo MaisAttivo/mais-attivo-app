@@ -2,8 +2,9 @@
 
 "use client";
 
-import { use, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -17,6 +18,7 @@ import {
   setDoc,
   updateDoc,
   Timestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
@@ -98,11 +100,9 @@ function epley1RM(weight: number, reps: number) {
   return +(weight * (1 + r / 30)).toFixed(1);
 }
 
-export default function CoachClientProfilePage(
-  props: { params: Promise<{ uid: string }> }
-) {
-  // Next 15: params é uma Promise → usar React.use()
-  const { uid } = use(props.params);
+export default function CoachClientProfilePage() {
+  const params = useParams<{ uid: string }>();
+  const uid = params?.uid as string;
 
   const [loading, setLoading] = useState(true);
 
@@ -168,28 +168,30 @@ export default function CoachClientProfilePage(
   async function loadPlAll(userId: string) {
     try {
       const base = collection(db, "users", userId, "powerlifting");
-      const ex: PLExercise[] = ["agachamento", "supino", "levantamento"];
       const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
-      for (const e of ex) {
-        const qs = await getDocs(query(base, where("exercise", "==", e)));
-        result[e] = qs.docs
-          .map((d) => {
-            const obj: any = d.data();
-            return {
-              id: d.id,
-              exercise: obj.exercise,
-              weight: obj.weight,
-              reps: obj.reps,
-              createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
-            } as PR;
-          })
-          .sort(
-            (a, b) =>
-              epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
-          );
-      }
+      const qs = await getDocs(base);
+      qs.docs.forEach((d) => {
+        const obj: any = d.data();
+        const ex = (obj.exercise as PLExercise) || null;
+        if (!ex || !(ex === "agachamento" || ex === "supino" || ex === "levantamento")) return;
+        const rec: PR = {
+          id: d.id,
+          exercise: ex,
+          weight: Number(obj.weight) || 0,
+          reps: Math.max(1, Math.floor(Number(obj.reps) || 1)),
+          createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+        };
+        result[ex].push(rec);
+      });
+      (Object.keys(result) as PLExercise[]).forEach((e) => {
+        result[e].sort(
+          (a, b) => epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+        );
+      });
       setPlPrs(result);
-    } catch {}
+    } catch (e) {
+      // swallow errors to avoid breaking coach page
+    }
   }
 
   // Evolução (gráficos)
@@ -478,6 +480,39 @@ export default function CoachClientProfilePage(
     })();
   }, [uid]);
 
+  // Powerlifting: realtime subscription to keep table always updated
+  useEffect(() => {
+    if (!uid) return;
+    try {
+      const base = collection(db, "users", uid, "powerlifting");
+      const unsub = onSnapshot(base, (qs) => {
+        const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
+        qs.docs.forEach((d) => {
+          const obj: any = d.data();
+          const ex = (obj.exercise as PLExercise) || null;
+          if (!ex || !(ex === "agachamento" || ex === "supino" || ex === "levantamento")) return;
+          const rec: PR = {
+            id: d.id,
+            exercise: ex,
+            weight: Number(obj.weight) || 0,
+            reps: Math.max(1, Math.floor(Number(obj.reps) || 1)),
+            createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+          };
+          result[ex].push(rec);
+        });
+        (Object.keys(result) as PLExercise[]).forEach((e) => {
+          result[e].sort(
+            (a, b) => epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+          );
+        });
+        setPlPrs(result);
+      });
+      return () => unsub();
+    } catch {
+      // ignore
+    }
+  }, [uid]);
+
   async function saveCoachNote(checkinId: string) {
     const text = (noteById[checkinId] ?? "").trim();
     setSavingNoteId(checkinId);
@@ -541,8 +576,8 @@ export default function CoachClientProfilePage(
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold truncate">{name}</h1>
             <div className="text-sm text-muted-foreground truncate">{email}</div>
-            <div className="flex gap-2 mt-2 text-sm">
-              <Badge variant="outline">��ltimo CI: {lastCheckinYMD ?? "—"}</Badge>
+            <div className="flex flex-wrap gap-2 mt-2 text-sm">
+              <Badge variant="outline">Último CI: {lastCheckinYMD ?? "—"}</Badge>
               <Badge variant={nextDue ? "destructive" : "outline"}>
                 {nextDue && <AlertTriangle className="mr-1 h-3.5 w-3.5" />}
                 Próximo CI: {nextCheckinYMD ?? "—"}
@@ -1169,7 +1204,7 @@ function K({
   const arrow = (() => {
     if (delta == null) return null;
     if (delta > 0) return "↑";
-    if (delta < 0) return "��";
+    if (delta < 0) return "↓";
     return "→";
   })();
 

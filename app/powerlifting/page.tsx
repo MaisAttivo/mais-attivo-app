@@ -71,7 +71,7 @@ export default function PowerliftingPage() {
       const ex: Exercise[] = ["agachamento", "supino", "levantamento"];
       const result: Record<Exercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
       for (const e of ex) {
-        const qy = query(base, where("exercise", "==", e), orderBy("weight", "desc"));
+        const qy = query(base, where("exercise", "==", e));
         const qs = await getDocs(qy);
         result[e] = qs.docs.map((d) => ({ id: d.id, ...(d.data() as any) }))
           .map((d: any) => ({ ...d, createdAt: d.createdAt?.toDate ? d.createdAt.toDate() : null })) as PR[];
@@ -229,7 +229,7 @@ function LiftCard(props: {
           />
         </div>
         <div className="sm:col-span-1">
-          <Button className="w-full" onClick={onSave} disabled={saving}>{saving ? "A guardar…" : "Guardar PR"}</Button>
+          <Button className="w-full" onClick={onSave} disabled={saving}>{saving ? "A guardar…" : "Guardar"}</Button>
         </div>
       </div>
 

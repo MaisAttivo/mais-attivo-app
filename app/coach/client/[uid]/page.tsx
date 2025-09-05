@@ -144,6 +144,7 @@ export default function CoachClientProfilePage(
   type PlExercise = "agachamento" | "supino" | "levantamento";
   type PlEntry = { id: string; exercise: PlExercise; weight: number; reps: number; createdAt: Date | null };
   const [plByEx, setPlByEx] = useState<Record<PlExercise, PlEntry[]>>({ agachamento: [], supino: [], levantamento: [] });
+  const [plVisible, setPlVisible] = useState<Record<PlExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
 
   // Powerlifting flag
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
@@ -603,6 +604,8 @@ export default function CoachClientProfilePage(
             {(["agachamento","supino","levantamento"] as PlExercise[]).map((ex)=>{
               const label = ex === "agachamento" ? "Agachamento" : ex === "supino" ? "Supino" : "Levantamento Terra";
               const rows = plByEx[ex];
+              const count = plVisible[ex] ?? 10;
+              const visibleRows = rows.slice(0, count);
               return (
                 <div key={ex} className="space-y-2">
                   <div className="text-sm text-slate-700">{label} — Histórico</div>
@@ -617,7 +620,7 @@ export default function CoachClientProfilePage(
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((p)=> (
+                        {visibleRows.map((p)=> (
                           <tr key={p.id} className="border-t">
                             <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
                             <td className="py-2 pr-4">{p.weight} kg</td>
@@ -628,6 +631,13 @@ export default function CoachClientProfilePage(
                       </tbody>
                     </table>
                   </div>
+                  {rows.length > count && (
+                    <div className="mt-2">
+                      <Button size="sm" variant="outline" onClick={() => setPlVisible(v => ({ ...v, [ex]: (v[ex] ?? 10) + 10 }))}>
+                        Ver mais
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}

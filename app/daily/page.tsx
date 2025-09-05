@@ -64,45 +64,49 @@ export default function DailyPage() {
         setHasConsent(consent);
       } catch {}
 
-      const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() as any;
+      try {
+        const ref = doc(db, `users/${user.uid}/dailyFeedback/${todayId}`);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() as any;
 
-        setWeightKg(
-          typeof data.peso === "number"
-            ? data.peso
-            : typeof data.weightKg === "number"
-            ? data.weightKg
-            : ""
-        );
-        setWaterLiters(
-          typeof data.aguaLitros === "number"
-            ? data.aguaLitros
-            : typeof data.waterLiters === "number"
-            ? data.waterLiters
-            : ""
-        );
-        setSteps(
-          typeof data.passos === "number"
-            ? data.passos
-            : typeof data.steps === "number"
-            ? data.steps
-            : ""
-        );
-        setTrained(Boolean(data.treinou ?? data.trained));
-        const cardioStr: string =
-          typeof data.cardio === "string" ? data.cardio : data.cardio === true ? "sim" : "";
-        setDidCardio(cardioStr === "sim");
-        setFood100(Boolean(data.alimentacao100));
-        setNotes(data.outraAtividade ?? data.notes ?? "");
+          setWeightKg(
+            typeof data.peso === "number"
+              ? data.peso
+              : typeof data.weightKg === "number"
+              ? data.weightKg
+              : ""
+          );
+          setWaterLiters(
+            typeof data.aguaLitros === "number"
+              ? data.aguaLitros
+              : typeof data.waterLiters === "number"
+              ? data.waterLiters
+              : ""
+          );
+          setSteps(
+            typeof data.passos === "number"
+              ? data.passos
+              : typeof data.steps === "number"
+              ? data.steps
+              : ""
+          );
+          setTrained(Boolean(data.treinou ?? data.trained));
+          const cardioStr: string =
+            typeof data.cardio === "string" ? data.cardio : data.cardio === true ? "sim" : "";
+          setDidCardio(cardioStr === "sim");
+          setFood100(Boolean(data.alimentacao100));
+          setNotes(data.outraAtividade ?? data.notes ?? "");
 
-        setDocDate(data.date?.toDate?.() || null);
-        setCreatedAt(data.createdAt?.toDate?.() || null);
-        setAlreadySubmitted(true);
+          setDocDate(data.date?.toDate?.() || null);
+          setCreatedAt(data.createdAt?.toDate?.() || null);
+          setAlreadySubmitted(true);
+        }
+      } catch (e) {
+        console.warn("Daily load error:", e);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
     return () => unsub();
   }, [router, todayId]);

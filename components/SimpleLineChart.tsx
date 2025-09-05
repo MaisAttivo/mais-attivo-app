@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type Series = { name: string; color: string; points: { x: number; y: number }[] };
 
-export default function SimpleLineChart({ series, height = 180 }: { series: Series[]; height?: number }) {
+export default function SimpleLineChart({ series, height = 200, xLabel, yLabel, yUnit }: { series: Series[]; height?: number; xLabel?: string; yLabel?: string; yUnit?: string }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number>(360);
   const [tip, setTip] = useState<{ x: number; y: number; label: string } | null>(null);
@@ -35,6 +35,10 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
     return { xMin: minX - xPad, xMax: maxX + xPad, yMin: yPad ? minY - yPad : minY - 1, yMax: yPad ? maxY + yPad : maxY + 1 };
   }, [flat, hasData]);
 
+  const M = { top: 8, right: 16, bottom: 28, left: 44 };
+  const innerW = Math.max(1, width - M.left - M.right);
+  const innerH = Math.max(1, height - M.top - M.bottom);
+
   const yTicks = useMemo(() => {
     const count = 4;
     const span = yMax - yMin;
@@ -56,12 +60,12 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
   }, [xMin, xMax]);
 
   function xScale(x: number) {
-    if (xMax === xMin) return 0;
-    return ((x - xMin) / (xMax - xMin)) * (width - 24) + 12; // 12px padding
+    if (xMax === xMin) return M.left;
+    return M.left + ((x - xMin) / (xMax - xMin)) * innerW;
   }
   function yScale(y: number) {
-    if (yMax === yMin) return height / 2;
-    return height - (((y - yMin) / (yMax - yMin)) * (height - 24) + 12);
+    if (yMax === yMin) return M.top + innerH / 2;
+    return M.top + (1 - ((y - yMin) / (yMax - yMin))) * innerH;
   }
 
   function pathFor(points: { x: number; y: number }[]) {
@@ -74,7 +78,7 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
     const dt = new Date(p.x);
     const dateText = isFinite(dt.getTime()) ? new Intl.DateTimeFormat("pt-PT", { year: "numeric", month: "2-digit", day: "2-digit" }).format(dt) : String(p.x);
     const valText = typeof p.y === "number" ? p.y.toString() : String(p.y);
-    const label = `${sName ? sName + " — " : ""}${dateText}: ${valText}`;
+    const label = `${sName ? sName + " — " : ""}${dateText}: ${valText}${yUnit ? " " + yUnit : ""}`;
     const cx = xScale(p.x);
     const cy = yScale(p.y);
     setTip({ x: cx, y: cy, label });
@@ -87,13 +91,13 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
       ) : (
         <svg width={width} height={height} role="img" aria-label="gráfico de evolução">
           {/* Eixos */}
-          <line x1={12} y1={height - 12} x2={width - 12} y2={height - 12} stroke="#e5e7eb" strokeWidth={1} />
-          <line x1={12} y1={12} x2={12} y2={height - 12} stroke="#e5e7eb" strokeWidth={1} />
+          <line x1={M.left} y1={height - M.bottom} x2={width - M.right} y2={height - M.bottom} stroke="#e5e7eb" strokeWidth={1} />
+          <line x1={M.left} y1={M.top} x2={M.left} y2={height - M.bottom} stroke="#e5e7eb" strokeWidth={1} />
           {/* Ticks Y */}
           {yTicks.map((yv, i) => (
             <g key={`y-${i}`}>
-              <line x1={10} x2={12} y1={yScale(yv)} y2={yScale(yv)} stroke="#cbd5e1" />
-              <text x={8} y={yScale(yv) + 3} textAnchor="end" fontSize={10} fill="#64748b">{Math.round(yv * 100) / 100}</text>
+              <line x1={M.left - 2} x2={M.left} y1={yScale(yv)} y2={yScale(yv)} stroke="#cbd5e1" />
+              <text x={M.left - 6} y={yScale(yv) + 3} textAnchor="end" fontSize={10} fill="#64748b">{Math.round(yv * 100) / 100}</text>
             </g>
           ))}
           {/* Ticks X */}
@@ -102,11 +106,19 @@ export default function SimpleLineChart({ series, height = 180 }: { series: Seri
             const label = isFinite(dt.getTime()) ? new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "2-digit" }).format(dt) : String(Math.round(xv));
             return (
               <g key={`x-${i}`}>
-                <line y1={height - 12} y2={height - 10} x1={xScale(xv)} x2={xScale(xv)} stroke="#cbd5e1" />
-                <text y={height - 2} x={xScale(xv)} textAnchor="middle" fontSize={10} fill="#64748b">{label}</text>
+                <line y1={height - M.bottom} y2={height - M.bottom + 2} x1={xScale(xv)} x2={xScale(xv)} stroke="#cbd5e1" />
+                <text y={height - M.bottom + 12} x={xScale(xv)} textAnchor="middle" fontSize={10} fill="#64748b">{label}</text>
               </g>
             );
           })}
+
+          {/* Axis labels */}
+          {xLabel && (
+            <text x={(M.left + (width - M.right)) / 2} y={height - 4} textAnchor="middle" fontSize={11} fill="#475569">{xLabel}</text>
+          )}
+          {yLabel && (
+            <text x={12} y={(M.top + (height - M.bottom)) / 2} textAnchor="middle" fontSize={11} fill="#475569" transform={`rotate(-90 12 ${(M.top + (height - M.bottom)) / 2})`}>{yLabel}</text>
+          )}
 
           {series.map((s, idx) => (
             <g key={idx}>

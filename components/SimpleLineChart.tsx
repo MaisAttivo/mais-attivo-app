@@ -159,7 +159,7 @@ export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, 
             <text x={12} y={(M.top + (height - M.bottom)) / 2} textAnchor="middle" fontSize={11} fill="#475569" transform={`rotate(-90 12 ${(M.top + (height - M.bottom)) / 2})`}>{yLabel}</text>
           )}
 
-          {series.map((s, idx) => (
+          {dsSeries.map((s, idx) => (
             <g key={idx}>
               <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
               {s.points.map((p, i) => (
@@ -191,7 +191,7 @@ export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, 
           {tip.label}
         </div>
       )}
-      {series.length >= 1 && (
+      {dsSeries.length >= 1 && (
         <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-700">
           {series.map((s, i) => (
             <div key={i} className="inline-flex items-center gap-1">

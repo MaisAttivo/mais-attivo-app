@@ -109,10 +109,13 @@ export default function PowerliftingPage() {
     }
   }
 
-  const best = useMemo(() => {
+  const best1 = useMemo(() => {
     const out: Record<Exercise, PR | null> = { agachamento: null, supino: null, levantamento: null };
     (Object.keys(prs) as Exercise[]).forEach((e) => {
-      out[e] = prs[e][0] || null;
+      const only1 = prs[e].filter((p) => p.reps === 1);
+      if (only1.length === 0) { out[e] = null; return; }
+      only1.sort((a, b) => (b.weight - a.weight));
+      out[e] = only1[0] || null;
     });
     return out;
   }, [prs]);
@@ -137,7 +140,7 @@ export default function PowerliftingPage() {
         title="Agachamento"
         exercise="agachamento"
         prs={prs.agachamento}
-        best={best.agachamento}
+        best1={best1.agachamento}
         w={w.agachamento}
         r={r.agachamento}
         onW={(val)=>setW((x)=>({...x, agachamento: val}))}
@@ -150,7 +153,7 @@ export default function PowerliftingPage() {
         title="Supino"
         exercise="supino"
         prs={prs.supino}
-        best={best.supino}
+        best1={best1.supino}
         w={w.supino}
         r={r.supino}
         onW={(val)=>setW((x)=>({...x, supino: val}))}
@@ -163,7 +166,7 @@ export default function PowerliftingPage() {
         title="Levantamento Terra"
         exercise="levantamento"
         prs={prs.levantamento}
-        best={best.levantamento}
+        best1={best1.levantamento}
         w={w.levantamento}
         r={r.levantamento}
         onW={(val)=>setW((x)=>({...x, levantamento: val}))}
@@ -179,7 +182,7 @@ function LiftCard(props: {
   title: string;
   exercise: Exercise;
   prs: PR[];
-  best: PR | null;
+  best1: PR | null;
   w: string;
   r: string;
   onW: (v: string) => void;
@@ -187,18 +190,17 @@ function LiftCard(props: {
   saving: boolean;
   onSave: () => void;
 }) {
-  const { title, prs, best, w, r, onW, onR, saving, onSave } = props;
+  const { title, prs, best1, w, r, onW, onR, saving, onSave } = props;
   return (
     <section className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{title}</h2>
-        {best ? (
+        {best1 ? (
           <div className="text-sm text-slate-700">
-            Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
-            <span className="ml-2 text-xs text-slate-500">(~{epley1RM(best.weight, best.reps)} kg)</span>
+            PR 1RM: <span className="font-semibold">{best1.weight} kg</span>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">Sem registos</div>
+          <div className="text-sm text-slate-500">Sem 1RM</div>
         )}
       </div>
 

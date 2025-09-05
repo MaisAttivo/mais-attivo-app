@@ -46,7 +46,6 @@ service cloud.firestore {
     function timestampOrMissing(field) { return !(field in request.resource.data) || request.resource.data[field] is timestamp; }
     function inSetOrMissing(field, set) { return !(field in request.resource.data) || (request.resource.data[field] in set); }
     function enumOrMissing(field, set) { return inSetOrMissing(field, set); }
-    function timestampOrStringOrMissing(field) { return !(field in request.resource.data) || (request.resource.data[field] is timestamp || request.resource.data[field] is string); }
 
     /* /config */
     match /config/{docId} {
@@ -74,7 +73,7 @@ service cloud.firestore {
       allow create: if isUser(userId) && validUserCreate();
 
       function validUserUpdateCommon() {
-        return timestampOrStringOrMissing('lastCheckinDate') && timestampOrStringOrMissing('nextCheckinDate') &&
+        return timestampOrMissing('lastCheckinDate') && timestampOrMissing('nextCheckinDate') &&
           inSetOrMissing('objetivoPeso', ['perda','ganho']) && stringOrMissing('name') &&
           stringOrMissing('email') && boolOrMissing('onboardingDone') &&
           numericOrMissing('workoutFrequency') && numericNullOrMissing('metaAgua') &&
@@ -99,7 +98,7 @@ service cloud.firestore {
         )
         ||
         (
-          // Permitir cliente (ativo) gerir consentimento de imagens, sem depender de health consent
+          // Cliente pode gerir consentimento de imagens (ou retirar) sem depender de health consent
           isUser(userId) && isActive(userId) &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['imageUseConsent','imageUseSocialCensored','imageUseConsentAt','updatedAt'])
         )
@@ -176,9 +175,7 @@ service cloud.firestore {
           numericOrMissing('sleepHours') && boolOrMissing('drinksAlcohol') &&
           stringOrMissing('alcoholFrequency') && stringOrMissing('questionnaireVersion') &&
           timestampOrMissing('createdAt') && timestampOrMissing('updatedAt'); }
-        // Permitir o primeiro questionário mesmo sem consentimento explícito (onboarding)
-        allow create: if isUser(userId) && isActive(userId) && validQuestionnaire();
-        // Atualizações posteriores exigem consentimento
+        allow create: if clientCanWrite(userId) && validQuestionnaire();
         allow update: if clientCanWrite(userId) && validQuestionnaire();
         allow delete: if false;
       }

@@ -57,8 +57,9 @@ export default function EvolucaoPage() {
             const id = d.id;
             const val: any = d.get("pesoAtualKg");
             const dtAny: any = d.get("weekEndDate");
-            const date = dtAny?.toDate ? dtAny.toDate() : parseWeekEndFromId(id);
-            if (typeof val === "number" && date) pesoSemanal.push({ x: +date, y: val });
+            const raw = dtAny?.toDate ? dtAny.toDate() : parseWeekMondayFromId(id);
+            const monday = raw ? mondayOfSameWeekUTC(raw) : null;
+            if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
           });
         } catch {}
 

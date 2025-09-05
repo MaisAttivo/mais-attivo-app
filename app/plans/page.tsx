@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, limit, orderBy, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Upload, FileText, X, ArrowLeft } from "lucide-react";
+import { Upload, X, ArrowLeft } from "lucide-react";
 
 function PdfCard({ title, url, onPreview }: { title: string; url?: string | null; onPreview?: (url: string)=>void }) {
   return (
@@ -38,7 +38,7 @@ function PdfCard({ title, url, onPreview }: { title: string; url?: string | null
   );
 }
 
-export default function PlansPage() {
+function PlansPageContent() {
   const { uid, role, loading: sessionLoading } = useSession();
   const [plan, setPlan] = useState<{ trainingUrl?: string | null; dietUrl?: string | null } | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export default function PlansPage() {
         if (alive) setPlansLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => { let _ = alive; _ = false; };
   }, [effectiveUid]);
 
   async function handleUpload(kind: "training" | "diet", file: File) {
@@ -233,5 +233,13 @@ export default function PlansPage() {
         </div>
 
       </main>
+  );
+}
+
+export default function PlansPage() {
+  return (
+    <Suspense fallback={<main className="max-w-3xl mx-auto p-6">A carregar…</main>}>
+      <PlansPageContent />
+    </Suspense>
   );
 }

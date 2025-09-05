@@ -46,14 +46,17 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
   const series: Series[] = useMemo(() => {
     if (mode.key === "peso") {
       return [
-        { name: "Peso semanal", color: "#2563eb", points: data.pesoSemanal },
-        { name: "Peso check-in", color: "#16a34a", points: data.pesoCheckin },
+        { name: "Peso semanal (kg)", color: "#2563eb", points: data.pesoSemanal },
+        { name: "Peso check-in (kg)", color: "#16a34a", points: data.pesoCheckin },
       ];
     }
-    if (mode.key === "musculo") return [{ name: "Massa Muscular", color: "#7c3aed", points: data.massaMuscular }];
-    if (mode.key === "gordura") return [{ name: "Massa Gorda", color: "#dc2626", points: data.massaGorda }];
+    if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];
+    if (mode.key === "gordura") return [{ name: "Massa Gorda (kg)", color: "#dc2626", points: data.massaGorda }];
     return [{ name: "Gordura Visceral", color: "#0ea5e9", points: data.gorduraVisceral }];
   }, [mode.key, data]);
+
+  const yUnit = mode.key === "visceral" ? undefined : "kg";
+  const yLabel = mode.key === "visceral" ? "Índice" : "Kg";
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="flex flex-col gap-2">
@@ -65,7 +68,7 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
         </div>
         <button type="button" onClick={next} aria-label="Seguinte" className="rounded border px-1.5 py-0.5 text-xs hover:bg-gray-50">→</button>
       </div>
-      <SimpleLineChart series={series} />
+      <SimpleLineChart series={series} xLabel="Data" yLabel={yLabel} yUnit={yUnit} />
     </div>
   );
 }

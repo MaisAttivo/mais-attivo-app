@@ -600,35 +600,37 @@ export default function CoachClientProfilePage(
               })}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-slate-600">
-                  <tr>
-                    <th className="py-2 pr-4">Data</th>
-                    <th className="py-2 pr-4">Exercício</th>
-                    <th className="py-2 pr-4">Peso</th>
-                    <th className="py-2 pr-4">Reps</th>
-                    <th className="py-2 pr-4">1RM Estimado - Epley</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(["agachamento","supino","levantamento"] as PlExercise[]).flatMap((ex)=>plByEx[ex].map((p)=>({ex,p})))
-                    .sort((a,b)=>((b.p.createdAt?.getTime()||0)-(a.p.createdAt?.getTime()||0)))
-                    .map(({ex,p})=>{
-                      const label = ex === "agachamento" ? "Agachamento" : ex === "supino" ? "Supino" : "Levantamento Terra";
-                      return (
-                        <tr key={p.id} className="border-t">
-                          <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
-                          <td className="py-2 pr-4">{label}</td>
-                          <td className="py-2 pr-4">{p.weight} kg</td>
-                          <td className="py-2 pr-4">{p.reps}</td>
-                          <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+            {(["agachamento","supino","levantamento"] as PlExercise[]).map((ex)=>{
+              const label = ex === "agachamento" ? "Agachamento" : ex === "supino" ? "Supino" : "Levantamento Terra";
+              const rows = plByEx[ex];
+              return (
+                <div key={ex} className="space-y-2">
+                  <div className="text-sm text-slate-700">{label} — Histórico</div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-slate-600">
+                        <tr>
+                          <th className="py-2 pr-4">Data</th>
+                          <th className="py-2 pr-4">Peso</th>
+                          <th className="py-2 pr-4">Reps</th>
+                          <th className="py-2 pr-4">1RM Estimado - Epley</th>
                         </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
+                      </thead>
+                      <tbody>
+                        {rows.map((p)=> (
+                          <tr key={p.id} className="border-t">
+                            <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
+                            <td className="py-2 pr-4">{p.weight} kg</td>
+                            <td className="py-2 pr-4">{p.reps}</td>
+                            <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 

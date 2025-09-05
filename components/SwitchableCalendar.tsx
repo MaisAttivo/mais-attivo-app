@@ -13,6 +13,7 @@ const MODES: { key: Mode; label: string; emoji: string }[] = [
 
 export default function SwitchableCalendar({ uid }: { uid: string }) {
   const [idx, setIdx] = useState(0);
+  const [range, setRange] = useState<"2m" | "all">("2m");
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
 

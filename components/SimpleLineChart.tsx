@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type Series = { name: string; color: string; points: { x: number; y: number }[] };
 
-export default function SimpleLineChart({ series, height = 200, xLabel, yLabel, yUnit }: { series: Series[]; height?: number; xLabel?: string; yLabel?: string; yUnit?: string }) {
+export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, yUnit }: { series: Series[]; height?: number; xLabel?: string; yLabel?: string; yUnit?: string }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number>(360);
   const [tip, setTip] = useState<{ x: number; y: number; label: string } | null>(null);

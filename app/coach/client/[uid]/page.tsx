@@ -483,6 +483,23 @@ export default function CoachClientProfilePage(
               <span>Permitir upload de fotos</span>
             </label>
 
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={plEnabled}
+                onChange={async (e) => {
+                  const enabled = e.currentTarget.checked;
+                  setPlEnabled(enabled);
+                  try {
+                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                  } catch {
+                    setPlEnabled(!enabled);
+                  }
+                }}
+              />
+              <span>Powerlifting</span>
+            </label>
+
             {editarUltimoHref && (
               <Link href={editarUltimoHref}>
                 <Button variant="secondary">Editar último check-in</Button>

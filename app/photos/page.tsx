@@ -287,8 +287,11 @@ export default function PhotosPage() {
           {uploading && (
             <div className="text-xs text-slate-600">Progresso: {uploadProgress}%</div>
           )}
+          <div className="text-xs text-slate-600">
+            {!imgConsent && !coachOverride ? "Uploads bloqueados: aceita o consentimento ou pede autorização ao coach." : ""}
+          </div>
           <div className="flex-1" />
-          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek}>{uploading ? `A enviar… ${uploadProgress}%` : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
+          <Button type="submit" disabled={uploading || selectedFiles.length===0 || alreadyThisWeek || (!imgConsent && !coachOverride)}>{uploading ? `A enviar… ${uploadProgress}%` : alreadyThisWeek ? "Limitado esta semana" : "Anexar"}</Button>
         </div>
       </form>
 

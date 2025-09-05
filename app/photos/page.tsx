@@ -33,6 +33,11 @@ export default function PhotosPage() {
   const [items, setItems] = useState<PhotoItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Consentimento de uso de imagens
+  const [imgConsent, setImgConsent] = useState<boolean>(false);
+  const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
+  const [savingConsent, setSavingConsent] = useState(false);
+
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);

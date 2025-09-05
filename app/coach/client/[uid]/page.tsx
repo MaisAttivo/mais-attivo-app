@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
+import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -159,7 +160,7 @@ export default function CoachClientProfilePage(
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
   const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
@@ -189,6 +190,24 @@ export default function CoachClientProfilePage(
       }
       setPlPrs(result);
     } catch {}
+  }
+
+  // Evolução (gráficos)
+  const [evoData, setEvoData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [] });
+
+  function parseWeekMondayFromId(id: string): Date | null {
+    const m = id.match(/^(\d{4})-W(\d{2})$/);
+    if (!m) return null;
+    const year = parseInt(m[1], 10);
+    const week = parseInt(m[2], 10);
+    const simple = new Date(Date.UTC(year, 0, 1));
+    const day = simple.getUTCDay() || 7;
+    const isoThursday = new Date(simple);
+    isoThursday.setUTCDate(isoThursday.getUTCDate() + (4 - day));
+    const monday = new Date(isoThursday);
+    monday.setUTCDate(isoThursday.getUTCDate() + (week - 1) * 7 - 3);
+    monday.setUTCHours(0, 0, 0, 0);
+    return monday;
   }
 
   useEffect(() => {
@@ -253,6 +272,51 @@ export default function CoachClientProfilePage(
       );
       const checkinsLocal: Checkin[] = cSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Checkin));
       setCheckins(checkinsLocal);
+
+      // ==== Evolução (dados) ====
+      try {
+        const pesoSemanal: { x: number; y: number }[] = [];
+        const pesoCheckin: { x: number; y: number }[] = [];
+        const massaMuscular: { x: number; y: number }[] = [];
+        const massaGorda: { x: number; y: number }[] = [];
+        const gorduraVisceral: { x: number; y: number }[] = [];
+
+        // Weekly weights → mapear para 2ª feira
+        let qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
+        let wfSnap = await getDocs(qW);
+        if (wfSnap.empty) {
+          try { qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+        }
+        wfSnap.forEach((d) => {
+          const id = d.id;
+          const val: any = (d.data() as any).pesoAtualKg;
+          const monday = parseWeekMondayFromId(id);
+          if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
+        });
+
+        // Check-ins (até 100)
+        let qC = query(collection(db, `users/${uid}/checkins`), orderBy("date", "asc"), limit(100));
+        let cAll = await getDocs(qC);
+        if (cAll.empty) {
+          try { qC = query(collection(db, `users/${uid}/checkins`), orderBy("__name__", "asc"), limit(100)); cAll = await getDocs(qC); } catch {}
+        }
+        cAll.forEach((docSnap) => {
+          const d: any = docSnap.data();
+          const dt: Date | null = d.date?.toDate?.() || null;
+          const t = dt ? +dt : null;
+          if (!t) return;
+          if (typeof d.peso === "number") pesoCheckin.push({ x: t, y: d.peso });
+          if (typeof d.massaMuscular === "number") massaMuscular.push({ x: t, y: d.massaMuscular });
+          if (typeof d.massaGorda === "number") massaGorda.push({ x: t, y: d.massaGorda });
+          if (typeof d.gorduraVisceral === "number") gorduraVisceral.push({ x: t, y: d.gorduraVisceral });
+        });
+
+        const asc = (a: { x: number }, b: { x: number }) => a.x - b.x;
+        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc);
+        setEvoData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral });
+      } catch (e) {
+        console.error("evolução load falhou", e);
+      }
 
       // Fallback Último/Próximo CI a partir do último check-in
       if (!userLastDt && checkinsLocal[0]?.date) {
@@ -571,6 +635,7 @@ export default function CoachClientProfilePage(
         <div className="flex flex-wrap gap-2 mb-3">
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
+          <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
@@ -650,6 +715,19 @@ export default function CoachClientProfilePage(
           </CardContent>
         </Card>
 
+
+        {/* Evolução */}
+        <Card className={"shadow-sm " + (visibleSection !== "evolucao" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Evolução</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-2xl border p-4 bg-background">
+              <SwitchableEvolution data={evoData} />
+            </div>
+            <div className="text-xs text-muted-foreground mt-2">Podes deslizar para ver outros gráficos.</div>
+          </CardContent>
+        </Card>
 
         {/* Weekly */}
         <Card className={"shadow-sm " + (visibleSection !== "weekly" ? "hidden" : "")}>

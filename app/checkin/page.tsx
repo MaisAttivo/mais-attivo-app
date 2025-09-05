@@ -68,6 +68,7 @@ export default function CheckinPage() {
   const [peso, setPeso] = useState<string>("");
   const [massaMuscular, setMassaMuscular] = useState<string>("");
   const [massaGorda, setMassaGorda] = useState<string>("");
+  const [gorduraVisceral, setGorduraVisceral] = useState<string>("");
 
   const [objetivoPeso, setObjetivoPeso] = useState<"perda" | "ganho">("perda");
 
@@ -156,6 +157,7 @@ export default function CheckinPage() {
           setPeso(d.peso != null ? String(d.peso) : "");
           setMassaMuscular(d.massaMuscular != null ? String(d.massaMuscular) : "");
           setMassaGorda(d.massaGorda != null ? String(d.massaGorda) : "");
+          setGorduraVisceral(d.gorduraVisceral != null ? String(d.gorduraVisceral) : "");
           setObjetivoPeso((d.objetivoPeso as "perda" | "ganho") ?? "perda");
         }
 
@@ -202,6 +204,7 @@ export default function CheckinPage() {
         peso: peso === "" ? null : Number(peso),
         massaMuscular: massaMuscular === "" ? null : Number(massaMuscular),
         massaGorda: massaGorda === "" ? null : Number(massaGorda),
+        gorduraVisceral: gorduraVisceral === "" ? null : Number(gorduraVisceral),
         objetivoPeso,
       };
 
@@ -252,6 +255,7 @@ export default function CheckinPage() {
         setPeso("");
         setMassaMuscular("");
         setMassaGorda("");
+        setGorduraVisceral("");
       }
     } catch (e: any) {
       console.error(e);
@@ -346,7 +350,7 @@ export default function CheckinPage() {
         </div>
 
         {/* Métricas corporais */}
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Peso (kg)</label>
             <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="ex: 74.5" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
@@ -358,6 +362,10 @@ export default function CheckinPage() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Massa Gorda (kg)</label>
             <input type="number" step="0.1" value={massaGorda} onChange={(e) => setMassaGorda(e.target.value)} placeholder="ex: 14.8" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Gordura Visceral</label>
+            <input type="number" step="0.1" value={gorduraVisceral} onChange={(e) => setGorduraVisceral(e.target.value)} placeholder="ex: 8" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
           </div>
         </div>
 

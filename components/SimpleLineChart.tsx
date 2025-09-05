@@ -59,6 +59,45 @@ export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, 
     return arr;
   }, [xMin, xMax]);
 
+  function lttb(points: { x: number; y: number }[], threshold: number) {
+    if (threshold >= points.length || threshold <= 0) return points;
+    const data = [...points].sort((a, b) => a.x - b.x);
+    const sampled: { x: number; y: number }[] = [];
+    let a = 0;
+    const bucketSize = (data.length - 2) / (threshold - 2);
+    sampled.push(data[0]);
+    for (let i = 0; i < threshold - 2; i++) {
+      const rangeStart = Math.floor((i + 1) * bucketSize) + 1;
+      const rangeEnd = Math.floor((i + 2) * bucketSize) + 1;
+      const range = data.slice(rangeStart, rangeEnd);
+      let avgX = 0, avgY = 0;
+      const avgRangeStart = Math.floor((i + 1) * bucketSize) + 1;
+      const avgRangeEnd = Math.floor((i + 2) * bucketSize) + 1;
+      const avgRange = data.slice(avgRangeStart, avgRangeEnd);
+      for (const p of avgRange) { avgX += p.x; avgY += p.y; }
+      const avgRangeLen = avgRange.length || 1;
+      avgX /= avgRangeLen; avgY /= avgRangeLen;
+      const aPoint = data[a];
+      let maxArea = -1; let nextA = rangeStart;
+      for (let j = 0; j < range.length; j++) {
+        const p = range[j];
+        const area = Math.abs((aPoint.x - avgX) * (p.y - aPoint.y) - (aPoint.x - p.x) * (avgY - aPoint.y));
+        if (area > maxArea) { maxArea = area; nextA = rangeStart + j; }
+      }
+      sampled.push(data[nextA]);
+      a = nextA;
+    }
+    sampled.push(data[data.length - 1]);
+    return sampled;
+  }
+
+  const dsSeries = useMemo(() => {
+    const minPxPerPoint = 8;
+    const innerW = Math.max(1, width - 44 - 16);
+    const maxPoints = Math.max(10, Math.floor(innerW / minPxPerPoint));
+    return series.map((s) => ({ ...s, points: lttb(s.points, maxPoints) }));
+  }, [series, width]);
+
   function xScale(x: number) {
     if (xMax === xMin) return M.left;
     return M.left + ((x - xMin) / (xMax - xMin)) * innerW;

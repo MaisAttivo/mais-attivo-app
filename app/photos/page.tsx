@@ -3,11 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, storage } from "@/lib/firebase";
+import { auth, storage, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { ref, listAll, getMetadata, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 function lisbonISOWeekId(d = new Date()) {
   const dt = new Date(d);

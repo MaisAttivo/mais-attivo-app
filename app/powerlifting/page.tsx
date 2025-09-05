@@ -241,7 +241,7 @@ function LiftCard(props: {
                 <th className="py-2 pr-4">Data</th>
                 <th className="py-2 pr-4">Peso</th>
                 <th className="py-2 pr-4">Reps</th>
-                <th className="py-2 pr-4">1RM (Epley)</th>
+                <th className="py-2 pr-4">1RM estimado</th>
               </tr>
             </thead>
             <tbody>

@@ -568,16 +568,14 @@ export default function CoachClientProfilePage(
 
 
         {/* Selector for sections */}
-        <div className="overflow-x-auto -mx-2 mb-3">
-          <div className="flex gap-2 px-2">
-            <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
-            <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
-            <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
-            <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
-            <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
-            <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
-            <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
-          </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
+          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
+          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
+          <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
         </div>
 
         {/* Dailies */}
@@ -589,41 +587,65 @@ export default function CoachClientProfilePage(
             {dailies.length === 0 ? (
               <div className="text-sm text-muted-foreground">Sem registos.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-muted-foreground">
-                    <tr>
-                      <th className="py-2 pr-4">Data</th>
-                      <th className="py-2 pr-4">Peso (kg)</th>
-                      <th className="py-2 pr-4">Água (L)</th>
-                      <th className="py-2 pr-4">Passos</th>
-                      <th className="py-2 pr-4">Treino</th>
-                      <th className="py-2 pr-4">Alim. 100%</th>
-                      <th className="py-2 pr-4">Notas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailies.map((d) => {
-                      const w = num(d.weight) ?? num(d.peso);
-                      const agua = num(d.waterLiters) ?? num(d.aguaLitros);
-                      return (
-                        <tr key={d.id} className="border-t">
-                          <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
-                          <td className="py-2 pr-4">{w != null ? w : "—"}</td>
-                          <td className="py-2 pr-4">
-                            {agua != null ? agua : "—"}
-                            {num(d.metaAgua) != null && ` / ${d.metaAgua}`}
-                          </td>
-                          <td className="py-2 pr-4">{num(d.steps) ?? num(d.passos) ?? "—"}</td>
-                          <td className="py-2 pr-4">{(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</td>
-                          <td className="py-2 pr-4">{d.alimentacao100 ? "Sim" : "—"}</td>
-                          <td className="py-2 pr-4">{d.notes ?? "—"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-muted-foreground">
+                      <tr>
+                        <th className="py-2 pr-4">Data</th>
+                        <th className="py-2 pr-4">Peso (kg)</th>
+                        <th className="py-2 pr-4">Água (L)</th>
+                        <th className="py-2 pr-4">Passos</th>
+                        <th className="py-2 pr-4">Treino</th>
+                        <th className="py-2 pr-4">Alim. 100%</th>
+                        <th className="py-2 pr-4">Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailies.map((d) => {
+                        const w = num(d.weight) ?? num(d.peso);
+                        const agua = num(d.waterLiters) ?? num(d.aguaLitros);
+                        return (
+                          <tr key={d.id} className="border-t">
+                            <td className="py-2 pr-4">{ymd(toDate(d.date ?? null))}</td>
+                            <td className="py-2 pr-4">{w != null ? w : "—"}</td>
+                            <td className="py-2 pr-4">
+                              {agua != null ? agua : "—"}
+                              {num(d.metaAgua) != null && ` / ${d.metaAgua}`}
+                            </td>
+                            <td className="py-2 pr-4">{num(d.steps) ?? num(d.passos) ?? "—"}</td>
+                            <td className="py-2 pr-4">{(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</td>
+                            <td className="py-2 pr-4">{d.alimentacao100 ? "Sim" : "—"}</td>
+                            <td className="py-2 pr-4 break-words">{d.notes ?? "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="sm:hidden space-y-2">
+                  {dailies.map((d) => {
+                    const w = num(d.weight) ?? num(d.peso);
+                    const agua = num(d.waterLiters) ?? num(d.aguaLitros);
+                    return (
+                      <div key={d.id} className="rounded-xl border p-3 text-sm">
+                        <div className="font-medium mb-1">{ymd(toDate(d.date ?? null))}</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><span className="text-muted-foreground">Peso:</span> {w != null ? w : "—"}</div>
+                          <div><span className="text-muted-foreground">Água:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
+                          <div><span className="text-muted-foreground">Passos:</span> {num(d.steps) ?? num(d.passos) ?? "—"}</div>
+                          <div><span className="text-muted-foreground">Treino:</span> {(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</div>
+                          <div><span className="text-muted-foreground">Alim.:</span> {d.alimentacao100 ? "Sim" : "—"}</div>
+                          {d.notes ? (
+                            <div className="col-span-2 break-words"><span className="text-muted-foreground">Notas:</span> {d.notes}</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -695,7 +717,7 @@ export default function CoachClientProfilePage(
                           <div className="text-sm text-muted-foreground">Sem registos.</div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="overflow-x-auto">
+                            <div className="hidden sm:block overflow-x-auto">
                               <table className="w-full text-sm">
                                 <thead className="text-left text-muted-foreground">
                                   <tr>
@@ -717,6 +739,20 @@ export default function CoachClientProfilePage(
                                 </tbody>
                               </table>
                             </div>
+
+                            <div className="sm:hidden space-y-2">
+                              {visible.map((p) => (
+                                <div key={p.id} className="rounded-xl border p-3 text-sm">
+                                  <div className="font-medium mb-1">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div><span className="text-muted-foreground">Peso:</span> {p.weight} kg</div>
+                                    <div><span className="text-muted-foreground">Reps:</span> {p.reps}</div>
+                                    <div className="col-span-2"><span className="text-muted-foreground">1RM Est.:</span> {epley1RM(p.weight, p.reps)} kg</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
                             {list.length > plShowCount[e] && (
                               <div className="flex justify-center">
                                 <Button size="sm" variant="outline" onClick={() => setPlShowCount((s)=>({ ...s, [e]: s[e] + 10 }))}>Ver mais…</Button>
@@ -881,7 +917,7 @@ export default function CoachClientProfilePage(
                 {photoSets.map((s)=> (
                   <div key={s.id} className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
-                    <div className="flex gap-2 overflow-x-auto">
+                    <div className="flex flex-wrap gap-2">
                       {s.urls.map((u, i)=> (
                         <button key={i} onClick={()=>setOpenSet({ id: s.id, urls: s.urls })} className="shrink-0">
                           <img src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />

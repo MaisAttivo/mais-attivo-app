@@ -167,28 +167,30 @@ export default function CoachClientProfilePage() {
   async function loadPlAll(userId: string) {
     try {
       const base = collection(db, "users", userId, "powerlifting");
-      const ex: PLExercise[] = ["agachamento", "supino", "levantamento"];
       const result: Record<PLExercise, PR[]> = { agachamento: [], supino: [], levantamento: [] };
-      for (const e of ex) {
-        const qs = await getDocs(query(base, where("exercise", "==", e)));
-        result[e] = qs.docs
-          .map((d) => {
-            const obj: any = d.data();
-            return {
-              id: d.id,
-              exercise: obj.exercise,
-              weight: obj.weight,
-              reps: obj.reps,
-              createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
-            } as PR;
-          })
-          .sort(
-            (a, b) =>
-              epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
-          );
-      }
+      const qs = await getDocs(base);
+      qs.docs.forEach((d) => {
+        const obj: any = d.data();
+        const ex = (obj.exercise as PLExercise) || null;
+        if (!ex || !(ex === "agachamento" || ex === "supino" || ex === "levantamento")) return;
+        const rec: PR = {
+          id: d.id,
+          exercise: ex,
+          weight: Number(obj.weight) || 0,
+          reps: Math.max(1, Math.floor(Number(obj.reps) || 1)),
+          createdAt: obj.createdAt?.toDate ? obj.createdAt.toDate() : null,
+        };
+        result[ex].push(rec);
+      });
+      (Object.keys(result) as PLExercise[]).forEach((e) => {
+        result[e].sort(
+          (a, b) => epley1RM(b.weight, b.reps) - epley1RM(a.weight, a.reps) || b.weight - a.weight || b.reps - a.reps
+        );
+      });
       setPlPrs(result);
-    } catch {}
+    } catch (e) {
+      // swallow errors to avoid breaking coach page
+    }
   }
 
   // Evolução (gráficos)

@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info, Upload, FileText, X } from "lucide-react";
+import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -492,87 +492,92 @@ export default function CoachClientProfilePage(
               </Badge>
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end">
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={active}
-                onChange={async (e) => {
-                  const val = e.currentTarget.checked;
-                  setActive(val);
-                  setSavingActive(true);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
-                  } catch (err) {
-                    setActive(!val);
-                    console.error("toggle active error", err);
-                  } finally {
-                    setSavingActive(false);
-                  }
-                }}
-              />
-              <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
-            </label>
+          <div className="flex flex-col items-stretch gap-2 w-full sm:w-auto sm:items-end">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={async (e) => {
+                    const val = e.currentTarget.checked;
+                    setActive(val);
+                    setSavingActive(true);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { active: val, updatedAt: serverTimestamp() });
+                    } catch (err) {
+                      setActive(!val);
+                      console.error("toggle active error", err);
+                    } finally {
+                      setSavingActive(false);
+                    }
+                  }}
+                />
+                <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
+              </label>
 
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={coachOverride}
+                  onChange={async (e) => {
+                    const val = e.currentTarget.checked;
+                    setCoachOverride(val);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { imageUploadAllowedByCoach: val, updatedAt: serverTimestamp() });
+                    } catch (err) {
+                      setCoachOverride(!val);
+                    }
+                  }}
+                />
+                <span>Permitir upload de fotos</span>
+              </label>
 
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={coachOverride}
-                onChange={async (e) => {
-                  const val = e.currentTarget.checked;
-                  setCoachOverride(val);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { imageUploadAllowedByCoach: val, updatedAt: serverTimestamp() });
-                  } catch (err) {
-                    setCoachOverride(!val);
-                  }
-                }}
-              />
-              <span>Permitir upload de fotos</span>
-            </label>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={plEnabled}
+                  onChange={async (e) => {
+                    const enabled = e.currentTarget.checked;
+                    setPlEnabled(enabled);
+                    try {
+                      await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
+                    } catch {
+                      setPlEnabled(!enabled);
+                    }
+                  }}
+                />
+                <span>Powerlifting</span>
+              </label>
+            </div>
 
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={plEnabled}
-                onChange={async (e) => {
-                  const enabled = e.currentTarget.checked;
-                  setPlEnabled(enabled);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
-                  } catch {
-                    setPlEnabled(!enabled);
-                  }
-                }}
-              />
-              <span>Powerlifting</span>
-            </label>
-
-            {editarUltimoHref && (
-              <Link href={editarUltimoHref}>
-                <Button variant="secondary">Editar último check-in</Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              {editarUltimoHref && (
+                <Link href={editarUltimoHref} className="w-full sm:w-auto">
+                  <Button variant="secondary" className="w-full sm:w-auto">Editar último check-in</Button>
+                </Link>
+              )}
+              <Link href={novoCheckinHref} className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Novo check-in</Button>
               </Link>
-            )}
-            <Link href={novoCheckinHref}>
-              <Button>Novo check-in</Button>
-            </Link>
-            <Link href="/coach" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 ml-2">
-              <span>⬅️</span> Voltar
-            </Link>
+              <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
+                <Link href="/coach"><ArrowLeft className="h-4 w-4" />Voltar</Link>
+              </Button>
+            </div>
           </div>
         </div>
 
 
         {/* Selector for sections */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
-          <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
-          <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
-          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
-          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
-          <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
-          <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
+        <div className="overflow-x-auto -mx-2 mb-3">
+          <div className="flex gap-2 px-2">
+            <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
+            <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
+            <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+            <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+            <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+            <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
+            <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
+          </div>
         </div>
 
         {/* Dailies */}

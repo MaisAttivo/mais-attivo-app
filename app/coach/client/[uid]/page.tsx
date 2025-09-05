@@ -465,22 +465,6 @@ export default function CoachClientProfilePage(
               <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
             </label>
 
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={imgConsent}
-                onChange={async (e) => {
-                  const val = e.currentTarget.checked;
-                  setImgConsent(val);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { imageUseConsent: val, imageUseConsentAt: serverTimestamp(), updatedAt: serverTimestamp() });
-                  } catch (err) {
-                    setImgConsent(!val);
-                  }
-                }}
-              />
-              <span>Consent. fotos</span>
-            </label>
 
             <label className="inline-flex items-center gap-2 text-sm">
               <input

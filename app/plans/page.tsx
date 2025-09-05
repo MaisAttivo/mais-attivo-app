@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -26,7 +28,8 @@ function PdfCard({ title, url, onPreview }: { title: string; url?: string | null
             </div>
             <div className="rounded-lg border overflow-hidden">
               <object data={url} type="application/pdf" className="w-full h-48" aria-label="Pré-visualização PDF">
-                <div className="p-2 text-xs text-muted-foreground">Não foi possível mostrar a pré-visualização. Use o botão Ver.</div>
+                <iframe className="w-full h-48" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(url)} title="Pré-visualização PDF (alternativa)"></iframe>
+                <div className="p-2 text-xs text-muted-foreground">Não foi possível mostrar a pré-visualização. <a className="underline" href={url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
               </object>
             </div>
           </div>
@@ -225,6 +228,7 @@ function PlansPageContent() {
                   <Button size="sm" variant="secondary" onClick={()=>setPreviewUrl(null)}><X className="h-4 w-4" />Fechar</Button>
                 </div>
                 <object data={previewUrl} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                  <iframe className="w-full h-full" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(previewUrl)} title="Pré-visualização PDF (alternativa)"></iframe>
                   <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={previewUrl} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
                 </object>
               </div>

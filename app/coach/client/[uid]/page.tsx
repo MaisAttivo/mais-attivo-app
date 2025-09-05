@@ -585,22 +585,50 @@ export default function CoachClientProfilePage(
           <CardHeader>
             <CardTitle>Powerlifting</CardTitle>
           </CardHeader>
-          <CardContent>
-            <label className="inline-flex items-center gap-3 text-sm">
-              <input
-                type="checkbox"
-                checked={plEnabled}
-                onChange={async (e) => {
-                  const enabled = e.currentTarget.checked;
-                  setPlEnabled(enabled);
-                  try {
-                    await updateDoc(doc(db, "users", uid), { powerlifting: enabled, updatedAt: serverTimestamp() });
-                  } catch {}
-                }}
-              />
-              <span>Powerlifting:</span>
-              <span className={`font-medium ${plEnabled ? "text-emerald-600" : "text-slate-700"}`}>{plEnabled ? "True" : "False"}</span>
-            </label>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(["agachamento","supino","levantamento"] as PlExercise[]).map((ex)=>{
+                const only1 = plByEx[ex].filter(p=>p.reps===1);
+                const best = only1.sort((a,b)=>b.weight-a.weight)[0];
+                const label = ex === "agachamento" ? "Agachamento" : ex === "supino" ? "Supino" : "Levantamento Terra";
+                return (
+                  <div key={ex} className="rounded-2xl border p-3 bg-background">
+                    <div className="text-sm text-slate-600">{label} — PR 1RM</div>
+                    <div className="text-lg font-semibold">{best ? `${best.weight} kg` : "—"}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-slate-600">
+                  <tr>
+                    <th className="py-2 pr-4">Data</th>
+                    <th className="py-2 pr-4">Exercício</th>
+                    <th className="py-2 pr-4">Peso</th>
+                    <th className="py-2 pr-4">Reps</th>
+                    <th className="py-2 pr-4">1RM (Epley)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["agachamento","supino","levantamento"] as PlExercise[]).flatMap((ex)=>plByEx[ex].map((p)=>({ex,p})))
+                    .sort((a,b)=>((b.p.createdAt?.getTime()||0)-(a.p.createdAt?.getTime()||0)))
+                    .map(({ex,p})=>{
+                      const label = ex === "agachamento" ? "Agachamento" : ex === "supino" ? "Supino" : "Levantamento Terra";
+                      return (
+                        <tr key={p.id} className="border-t">
+                          <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
+                          <td className="py-2 pr-4">{label}</td>
+                          <td className="py-2 pr-4">{p.weight} kg</td>
+                          <td className="py-2 pr-4">{p.reps}</td>
+                          <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 

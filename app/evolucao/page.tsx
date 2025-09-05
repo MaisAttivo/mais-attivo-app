@@ -52,13 +52,15 @@ export default function EvolucaoPage() {
 
         // Weekly weights (limit 60)
         try {
-          const wfSnap = await getDocs(query(collection(db, `users/${u.uid}/weeklyFeedback`), limit(60)));
+          let qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
+          let wfSnap = await getDocs(qW);
+          if (wfSnap.empty) {
+            try { qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+          }
           wfSnap.forEach((d) => {
             const id = d.id;
             const val: any = d.get("pesoAtualKg");
-            const dtAny: any = d.get("weekEndDate");
-            const raw = dtAny?.toDate ? dtAny.toDate() : parseWeekMondayFromId(id);
-            const monday = raw ? mondayOfSameWeekUTC(raw) : null;
+            const monday = parseWeekMondayFromId(id);
             if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
           });
         } catch {}

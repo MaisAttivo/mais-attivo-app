@@ -161,6 +161,7 @@ export default function CoachClientProfilePage(
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
+  const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
 
   async function loadPlAll(userId: string) {
     try {
@@ -655,7 +656,6 @@ export default function CoachClientProfilePage(
             ) : (
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm font-medium mb-2">3 Exercícios em Destaque</div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
                       const best = plPrs[e][0] || null;
@@ -681,33 +681,41 @@ export default function CoachClientProfilePage(
                   {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
                     const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
                     const list = [...plPrs[e]].sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+                    const visible = list.slice(0, plShowCount[e]);
                     return (
                       <div key={e} className="rounded-2xl border p-4 bg-background">
                         <div className="text-sm font-medium mb-2">{label} — Histórico</div>
                         {list.length === 0 ? (
                           <div className="text-sm text-muted-foreground">Sem registos.</div>
                         ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead className="text-left text-muted-foreground">
-                                <tr>
-                                  <th className="py-2 pr-4">Data</th>
-                                  <th className="py-2 pr-4">Peso</th>
-                                  <th className="py-2 pr-4">Reps</th>
-                                  <th className="py-2 pr-4">1RM Estimada (Epley)</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {list.map((p) => (
-                                  <tr key={p.id} className="border-t">
-                                    <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
-                                    <td className="py-2 pr-4">{p.weight} kg</td>
-                                    <td className="py-2 pr-4">{p.reps}</td>
-                                    <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                          <div className="space-y-3">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead className="text-left text-muted-foreground">
+                                  <tr>
+                                    <th className="py-2 pr-4">Data</th>
+                                    <th className="py-2 pr-4">Peso</th>
+                                    <th className="py-2 pr-4">Reps</th>
+                                    <th className="py-2 pr-4">1RM Estimada (Epley)</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody>
+                                  {visible.map((p) => (
+                                    <tr key={p.id} className="border-t">
+                                      <td className="py-2 pr-4">{p.createdAt ? p.createdAt.toLocaleDateString("pt-PT") : "—"}</td>
+                                      <td className="py-2 pr-4">{p.weight} kg</td>
+                                      <td className="py-2 pr-4">{p.reps}</td>
+                                      <td className="py-2 pr-4">{epley1RM(p.weight, p.reps)} kg</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            {list.length > plShowCount[e] && (
+                              <div className="flex justify-center">
+                                <Button size="sm" variant="outline" onClick={() => setPlShowCount((s)=>({ ...s, [e]: s[e] + 10 }))}>Ver mais…</Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -914,7 +922,7 @@ export default function CoachClientProfilePage(
                 className="inline-flex"
                 title={
                   "Legenda das setas:\n" +
-                  "�� Peso: seta preta (↑ subiu, ↓ desceu).\n" +
+                  "• Peso: seta preta (↑ subiu, ↓ desceu).\n" +
                   "• Massa muscular: ↑ verde (bom), ↓ vermelho.\n" +
                   "• Massa gorda: ↑ vermelho, ↓ verde (bom)."
                 }

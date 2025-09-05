@@ -9,20 +9,27 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, orderBy, limit, query } from "firebase/firestore";
 
-function parseWeekEndFromId(id: string): Date | null {
+function parseWeekMondayFromId(id: string): Date | null {
   const m = id.match(/^(\d{4})-W(\d{2})$/);
   if (!m) return null;
   const year = parseInt(m[1], 10);
   const week = parseInt(m[2], 10);
+  // ISO week Monday calculation (UTC)
   const simple = new Date(Date.UTC(year, 0, 1));
   const day = simple.getUTCDay() || 7;
   const isoThursday = new Date(simple);
   isoThursday.setUTCDate(isoThursday.getUTCDate() + (4 - day));
-  const weekStart = new Date(isoThursday);
-  weekStart.setUTCDate(isoThursday.getUTCDate() + (week - 1) * 7 - 3); // Monday
-  const weekEnd = new Date(weekStart);
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
-  return weekEnd;
+  const monday = new Date(isoThursday);
+  monday.setUTCDate(isoThursday.getUTCDate() + (week - 1) * 7 - 3);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+function mondayOfSameWeekUTC(date: Date): Date {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dow = d.getUTCDay() || 7; // 1..7
+  if (dow !== 1) d.setUTCDate(d.getUTCDate() - (dow - 1));
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
 }
 
 export default function EvolucaoPage() {

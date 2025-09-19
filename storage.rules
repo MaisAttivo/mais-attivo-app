@@ -6,7 +6,9 @@ service firebase.storage {
       return isSignedIn() && (
         request.auth.token.role == 'coach' ||
         request.auth.token.role == 'admin' ||
-        request.auth.token.coach == true
+        request.auth.token.coach == true ||
+        // Fallback to Firestore role when custom claims aren't set
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['coach', 'admin']
       );
     }
     function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }

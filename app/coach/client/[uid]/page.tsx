@@ -162,7 +162,7 @@ export default function CoachClientProfilePage() {
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
   const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding" | "notificacoes">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
@@ -735,6 +735,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
+          <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
@@ -884,23 +885,29 @@ export default function CoachClientProfilePage() {
               </div>
             )}
 
-            {/* Notificações rápidas (OneSignal via fila) */}
-            <div className="pt-2">
-              <div className="text-sm font-medium mb-2">Notificações rápidas</div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: "pagamento_atrasado", label: "Pagamento Atrasado" },
-                  { key: "marcar_checkin", label: "Marcar Check-In" },
-                  { key: "faltas_diarios", label: "Falta de Registo Diários" },
-                  { key: "faltas_semanal", label: "Falta de Registo Semanal" },
-                  { key: "enviar_fotos", label: "Pedir fotos de atualização" },
-                  { key: "beber_agua", label: "Bebe mais água!" },
-                ].map((b) => (
-                  <Button key={b.key} size="sm" variant="outline" onClick={() => queuePush(b.key)}>{b.label}</Button>
-                ))}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Estes botões criam pedidos em users/{uid}/coachNotifications e notificationsQueue para integração posterior com OneSignal.</div>
+          </CardContent>
+        </Card>
+
+        {/* Notificações */}
+        <Card className={"shadow-sm " + (visibleSection !== "notificacoes" ? "hidden" : "") }>
+          <CardHeader>
+            <CardTitle>Notificações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium mb-2">Notificações rápidas</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "pagamento_atrasado", label: "Pagamento Atrasado" },
+                { key: "marcar_checkin", label: "Marcar Check-In" },
+                { key: "faltas_diarios", label: "Falta de Registo Diários" },
+                { key: "faltas_semanal", label: "Falta de Registo Semanal" },
+                { key: "enviar_fotos", label: "Pedir fotos de atualização" },
+                { key: "beber_agua", label: "Bebe mais água!" },
+              ].map((b) => (
+                <Button key={b.key} size="sm" variant="outline" onClick={() => queuePush(b.key)}>{b.label}</Button>
+              ))}
             </div>
+            <div className="text-xs text-muted-foreground mt-1">Cria registos em users/{uid}/coachNotifications e notificationsQueue para envio via OneSignal.</div>
           </CardContent>
         </Card>
 
@@ -939,18 +946,18 @@ export default function CoachClientProfilePage() {
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
-                      const best = plPrs[e][0] || null;
+                      const best1 = [...plPrs[e]].filter(p => p.reps === 1).sort((a,b)=> b.weight - a.weight)[0] || null;
                       const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
                       return (
                         <div key={e} className="rounded-2xl border p-4 bg-background">
                           <div className="text-sm font-medium mb-1">{label}</div>
-                          {best ? (
+                          {best1 ? (
                             <div className="text-sm text-slate-700">
-                              Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
-                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best.weight, best.reps)} kg</div>
+                              Melhor (1RM): <span className="font-semibold">{best1.weight} kg × {best1.reps}</span>
+                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best1.weight, best1.reps)} kg</div>
                             </div>
                           ) : (
-                            <div className="text-sm text-muted-foreground">Sem registos</div>
+                            <div className="text-sm text-muted-foreground">Sem 1RM registado</div>
                           )}
                         </div>
                       );

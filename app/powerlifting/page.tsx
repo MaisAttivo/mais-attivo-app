@@ -115,7 +115,8 @@ export default function PowerliftingPage() {
   const best = useMemo(() => {
     const out: Record<Exercise, PR | null> = { agachamento: null, supino: null, levantamento: null };
     (Object.keys(prs) as Exercise[]).forEach((e) => {
-      out[e] = prs[e][0] || null;
+      const only1 = prs[e].filter((p) => p.reps === 1).sort((a,b)=> b.weight - a.weight);
+      out[e] = only1[0] || null;
     });
     return out;
   }, [prs]);
@@ -197,11 +198,11 @@ function LiftCard(props: {
         <h2 className="text-lg font-semibold">{title}</h2>
         {best ? (
           <div className="text-sm text-slate-700">
-            Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
+            Melhor (1RM): <span className="font-semibold">{best.weight} kg × {best.reps}</span>
             <span className="ml-2 text-xs text-slate-500">(~{epley1RM(best.weight, best.reps)} kg)</span>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">Sem registos</div>
+          <div className="text-sm text-slate-500">Sem 1RM registado</div>
         )}
       </div>
 

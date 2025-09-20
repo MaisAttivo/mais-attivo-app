@@ -27,13 +27,13 @@ service firebase.storage {
       allow write: if isCoach() && isPdf() && fileName.matches('.*\.pdf$');
     }
 
-    // InBody (PNG/JPEG até 8MB)
+    // InBody (PNG/JPEG/PDF até 8MB)
     match /users/{uid}/inbody/{fileName} {
       allow read, list: if isCoach() || isSelf(uid);
       allow write: if (isCoach() || isSelf(uid))
-                   && isImage()
+                   && (isImage() || isPdf())
                    && request.resource.size < 8 * 1024 * 1024
-                   && fileName.matches('.*\.(png|jpe?g)$');
+                   && fileName.matches('.*\.(png|jpe?g|pdf)$');
     }
 
     // Weekly Feedback (PNG/JPEG até 8MB)

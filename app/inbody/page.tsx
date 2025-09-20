@@ -45,8 +45,7 @@ export default function InBodyPage() {
     const items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
     try {
       if (storage) {
-        const bucket = (storage as any)?.app?.options?.storageBucket || "";
-        const dirRef = ref(storage, bucket ? `gs://${bucket}/users/${userId}/inbody` : `users/${userId}/inbody`);
+        const dirRef = ref(storage, `users/${userId}/inbody`);
         const res = await listAll(dirRef);
         const fromStorage = await Promise.all(
           res.items.map(async (it) => {
@@ -66,9 +65,9 @@ export default function InBodyPage() {
       setError(e?.message || "Falha a listar ficheiros.");
     }
 
-    // 2) Fallback Firestore (caso existam docs com URLs)
+    // 2) Também ler Firestore e fundir
     try {
-      if (items.length === 0 && db) {
+      if (db) {
         const snap = await getDocs(collection(db, `users/${userId}/inbody`));
         const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
         snap.forEach((d) => {
@@ -80,7 +79,9 @@ export default function InBodyPage() {
             fromFs.push({ id: d.id, url, createdAt });
           }
         });
-        if (fromFs.length > 0) items.push(...fromFs);
+        for (const it of fromFs) {
+          if (!items.some(x => x.url === it.url)) items.push(it);
+        }
       }
     } catch {}
 

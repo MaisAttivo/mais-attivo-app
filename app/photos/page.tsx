@@ -77,8 +77,7 @@ export default function PhotosPage() {
     // 1) Tentar Storage
     try {
       if (storage) {
-        const bucket = (storage as any)?.app?.options?.storageBucket || "";
-        const baseRef = ref(storage, bucket ? `gs://${bucket}/users/${userId}/photos` : `users/${userId}/photos`);
+        const baseRef = ref(storage, `users/${userId}/photos`);
         const res = await listAll(baseRef);
         const arr: PhotoItem[] = await Promise.all(res.items.map(async (it) => {
           const [meta, url] = await Promise.all([getMetadata(it), getDownloadURL(it)]);
@@ -95,9 +94,9 @@ export default function PhotosPage() {
       setError(e?.message || "Falha a carregar fotos.");
     }
 
-    // 2) Fallback Firestore (docs com url/urls)
+    // 2) Também ler Firestore e fundir
     try {
-      if (out.length === 0 && db) {
+      if (db) {
         const snap = await getDocs(collection(db, `users/${userId}/photos`));
         const tmp: PhotoItem[] = [];
         snap.forEach((d) => {
@@ -112,7 +111,9 @@ export default function PhotosPage() {
             tmp.push({ path: `firestore/${d.id}/${idx}`, url: u, createdAt, setId, isMain: idx === 0 });
           });
         });
-        if (tmp.length > 0) out.push(...tmp);
+        for (const it of tmp) {
+          if (!out.some(x => x.url === it.url)) out.push(it);
+        }
       }
     } catch {}
 

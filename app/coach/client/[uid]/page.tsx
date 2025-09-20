@@ -424,8 +424,7 @@ export default function CoachClientProfilePage() {
       try {
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (storage) {
-          const bucket = (storage as any)?.app?.options?.storageBucket || "";
-          const baseRef = ref(storage, bucket ? `gs://${bucket}/users/${uid}/photos` : `users/${uid}/photos`);
+          const baseRef = ref(storage, `users/${uid}/photos`);
           const res = await listAll(baseRef);
           const items = await Promise.all(res.items.map(async (it)=>{
             const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
@@ -468,8 +467,7 @@ export default function CoachClientProfilePage() {
       try {
         let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
         if (storage) {
-          const bucket = (storage as any)?.app?.options?.storageBucket || "";
-          const dirRef = ref(storage, bucket ? `gs://${bucket}/users/${uid}/inbody` : `users/${uid}/inbody`);
+          const dirRef = ref(storage, `users/${uid}/inbody`);
           const res = await listAll(dirRef);
           const fromStorage = await Promise.all(res.items.map(async (it) => {
             const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);

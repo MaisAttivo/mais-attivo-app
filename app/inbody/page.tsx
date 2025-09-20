@@ -45,7 +45,8 @@ export default function InBodyPage() {
     const items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
     try {
       if (storage) {
-        const dirRef = ref(storage, `users/${userId}/inbody`);
+        const bucket = (storage as any)?.app?.options?.storageBucket || "";
+        const dirRef = ref(storage, bucket ? `gs://${bucket}/users/${userId}/inbody` : `users/${userId}/inbody`);
         const res = await listAll(dirRef);
         const fromStorage = await Promise.all(
           res.items.map(async (it) => {

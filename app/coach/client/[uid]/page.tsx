@@ -468,7 +468,8 @@ export default function CoachClientProfilePage() {
       try {
         let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
         if (storage) {
-          const dirRef = ref(storage, `users/${uid}/inbody`);
+          const bucket = (storage as any)?.app?.options?.storageBucket || "";
+          const dirRef = ref(storage, bucket ? `gs://${bucket}/users/${uid}/inbody` : `users/${uid}/inbody`);
           const res = await listAll(dirRef);
           const fromStorage = await Promise.all(res.items.map(async (it) => {
             const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);

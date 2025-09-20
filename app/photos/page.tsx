@@ -77,7 +77,8 @@ export default function PhotosPage() {
     // 1) Tentar Storage
     try {
       if (storage) {
-        const baseRef = ref(storage, `users/${userId}/photos`);
+        const bucket = (storage as any)?.app?.options?.storageBucket || "";
+        const baseRef = ref(storage, bucket ? `gs://${bucket}/users/${userId}/photos` : `users/${userId}/photos`);
         const res = await listAll(baseRef);
         const arr: PhotoItem[] = await Promise.all(res.items.map(async (it) => {
           const [meta, url] = await Promise.all([getMetadata(it), getDownloadURL(it)]);

@@ -5,9 +5,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, storage } from "@/lib/firebase";
+import { auth, storage, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes, listAll, getMetadata, deleteObject } from "firebase/storage";
+import { collection, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Upload, ArrowLeft } from "lucide-react";
@@ -40,29 +41,50 @@ export default function InBodyPage() {
   }, [router]);
 
   async function loadFiles(userId: string) {
-    if (!storage) { setError("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*"); return; }
-    const dirRef = ref(storage, `users/${userId}/inbody`);
+    // 1) Tentar Storage
+    const items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
     try {
-      const res = await listAll(dirRef);
-      const items = await Promise.all(
-        res.items.map(async (it) => {
-          const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-          let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
-          if (!createdAt) {
-            const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
-            const n = Number(base);
-            if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
-          }
-          return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
-        })
-      );
-      // sort desc by createdAt or name
-      items.sort((a, b) => ((b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)) || (b.id.localeCompare(a.id)));
-      setFiles(items);
+      if (storage) {
+        const dirRef = ref(storage, `users/${userId}/inbody`);
+        const res = await listAll(dirRef);
+        const fromStorage = await Promise.all(
+          res.items.map(async (it) => {
+            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
+            let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
+            if (!createdAt) {
+              const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
+              const n = Number(base);
+              if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
+            }
+            return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
+          })
+        );
+        items.push(...fromStorage);
+      }
     } catch (e: any) {
       setError(e?.message || "Falha a listar ficheiros.");
-      setFiles([]);
     }
+
+    // 2) Fallback Firestore (caso existam docs com URLs)
+    try {
+      if (items.length === 0 && db) {
+        const snap = await getDocs(collection(db, `users/${userId}/inbody`));
+        const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
+        snap.forEach((d) => {
+          const data: any = d.data() || {};
+          const url: string | undefined = data.url || data.downloadUrl || data.href;
+          if (typeof url === "string" && url) {
+            const ts: any = data.createdAt || data.time || data.date || null;
+            const createdAt: Date | null = ts?.toDate?.() || (typeof ts === "number" ? new Date(ts) : null);
+            fromFs.push({ id: d.id, url, createdAt });
+          }
+        });
+        if (fromFs.length > 0) items.push(...fromFs);
+      }
+    } catch {}
+
+    items.sort((a, b) => ((b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)) || b.id.localeCompare(a.id));
+    setFiles(items);
   }
 
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {

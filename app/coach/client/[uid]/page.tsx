@@ -19,6 +19,7 @@ import {
   updateDoc,
   Timestamp,
   onSnapshot,
+  addDoc,
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
@@ -122,6 +123,7 @@ export default function CoachClientProfilePage() {
 
   // Questionnaire extra
   const [workoutFrequency, setWorkoutFrequency] = useState<number | null>(null);
+  const [onboarding, setOnboarding] = useState<any | null>(null);
 
   // Data
   const [dailies, setDailies] = useState<Daily[]>([]);
@@ -160,7 +162,7 @@ export default function CoachClientProfilePage() {
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
   const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding" | "notificacoes">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
@@ -254,6 +256,7 @@ export default function CoachClientProfilePage() {
       } catch {}
       setName((qd?.fullName || u.fullName || u.name || u.nome || u.email || "Cliente").toString());
       setWorkoutFrequency(num(qd?.workoutFrequency));
+      setOnboarding(qd);
 
       // dailies (7)
       const dSnap = await getDocs(
@@ -422,6 +425,7 @@ export default function CoachClientProfilePage() {
 
       // Listar Fotos (conjuntos)
       try {
+        let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (storage) {
           const baseRef = ref(storage, `users/${uid}/photos`);
           const res = await listAll(baseRef);
@@ -441,19 +445,34 @@ export default function CoachClientProfilePage() {
             if (it.isMain) s.mainUrl = it.url;
             bySet.set(it.setId, s);
           }
-          const arr = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-          setPhotoSets(arr);
-        } else {
-          setPhotoSets([]);
+          arrFinal = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
         }
+        if (arrFinal.length === 0) {
+          try {
+            const snap = await getDocs(collection(db, `users/${uid}/photos`));
+            const tmp: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
+            snap.forEach((d) => {
+              const data: any = d.data() || {};
+              const urls: string[] = Array.isArray(data.urls) ? data.urls.filter((u: any)=> typeof u === 'string') : (typeof data.url === 'string' ? [data.url] : []);
+              if (urls.length === 0) return;
+              const ts: any = data.createdAt || data.time || data.date || null;
+              const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
+              const mainUrl = data.mainUrl && typeof data.mainUrl === 'string' ? data.mainUrl : urls[0];
+              tmp.push({ id: d.id, createdAt, urls, mainUrl });
+            });
+            if (tmp.length > 0) arrFinal = tmp.sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          } catch {}
+        }
+        setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
       // Listar InBody do utilizador (imagens)
       try {
+        let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
         if (storage) {
           const dirRef = ref(storage, `users/${uid}/inbody`);
           const res = await listAll(dirRef);
-          const items = await Promise.all(res.items.map(async (it) => {
+          const fromStorage = await Promise.all(res.items.map(async (it) => {
             const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
             let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
             if (!createdAt) {
@@ -463,11 +482,26 @@ export default function CoachClientProfilePage() {
             }
             return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
           }));
-          items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
-          setInbodyFiles(items);
-        } else {
-          setInbodyFiles([]);
+          items = fromStorage;
         }
+        if (items.length === 0) {
+          try {
+            const snap = await getDocs(collection(db, `users/${uid}/inbody`));
+            const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
+            snap.forEach((d) => {
+              const data: any = d.data() || {};
+              const url: string | undefined = data.url || data.downloadUrl || data.href;
+              if (typeof url === 'string' && url) {
+                const ts: any = data.createdAt || data.time || data.date || null;
+                const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
+                fromFs.push({ id: d.id, url, createdAt });
+              }
+            });
+            if (fromFs.length > 0) items = fromFs;
+          } catch {}
+        }
+        items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
+        setInbodyFiles(items);
       } catch {
         setInbodyFiles([]);
       } finally {
@@ -566,6 +600,34 @@ export default function CoachClientProfilePage() {
       console.error("Upload plano falhou", e);
     } finally {
       if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+    }
+  }
+
+  async function queuePush(kind: string) {
+    const map: Record<string, { title: string; message: string }> = {
+      pagamento_atrasado: { title: "Pagamento pendente", message: "Há um pagamento por regularizar. Obrigado!" },
+      marcar_checkin: { title: "Marcar Check-in", message: "Marca o teu próximo Check-in, por favor." },
+      faltas_diarios: { title: "Registos diários", message: "Não te esqueças de preencher o diário de hoje!" },
+      faltas_semanal: { title: "Registo semanal", message: "Está a faltar o teu feedback semanal." },
+      enviar_fotos: { title: "Fotos de atualização", message: "Envia as tuas fotos de atualização desta semana." },
+      beber_agua: { title: "Hidratação", message: "Bebe água! Vamos cumprir a meta diária." },
+    };
+    const payload = map[kind] || { title: "Mensagem do Coach", message: kind };
+    try {
+      await addDoc(collection(db, "notificationsQueue"), {
+        targetUid: uid,
+        kind,
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+      await addDoc(collection(db, "users", uid, "coachNotifications"), {
+        kind,
+        ...payload,
+        createdAt: serverTimestamp(),
+        read: false,
+      });
+    } catch (e) {
+      console.error("queue push failed", e);
     }
   }
 
@@ -672,8 +734,8 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
-          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
-          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
+          <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
+          <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
           <Button size="sm" variant={visibleSection === "powerlifting" ? "default" : "outline"} onClick={() => setVisibleSection("powerlifting")}>Powerlifting</Button>
         </div>
@@ -764,6 +826,89 @@ export default function CoachClientProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Onboarding */}
+        <Card className={"shadow-sm " + (visibleSection !== "onboarding" ? "hidden" : "")}>
+          <CardHeader>
+            <CardTitle>Onboarding (Questionário)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-3">
+            {!onboarding ? (
+              <div className="text-muted-foreground">Sem questionário preenchido.</div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {Object.entries({
+                  "Nome": onboarding.fullName,
+                  "Idade": onboarding.age,
+                  "Altura (cm)": onboarding.heightCm,
+                  "Peso (kg)": onboarding.weightKg ?? onboarding.weight,
+                  "Profissão": onboarding.occupation,
+                  "Objetivo": onboarding.goal,
+                  "Atividade extra": onboarding.doesOtherActivity === true ? "Sim" : onboarding.doesOtherActivity === false ? "Não" : onboarding.doesOtherActivity,
+                  "Detalhes atividade": onboarding.otherActivityDetails,
+                  "Treinos/semana": onboarding.workoutFrequency,
+                  "Lesão": onboarding.hasInjury === true ? "Sim" : onboarding.hasInjury === false ? "Não" : onboarding.hasInjury,
+                  "Local lesão": onboarding.injuryDetails,
+                  "Mobilidade": onboarding.mobilityIssues === true ? "Sim" : onboarding.mobilityIssues === false ? "Não" : onboarding.mobilityIssues,
+                  "Detalhes mobilidade": onboarding.mobilityDetails,
+                  "Dores": onboarding.hasPain === true ? "Sim" : onboarding.hasPain === false ? "Não" : onboarding.hasPain,
+                  "Local da dor": onboarding.painLocation,
+                  "Dificuldade na dieta": onboarding.dietDifficulty,
+                  "Medicação": onboarding.takesMedication === true ? "Sim" : onboarding.takesMedication === false ? "Não" : onboarding.takesMedication,
+                  "Qual medicação": onboarding.medication,
+                  "Problema intestinal": onboarding.intestinalIssues === true ? "Sim" : onboarding.intestinalIssues === false ? "Não" : onboarding.intestinalIssues,
+                  "Detalhes intestinais": onboarding.intestinalDetails,
+                  "Doença diagnosticada": onboarding.hasDiagnosedDisease === true ? "Sim" : onboarding.hasDiagnosedDisease === false ? "Não" : onboarding.hasDiagnosedDisease,
+                  "Qual doença": onboarding.diagnosedDisease,
+                  "Alergia a alimentos": onboarding.hasFoodAllergy === true ? "Sim" : onboarding.hasFoodAllergy === false ? "Não" : onboarding.hasFoodAllergy,
+                  "Qual alergia": onboarding.foodAllergy,
+                  "Alimentos que não gosta": onboarding.foodsDisliked,
+                  "Alimentos preferidos": onboarding.foodsLiked,
+                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "Não" : onboarding.takesSupplements,
+                  "Quais suplementos": onboarding.supplements,
+                  "Água (L/dia)": onboarding.waterLitersPerDay,
+                  "Qualidade do sono": onboarding.sleepQuality,
+                  "Horas de sono": onboarding.sleepHours,
+                  "Álcool": onboarding.drinksAlcohol === true ? "Sim" : onboarding.drinksAlcohol === false ? "Não" : onboarding.drinksAlcohol,
+                  "Frequência álcool": onboarding.alcoholFrequency,
+                  "Rotina de refeições": onboarding.mealRoutine,
+                  "Outras observações": onboarding.otherNotes,
+                }).map(([k, v]) => (
+                  v == null || v === "" ? null : (
+                    <div key={k} className="rounded-xl border p-3 bg-background">
+                      <div className="text-xs text-muted-foreground">{k}</div>
+                      <div className="font-medium break-words whitespace-pre-wrap">{String(v)}</div>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+
+          </CardContent>
+        </Card>
+
+        {/* Notificações */}
+        <Card className={"shadow-sm " + (visibleSection !== "notificacoes" ? "hidden" : "") }>
+          <CardHeader>
+            <CardTitle>Notificações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium mb-2">Notificações rápidas</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "pagamento_atrasado", label: "Pagamento Atrasado" },
+                { key: "marcar_checkin", label: "Marcar Check-In" },
+                { key: "faltas_diarios", label: "Falta de Registo Diários" },
+                { key: "faltas_semanal", label: "Falta de Registo Semanal" },
+                { key: "enviar_fotos", label: "Pedir fotos de atualização" },
+                { key: "beber_agua", label: "Bebe mais água!" },
+              ].map((b) => (
+                <Button key={b.key} size="sm" variant="outline" onClick={() => queuePush(b.key)}>{b.label}</Button>
+              ))}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">Cria registos em users/{uid}/coachNotifications e notificationsQueue para envio via OneSignal.</div>
+          </CardContent>
+        </Card>
+
         {/* Weekly */}
         <Card className={"shadow-sm " + (visibleSection !== "weekly" ? "hidden" : "")}>
           <CardHeader>
@@ -799,18 +944,18 @@ export default function CoachClientProfilePage() {
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {(["agachamento", "supino", "levantamento"] as PLExercise[]).map((e) => {
-                      const best = plPrs[e][0] || null;
+                      const best1 = [...plPrs[e]].filter(p => p.reps === 1).sort((a,b)=> b.weight - a.weight)[0] || null;
                       const label = e === "agachamento" ? "Agachamento" : e === "supino" ? "Supino" : "Levantamento Terra";
                       return (
                         <div key={e} className="rounded-2xl border p-4 bg-background">
                           <div className="text-sm font-medium mb-1">{label}</div>
-                          {best ? (
+                          {best1 ? (
                             <div className="text-sm text-slate-700">
-                              Melhor: <span className="font-semibold">{best.weight} kg × {best.reps}</span>
-                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best.weight, best.reps)} kg</div>
+                              Melhor (1RM): <span className="font-semibold">{best1.weight} kg × {best1.reps}</span>
+                              <div className="text-xs text-slate-500 mt-1">1RM Estimada (Epley): {epley1RM(best1.weight, best1.reps)} kg</div>
                             </div>
                           ) : (
-                            <div className="text-sm text-muted-foreground">Sem registos</div>
+                            <div className="text-sm text-muted-foreground">Sem 1RM registado</div>
                           )}
                         </div>
                       );

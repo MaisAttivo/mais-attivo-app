@@ -62,6 +62,7 @@ export default function OnboardingPage() {
   const [drinksAlcohol, setDrinksAlcohol] = useState<YesNoPT>("Não");          // 19
   const [alcoholFrequency, setAlcoholFrequency] = useState("");               // 19
   const [mealRoutine, setMealRoutine] = useState("");                         // 20
+  const [otherNotes, setOtherNotes] = useState("");                            // 21 - Outras Observações Relevantes
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,8 +148,9 @@ export default function OnboardingPage() {
         alcoholFrequency: alcoholFrequency.trim(),
 
         mealRoutine: mealRoutine.trim(),
+        otherNotes: otherNotes.trim(),
 
-        questionnaireVersion: "v1",
+        questionnaireVersion: "v2",
         completedAt: serverTimestamp(),
       });
 
@@ -399,6 +401,12 @@ export default function OnboardingPage() {
         <section>
           <label className="block text-sm font-medium mb-1">20. Descreve a tua rotina atual de Refeições (horários e o que comes normalmente)</label>
           <textarea className="w-full border rounded p-2 min-h-[100px]" placeholder="Ex: Pequeno-almoço 8h; Almoço 13h; Lanche 17h; Jantar 20h…" value={mealRoutine} onChange={(e)=>setMealRoutine(e.target.value)} />
+        </section>
+
+        {/* 21. Outras Observações Relevantes */}
+        <section>
+          <label className="block text-sm font-medium mb-1">21. Outras Observações Relevantes</label>
+          <textarea className="w-full border rounded p-2 min-h-[100px]" placeholder="Algo que devas acrescentar (horários, preferências, histórico, etc.)" value={otherNotes} onChange={(e)=>setOtherNotes(e.target.value)} />
         </section>
 
         {error && <p className="text-red-600">{error}</p>}

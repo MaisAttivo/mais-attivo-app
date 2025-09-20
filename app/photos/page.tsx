@@ -52,8 +52,9 @@ export default function PhotosPage() {
   const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
 
   useEffect(() => {
+    if (!auth) { setLoading(false); setError("Sessão indisponível. Inicia sessão novamente."); return; }
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) { router.replace("/login"); return; }
+      if (!u) { setLoading(false); router.replace("/login"); return; }
       setUid(u.uid);
       try {
         if (db) {
@@ -65,8 +66,8 @@ export default function PhotosPage() {
           setCoachOverride(!!d.imageUploadAllowedByCoach);
         }
       } catch {}
-      await load(u.uid);
       setLoading(false);
+      await load(u.uid);
     });
     return () => unsub();
   }, [router]);

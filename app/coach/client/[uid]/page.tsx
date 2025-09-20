@@ -422,6 +422,7 @@ export default function CoachClientProfilePage() {
 
       // Listar Fotos (conjuntos)
       try {
+        let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (storage) {
           const baseRef = ref(storage, `users/${uid}/photos`);
           const res = await listAll(baseRef);
@@ -441,19 +442,34 @@ export default function CoachClientProfilePage() {
             if (it.isMain) s.mainUrl = it.url;
             bySet.set(it.setId, s);
           }
-          const arr = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-          setPhotoSets(arr);
-        } else {
-          setPhotoSets([]);
+          arrFinal = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
         }
+        if (arrFinal.length === 0) {
+          try {
+            const snap = await getDocs(collection(db, `users/${uid}/photos`));
+            const tmp: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
+            snap.forEach((d) => {
+              const data: any = d.data() || {};
+              const urls: string[] = Array.isArray(data.urls) ? data.urls.filter((u: any)=> typeof u === 'string') : (typeof data.url === 'string' ? [data.url] : []);
+              if (urls.length === 0) return;
+              const ts: any = data.createdAt || data.time || data.date || null;
+              const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
+              const mainUrl = data.mainUrl && typeof data.mainUrl === 'string' ? data.mainUrl : urls[0];
+              tmp.push({ id: d.id, createdAt, urls, mainUrl });
+            });
+            if (tmp.length > 0) arrFinal = tmp.sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          } catch {}
+        }
+        setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
       // Listar InBody do utilizador (imagens)
       try {
+        let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
         if (storage) {
           const dirRef = ref(storage, `users/${uid}/inbody`);
           const res = await listAll(dirRef);
-          const items = await Promise.all(res.items.map(async (it) => {
+          const fromStorage = await Promise.all(res.items.map(async (it) => {
             const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
             let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
             if (!createdAt) {
@@ -463,11 +479,26 @@ export default function CoachClientProfilePage() {
             }
             return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
           }));
-          items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
-          setInbodyFiles(items);
-        } else {
-          setInbodyFiles([]);
+          items = fromStorage;
         }
+        if (items.length === 0) {
+          try {
+            const snap = await getDocs(collection(db, `users/${uid}/inbody`));
+            const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
+            snap.forEach((d) => {
+              const data: any = d.data() || {};
+              const url: string | undefined = data.url || data.downloadUrl || data.href;
+              if (typeof url === 'string' && url) {
+                const ts: any = data.createdAt || data.time || data.date || null;
+                const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
+                fromFs.push({ id: d.id, url, createdAt });
+              }
+            });
+            if (fromFs.length > 0) items = fromFs;
+          } catch {}
+        }
+        items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
+        setInbodyFiles(items);
       } catch {
         setInbodyFiles([]);
       } finally {

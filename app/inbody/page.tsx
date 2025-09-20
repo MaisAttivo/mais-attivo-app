@@ -97,19 +97,20 @@ export default function InBodyPage() {
     try {
       const form = e.currentTarget as HTMLFormElement;
       const input = (form.elements.namedItem("inbody") as HTMLInputElement) || null;
-      if (!input || !input.files || input.files.length === 0) { setError("Seleciona um ficheiro PNG."); setSubmitting(false); return; }
+      if (!input || !input.files || input.files.length === 0) { setError("Seleciona um ficheiro."); setSubmitting(false); return; }
 
       const file = input.files[0];
-      const allowed = ["image/png", "image/jpeg", "image/jpg"];
-      if (!allowed.includes(file.type)) { setError("Apenas PNG ou JPEG são permitidos."); setSubmitting(false); return; }
+      const allowed = ["image/png", "image/jpeg", "image/jpg", "application/pdf"];
+      if (!allowed.includes(file.type)) { setError("Apenas PNG, JPEG ou PDF são permitidos."); setSubmitting(false); return; }
       if (file.size > 8 * 1024 * 1024) { setError("Máx. 8MB."); setSubmitting(false); return; }
 
       if (!storage) throw new Error("Storage indisponível. Configura as envs NEXT_PUBLIC_FIREBASE_*");
       const ts = Date.now();
-      const ext = (/\.jpe?g$/i.test(file.name) || file.type === "image/jpeg" || file.type === "image/jpg") ? "jpg" : "png";
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      const ext = isPdf ? "pdf" : ((/\.jpe?g$/i.test(file.name) || file.type === "image/jpeg" || file.type === "image/jpg") ? "jpg" : "png");
       const path = `users/${uid}/inbody/${ts}.${ext}`;
       const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file, { contentType: file.type || (ext === "jpg" ? "image/jpeg" : "image/png") });
+      await uploadBytes(storageRef, file, { contentType: file.type || (ext === "jpg" ? "image/jpeg" : ext === "png" ? "image/png" : "application/pdf") });
       form.reset();
       setSelectedName(null);
       await loadFiles(uid);
@@ -153,12 +154,12 @@ export default function InBodyPage() {
 
       <form onSubmit={handleUpload} className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
         <div className="flex flex-col items-start gap-2">
-          <Input ref={fileInputRef as any} type="file" name="inbody" accept="image/png,image/jpeg" aria-label="Carregar InBody (imagem PNG ou JPEG)" className="hidden" aria-hidden="true" onChange={(e)=>{ const f=e.currentTarget.files?.[0]; setSelectedName(f ? f.name : null); }} />
+          <Input ref={fileInputRef as any} type="file" name="inbody" accept="image/png,image/jpeg,application/pdf" aria-label="Carregar InBody (PNG/JPEG/PDF)" className="hidden" aria-hidden="true" onChange={(e)=>{ const f=e.currentTarget.files?.[0]; setSelectedName(f ? f.name : null); }} />
           <Button size="sm" type="button" onClick={()=>fileInputRef.current?.click()}>
             <Upload className="h-4 w-4" /> Escolher ficheiro
           </Button>
           <div className="text-xs text-slate-600 leading-relaxed max-w-full truncate">{selectedName ?? "Nenhum ficheiro selecionado"}</div>
-          <p className="text-xs text-slate-500">Apenas PNG ou JPEG, até 8MB.</p>
+          <p className="text-xs text-slate-500">Apenas PNG/JPEG/PDF, até 8MB.</p>
         </div>
         {error && <div className="text-sm text-rose-600">{error}</div>}
         <div className="flex justify-end">
@@ -194,62 +195,63 @@ export default function InBodyPage() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
           <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
             <div className="absolute top-3 right-3 flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setZoom((z)=>Math.max(0.5, +(z-0.25).toFixed(2)))}>-</Button>
-              <Button size="sm" variant="outline" onClick={() => setZoom((z)=>Math.min(5, +(z+0.25).toFixed(2)))}>+</Button>
-              <Button size="sm" variant="outline" onClick={() => setZoom(1)}>Reset</Button>
-              <Button size="sm" variant="secondary" onClick={() => { setPreviewUrl(null); setZoom(1); }}>
-                Fechar
-              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setPreviewUrl(null); setZoom(1); }}>Fechar</Button>
               <Button size="sm" variant="outline" asChild><a href={previewUrl} download>Download</a></Button>
             </div>
-            <div
-              ref={containerRef}
-              className="w-full h-full overflow-auto bg-black/5 cursor-grab"
-              onWheel={(e) => {
-                if (e.ctrlKey) {
-                  e.preventDefault();
-                  setZoom((z)=>{
-                    const nz = e.deltaY > 0 ? z - 0.1 : z + 0.1;
-                    return Math.min(5, Math.max(0.5, +nz.toFixed(2)));
-                  });
-                }
-              }}
-              onMouseDown={(e) => {
-                if (!containerRef.current) return;
-                setPanning(true);
-                setPanStart({ x: e.clientX, y: e.clientY, sl: containerRef.current.scrollLeft, st: containerRef.current.scrollTop });
-                (e.currentTarget as HTMLDivElement).style.cursor = "grabbing";
-              }}
-              onMouseMove={(e) => {
-                if (!panning || !panStart || !containerRef.current) return;
-                const dx = e.clientX - panStart.x;
-                const dy = e.clientY - panStart.y;
-                containerRef.current.scrollLeft = panStart.sl - dx;
-                containerRef.current.scrollTop = panStart.st - dy;
-              }}
-              onMouseUp={(e) => {
-                setPanning(false);
-                (e.currentTarget as HTMLDivElement).style.cursor = "auto";
-              }}
-              onMouseLeave={(e) => {
-                setPanning(false);
-                (e.currentTarget as HTMLDivElement).style.cursor = "auto";
-              }}
-            >
-              <div className="min-w-full min-h-full flex items-center justify-center p-4">
-                <img
-                  src={previewUrl}
-                  alt="InBody"
-                  onLoad={(ev) => {
-                    const img = ev.currentTarget;
-                    setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
-                  }}
-                  style={{ width: imgSize ? Math.max(100, Math.round(imgSize.w * zoom)) : undefined }}
-                  className="rounded-lg shadow select-none"
-                  draggable={false}
-                />
+            {/\.pdf(\?|$)/i.test(previewUrl) ? (
+              <object data={previewUrl} type="application/pdf" className="w-full h-full">
+                <iframe className="w-full h-full" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(previewUrl)} title="Pré-visualização PDF"></iframe>
+              </object>
+            ) : (
+              <div
+                ref={containerRef}
+                className="w-full h-full overflow-auto bg-black/5 cursor-grab"
+                onWheel={(e) => {
+                  if (e.ctrlKey) {
+                    e.preventDefault();
+                    setZoom((z)=>{
+                      const nz = e.deltaY > 0 ? z - 0.1 : z + 0.1;
+                      return Math.min(5, Math.max(0.5, +nz.toFixed(2)));
+                    });
+                  }
+                }}
+                onMouseDown={(e) => {
+                  if (!containerRef.current) return;
+                  setPanning(true);
+                  setPanStart({ x: e.clientX, y: e.clientY, sl: containerRef.current.scrollLeft, st: containerRef.current.scrollTop });
+                  (e.currentTarget as HTMLDivElement).style.cursor = "grabbing";
+                }}
+                onMouseMove={(e) => {
+                  if (!panning || !panStart || !containerRef.current) return;
+                  const dx = e.clientX - panStart.x;
+                  const dy = e.clientY - panStart.y;
+                  containerRef.current.scrollLeft = panStart.sl - dx;
+                  containerRef.current.scrollTop = panStart.st - dy;
+                }}
+                onMouseUp={(e) => {
+                  setPanning(false);
+                  (e.currentTarget as HTMLDivElement).style.cursor = "auto";
+                }}
+                onMouseLeave={(e) => {
+                  setPanning(false);
+                  (e.currentTarget as HTMLDivElement).style.cursor = "auto";
+                }}
+              >
+                <div className="min-w-full min-h-full flex items-center justify-center p-4">
+                  <img
+                    src={previewUrl}
+                    alt="InBody"
+                    onLoad={(ev) => {
+                      const img = ev.currentTarget;
+                      setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
+                    }}
+                    style={{ width: imgSize ? Math.max(100, Math.round(imgSize.w * zoom)) : undefined }}
+                    className="rounded-lg shadow select-none"
+                    draggable={false}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

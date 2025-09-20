@@ -11,7 +11,7 @@ import { ref, listAll, getMetadata, getDownloadURL, uploadBytesResumable } from 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
 
 function lisbonISOWeekId(d = new Date()) {
   const dt = new Date(d);
@@ -72,25 +72,50 @@ export default function PhotosPage() {
   }, [router]);
 
   async function load(userId: string) {
-    if (!storage) { setError("Storage indisponível."); return; }
-    const baseRef = ref(storage, `users/${userId}/photos`);
+    const out: PhotoItem[] = [];
+    // 1) Tentar Storage
     try {
-      const res = await listAll(baseRef);
-      const arr: PhotoItem[] = await Promise.all(res.items.map(async (it) => {
-        const [meta, url] = await Promise.all([getMetadata(it), getDownloadURL(it)]);
-        const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
-        const name = it.name; // ex: 2025-W36-1693839300000-0_main.jpg
-        const m = name.match(/^([0-9]{4}-W[0-9]{2}-[0-9]{6,})-\d+(_main)?\.(png|jpe?g)$/i);
-        const setId = m ? m[1] : name.split("-").slice(0,3).join("-");
-        const isMain = /_main\./i.test(name);
-        return { path: `users/${userId}/photos/${name}`, url, createdAt, setId, isMain };
-      }));
-      arr.sort((a,b)=>((a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0)));
-      setItems(arr);
+      if (storage) {
+        const baseRef = ref(storage, `users/${userId}/photos`);
+        const res = await listAll(baseRef);
+        const arr: PhotoItem[] = await Promise.all(res.items.map(async (it) => {
+          const [meta, url] = await Promise.all([getMetadata(it), getDownloadURL(it)]);
+          const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
+          const name = it.name; // ex: 2025-W36-1693839300000-0_main.jpg
+          const m = name.match(/^([0-9]{4}-W[0-9]{2}-[0-9]{6,})-\d+(_main)?\.(png|jpe?g)$/i);
+          const setId = m ? m[1] : name.split("-").slice(0,3).join("-");
+          const isMain = /_main\./i.test(name);
+          return { path: `users/${userId}/photos/${name}`, url, createdAt, setId, isMain };
+        }));
+        out.push(...arr);
+      }
     } catch (e: any) {
       setError(e?.message || "Falha a carregar fotos.");
-      setItems([]);
     }
+
+    // 2) Fallback Firestore (docs com url/urls)
+    try {
+      if (out.length === 0 && db) {
+        const snap = await getDocs(collection(db, `users/${userId}/photos`));
+        const tmp: PhotoItem[] = [];
+        snap.forEach((d) => {
+          const data: any = d.data() || {};
+          const urls: string[] = Array.isArray(data.urls)
+            ? data.urls.filter((u: any) => typeof u === "string")
+            : (typeof data.url === "string" ? [data.url] : []);
+          const ts: any = data.createdAt || data.time || data.date || null;
+          const createdAt: Date | null = ts?.toDate?.() || (typeof ts === "number" ? new Date(ts) : null);
+          const setId = data.setId || d.id;
+          urls.forEach((u: string, idx: number) => {
+            tmp.push({ path: `firestore/${d.id}/${idx}`, url: u, createdAt, setId, isMain: idx === 0 });
+          });
+        });
+        if (tmp.length > 0) out.push(...tmp);
+      }
+    } catch {}
+
+    out.sort((a,b)=>((a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0)));
+    setItems(out);
   }
 
   const sets = useMemo(() => {

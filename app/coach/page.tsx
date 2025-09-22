@@ -166,8 +166,14 @@ async function resolveDisplayName(userId: string, userEmail?: string) {
   } catch {}
 
   try {
-    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("completedAt", "desc"), limit(1));
     let snap = await getDocs(qQ);
+    if (snap.empty) {
+      try {
+        qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+        snap = await getDocs(qQ);
+      } catch {}
+    }
     if (snap.empty) {
       try {
         qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("__name__", "desc"), limit(1));
@@ -212,8 +218,14 @@ async function fetchLatestHydrationTarget(userId: string): Promise<number> {
 
   // questionnaire
   try {
-    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+    let qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("completedAt", "desc"), limit(1));
     let s = await getDocs(qQ);
+    if (s.empty) {
+      try {
+        qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+        s = await getDocs(qQ);
+      } catch {}
+    }
     if (s.empty) {
       try {
         qQ = query(collection(db, `users/${userId}/questionnaire`), orderBy("__name__", "desc"), limit(1));

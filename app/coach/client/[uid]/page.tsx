@@ -396,37 +396,35 @@ export default function CoachClientProfilePage() {
       setMetaAgua(meta);
       setMetaSource(source);
 
-      // Carregar planos (PDFs)
+      // Carregar planos (PDFs) com paralelismo e timeout
       try {
-        const planSnap = await getDoc(doc(db, "users", uid, "plans", "latest"));
-        let planData: any = planSnap.data() || {};
-        if ((!planData.trainingUrl || !planData.dietUrl)) {
-          try {
-            const qs = await getDocs(collection(db, `users/${uid}/plans`));
-            const all: any[] = [];
-            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
-            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
-            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
-            planData = { ...planData, ...(treino ? { trainingUrl: treino.url, trainingUpdatedAt: treino.createdAt || treino.updatedAt } : {}), ...(alim ? { dietUrl: alim.url, dietUpdatedAt: alim.createdAt || alim.updatedAt } : {}) };
-          } catch {}
-        }
-        // Fallback direto ao Storage
-        if (!planData.trainingUrl && storage) {
-          try {
-            const r = ref(storage, `plans/${uid}/training.pdf`);
-            planData.trainingUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        if (!planData.dietUrl && storage) {
-          try {
-            const r = ref(storage, `plans/${uid}/diet.pdf`);
-            planData.dietUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        setTrainingUrl(planData.trainingUrl || null);
-        setDietUrl(planData.dietUrl || null);
-        setTrainingAt(toDate(planData.trainingUpdatedAt ?? null));
-        setDietAt(toDate(planData.dietUpdatedAt ?? null));
+        const withTimeout = async <T,>(p: Promise<T>, ms: number): Promise<T> =>
+          await Promise.race([
+            p,
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+          ]);
+        const latestP = withTimeout(
+          (async () => { try { const s = await getDoc(doc(db, "users", uid, "plans", "latest")); return (s.data() as any) || {}; } catch { return {}; } })(),
+          4000
+        );
+        const collP = withTimeout(
+          (async () => { try { const qs = await getDocs(collection(db, `users/${uid}/plans`)); const all: any[] = []; qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) })); const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url); const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url); return { trainingUrl: treino?.url, dietUrl: alim?.url, trainingUpdatedAt: treino?.createdAt || treino?.updatedAt, dietUpdatedAt: alim?.createdAt || alim?.updatedAt }; } catch { return {}; } })(),
+          4000
+        );
+        const storageP = withTimeout(
+          (async () => { const out: any = {}; try { out.trainingUrl = await getDownloadURL(ref(storage, `plans/${uid}/training.pdf`)); } catch {} try { out.dietUrl = await getDownloadURL(ref(storage, `plans/${uid}/diet.pdf`)); } catch {} return out; })(),
+          4000
+        );
+        const [aR, bR, cR] = await Promise.allSettled([latestP, collP, storageP]);
+        const a = aR.status === "fulfilled" ? aR.value as any : {};
+        const b = bR.status === "fulfilled" ? bR.value as any : {};
+        const c = cR.status === "fulfilled" ? cR.value as any : {};
+        const trainingUrl = a.trainingUrl || b.trainingUrl || c.trainingUrl || null;
+        const dietUrl = a.dietUrl || b.dietUrl || c.dietUrl || null;
+        setTrainingUrl(trainingUrl);
+        setDietUrl(dietUrl);
+        setTrainingAt(toDate(a.trainingUpdatedAt ?? b.trainingUpdatedAt ?? null));
+        setDietAt(toDate(a.dietUpdatedAt ?? b.dietUpdatedAt ?? null));
       } catch {}
       setPlansLoading(false);
 

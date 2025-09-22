@@ -611,7 +611,8 @@ export default function CoachClientProfilePage() {
       if (kind === "training") setTrainingError(msg); else setDietError(msg);
       console.error("Upload plano falhou", e);
     } finally {
-      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+      if (kind === "training") { setUploadingTraining(false); setTrainingProgress(null); }
+      else { setUploadingDiet(false); setDietProgress(null); }
     }
   }
 

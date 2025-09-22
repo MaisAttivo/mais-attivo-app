@@ -28,7 +28,6 @@ if (typeof window !== "undefined") {
     authInstance = getAuth(appInstance);
     dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
     storageInstance = getStorage(appInstance);
-    try { setMaxUploadRetryTime(storageInstance, 15000); setMaxOperationRetryTime(storageInstance, 15000); } catch {}
   } else {
     if (process.env.NODE_ENV !== "production") {
       // Surface a helpful warning in dev instead of crashing the server render

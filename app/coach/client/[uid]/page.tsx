@@ -598,6 +598,10 @@ export default function CoachClientProfilePage() {
       task.on("state_changed", (snap) => {
         const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
         if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
+      }, (err) => {
+        const msg = err?.message || "Falha no upload";
+        if (kind === "training") { setTrainingError(msg); setUploadingTraining(false); }
+        else { setDietError(msg); setUploadingDiet(false); }
       });
       await task;
       const url = await getDownloadURL(r);

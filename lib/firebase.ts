@@ -2,7 +2,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, setMaxOperationRetryTime, setMaxUploadRetryTime } from "firebase/storage";
 
 // Initialize Firebase only in the browser to avoid SSR crashes when env vars are missing
 let appInstance: any = undefined;
@@ -28,6 +28,7 @@ if (typeof window !== "undefined") {
     authInstance = getAuth(appInstance);
     dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
     storageInstance = getStorage(appInstance);
+    try { setMaxUploadRetryTime(storageInstance, 15000); setMaxOperationRetryTime(storageInstance, 15000); } catch {}
   } else {
     if (process.env.NODE_ENV !== "production") {
       // Surface a helpful warning in dev instead of crashing the server render

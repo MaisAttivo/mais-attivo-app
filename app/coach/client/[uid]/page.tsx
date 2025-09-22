@@ -1082,6 +1082,14 @@ export default function CoachClientProfilePage() {
                       <Upload className="h-4 w-4" />
                       {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
+                    {typeof trainingProgress === "number" && (
+                      <div className="w-full max-w-xs mt-2">
+                        <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                          <div className="h-full bg-blue-600 transition-all" style={{ width: `${trainingProgress}%` }} />
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-1">{trainingProgress}%</div>
+                      </div>
+                    )}
                     {trainingError ? (
                       <div className="text-xs text-red-600 text-left">{trainingError}</div>
                     ) : (

@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
-import { ref, uploadBytesResumable, getDownloadURL, listAll, getMetadata } from "firebase/storage";
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -593,15 +593,26 @@ export default function CoachClientProfilePage() {
       const path = `plans/${uid}/${kind}.pdf`;
       const r = ref(storage, path);
       const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      let progressed = false;
+      const timer = setTimeout(async () => {
+        if (!progressed) { try { task.cancel(); } catch {} }
+      }, 5000);
       task.on("state_changed", (snap) => {
         const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (pct > 0) progressed = true;
         if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
-      }, (err) => {
-        const msg = err?.message || "Falha no upload";
-        if (kind === "training") { setTrainingError(msg); setUploadingTraining(false); }
-        else { setDietError(msg); setUploadingDiet(false); }
-      });
-      await task;
+      }, async () => {}, async () => {});
+      try {
+        await task;
+      } catch (e) {
+        if (!progressed) {
+          await uploadBytes(r, file, { contentType: "application/pdf" });
+        } else {
+          throw e;
+        }
+      } finally {
+        clearTimeout(timer);
+      }
       const url = await getDownloadURL(r);
       const payload: any = { updatedAt: serverTimestamp() };
       if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }

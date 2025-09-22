@@ -74,41 +74,50 @@ function PlansPageContent() {
     let alive = true;
     (async () => {
       setPlansLoading(true);
+      const withTimeout = async <T,>(p: Promise<T>, ms: number): Promise<T> =>
+        await Promise.race([
+          p,
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+        ]);
       try {
-        let data: any = {};
-        // Try Firestore doc users/{uid}/plans/latest
-        try {
-          const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
-          data = snap.data() || {};
-        } catch {}
-
-        // Fallback: subcollection docs with type/url
-        if ((!data.trainingUrl || !data.dietUrl)) {
-          try {
-            const qs = await getDocs(collection(db, "users", effectiveUid, "plans"));
-            const all: any[] = [];
-            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
-            const treino = all.find(d => (d.type === "treino" || d.type === "training") && d.url);
-            const alim = all.find(d => (d.type === "alimentacao" || d.type === "diet") && d.url);
-            data = { ...data, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
-          } catch {}
-        }
-
-        // Fallback: direct Storage URLs at plans/{uid}/{kind}.pdf
-        if (!data.trainingUrl) {
-          try {
-            const r = ref(storage, `plans/${effectiveUid}/training.pdf`);
-            data.trainingUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        if (!data.dietUrl) {
-          try {
-            const r = ref(storage, `plans/${effectiveUid}/diet.pdf`);
-            data.dietUrl = await getDownloadURL(r);
-          } catch {}
-        }
-
-        if (alive) setPlan({ trainingUrl: data.trainingUrl || null, dietUrl: data.dietUrl || null });
+        const latestP = withTimeout(
+          (async () => {
+            try {
+              const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
+              return (snap.data() as any) || {};
+            } catch { return {}; }
+          })(),
+          4000
+        );
+        const collP = withTimeout(
+          (async () => {
+            try {
+              const qs = await getDocs(collection(db, "users", effectiveUid, "plans"));
+              const all: any[] = [];
+              qs.forEach((d) => all.push({ id: d.id, ...(d.data() as any) }));
+              const treino = all.find((d) => (d.type === "treino" || d.type === "training") && d.url);
+              const alim = all.find((d) => (d.type === "alimentacao" || d.type === "diet") && d.url);
+              return { trainingUrl: treino?.url, dietUrl: alim?.url };
+            } catch { return {}; }
+          })(),
+          4000
+        );
+        const storageP = withTimeout(
+          (async () => {
+            const out: any = {};
+            try { out.trainingUrl = await getDownloadURL(ref(storage, `plans/${effectiveUid}/training.pdf`)); } catch {}
+            try { out.dietUrl = await getDownloadURL(ref(storage, `plans/${effectiveUid}/diet.pdf`)); } catch {}
+            return out;
+          })(),
+          4000
+        );
+        const [latest, fromColl, fromStorage] = await Promise.allSettled([latestP, collP, storageP]);
+        const a = latest.status === "fulfilled" ? latest.value as any : {};
+        const b = fromColl.status === "fulfilled" ? fromColl.value as any : {};
+        const c = fromStorage.status === "fulfilled" ? fromStorage.value as any : {};
+        const trainingUrl = a.trainingUrl || b.trainingUrl || c.trainingUrl || null;
+        const dietUrl = a.dietUrl || b.dietUrl || c.dietUrl || null;
+        if (alive) setPlan({ trainingUrl, dietUrl });
       } finally {
         if (alive) setPlansLoading(false);
       }

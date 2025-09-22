@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
-import { ref, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, listAll, getMetadata } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

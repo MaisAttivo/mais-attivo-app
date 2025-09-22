@@ -594,7 +594,12 @@ export default function CoachClientProfilePage() {
 
       const path = `plans/${uid}/${kind}.pdf`;
       const r = ref(storage, path);
-      await uploadBytes(r, file, { contentType: "application/pdf" });
+      const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      task.on("state_changed", (snap) => {
+        const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
+      });
+      await task;
       const url = await getDownloadURL(r);
       const payload: any = { updatedAt: serverTimestamp() };
       if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }

@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Upload, X, ArrowLeft } from "lucide-react";
@@ -58,6 +58,8 @@ function PlansPageContent() {
   const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
   const [uploadingTraining, setUploadingTraining] = useState(false);
   const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState<number | null>(null);
+  const [dietProgress, setDietProgress] = useState<number | null>(null);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const search = useSearchParams();
@@ -138,7 +140,12 @@ function PlansPageContent() {
 
       const path = `plans/${effectiveUid}/${kind}.pdf`;
       const r = ref(storage, path);
-      await uploadBytes(r, file, { contentType: "application/pdf" });
+      const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      task.on("state_changed", (snap) => {
+        const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
+      });
+      await task;
       const url = await getDownloadURL(r);
       const docRef = doc(db, "users", effectiveUid, "plans", "latest");
       const payload: any = { updatedAt: serverTimestamp() };
@@ -150,7 +157,8 @@ function PlansPageContent() {
       if (kind === "training") setTrainingError(msg); else setDietError(msg);
       console.error("Upload planos falhou", e);
     } finally {
-      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+      if (kind === "training") { setUploadingTraining(false); setTrainingProgress(null); }
+      else { setUploadingDiet(false); setDietProgress(null); }
     }
   }
 
@@ -185,8 +193,16 @@ function PlansPageContent() {
                       />
                       <Button size="sm" onClick={() => trainingInputRef.current?.click()} disabled={uploadingTraining}>
                         <Upload className="h-4 w-4" />
-                        {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
+                        {uploadingTraining ? `A enviar… ${trainingProgress ?? 0}%` : "Escolher ficheiro"}
                       </Button>
+                      {typeof trainingProgress === "number" && (
+                        <div className="w-full max-w-xs">
+                          <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all" style={{ width: `${trainingProgress}%` }} />
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-1">{trainingProgress}%</div>
+                        </div>
+                      )}
                       {trainingError ? (
                         <div className="text-xs text-red-600 text-left">{trainingError}</div>
                       ) : (
@@ -206,8 +222,16 @@ function PlansPageContent() {
                       />
                       <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
                         <Upload className="h-4 w-4" />
-                        {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
+                        {uploadingDiet ? `A enviar… ${dietProgress ?? 0}%` : "Escolher ficheiro"}
                       </Button>
+                      {typeof dietProgress === "number" && (
+                        <div className="w-full max-w-xs">
+                          <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all" style={{ width: `${dietProgress}%` }} />
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-1">{dietProgress}%</div>
+                        </div>
+                      )}
                       {dietError ? (
                         <div className="text-xs text-red-600 text-left">{dietError}</div>
                       ) : (

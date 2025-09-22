@@ -26,7 +26,7 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
-    dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, experimentalForceLongPolling: true, useFetchStreams: false });
+    dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true });
     storageInstance = getStorage(appInstance);
   } else {
     if (process.env.NODE_ENV !== "production") {

@@ -100,7 +100,6 @@ export default function DashboardPage() {
   // Pesos médios semanais
   const [pesoMedioSemanaAtual, setPesoMedioSemanaAtual] = useState<number | null>(null);
   const [pesoMedioSemanaAnterior, setPesoMedioSemanaAnterior] = useState<number | null>(null);
-  const [fallbackPrevAvg, setFallbackPrevAvg] = useState<number | null>(null);
 
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
@@ -227,21 +226,6 @@ export default function DashboardPage() {
       const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
       setPesoMedioSemanaAtual(pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null);
       setPesoMedioSemanaAnterior(pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null);
-
-      // fallback para "semana anterior" sem dados: procurar última média registada noutras semanas anteriores
-      let fb: number | null = null;
-      if (pesosSemanaAnterior.length === 0) {
-        for (let k = 2; k <= 12; k++) {
-          const ws = addDaysUTC(isoStart, -7 * k);
-          const we = addDaysUTC(isoEnd, -7 * k);
-          const wsY = ymdUTC(ws);
-          const weY = ymdUTC(we);
-          const docs = dailies.filter((d) => d.id >= wsY && d.id <= weY);
-          const arr = docs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
-          if (arr.length) { fb = +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1); break; }
-        }
-      }
-      setFallbackPrevAvg(fb);
 
       // weekly desta semana (feito?)
       const year = isoStart.getUTCFullYear();
@@ -379,7 +363,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-xs text-slate-500 mt-1">
             média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
-            <div className="text-xs text-slate-500 mt-0.5">semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : <>—{fallbackPrevAvg != null ? ` (${fallbackPrevAvg} kg)` : null}</>}</div>
+            <div className="text-xs text-slate-500 mt-0.5">semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : "—"}</div>
           </div>
         </div>
       </div>

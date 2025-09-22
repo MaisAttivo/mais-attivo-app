@@ -24,7 +24,7 @@ service firebase.storage {
     // Planos (PDF)
     match /plans/{uid}/{fileName} {
       allow read, list: if isCoach() || isSelf(uid);
-      allow write: if isCoach() && isPdf() && fileName.matches('.*\.pdf$');
+      allow write: if (isCoach() || isSelf(uid)) && isPdf() && fileName.matches('.*\.pdf$');
     }
 
     // InBody (PNG/JPEG/PDF até 8MB)
@@ -45,15 +45,13 @@ service firebase.storage {
                    && fileName.matches('.*\.(png|jpe?g)$');
     }
 
-    // Photos (PNG/JPEG até 8MB) — requer consentimento do cliente OU override do coach
+    // Photos (PNG/JPEG até 8MB)
     match /users/{uid}/photos/{fileName} {
       allow read, list: if isCoach() || isSelf(uid);
-      allow write: if isImage()
+      allow write: if (isCoach() || isSelf(uid))
+                   && isImage()
                    && request.resource.size < 8 * 1024 * 1024
-                   && fileName.matches('.*\.(png|jpe?g)$')
-                   && (
-                        isCoach() || (isSelf(uid) && canUploadPhotos(uid))
-                      );
+                   && fileName.matches('.*\.(png|jpe?g)$');
     }
 
     match /{path=**} { allow read, write: if false; }

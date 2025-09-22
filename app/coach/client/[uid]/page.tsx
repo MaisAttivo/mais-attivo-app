@@ -245,8 +245,15 @@ export default function CoachClientProfilePage() {
       let qd: any = null;
       try {
         let qSnap = await getDocs(
-          query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
+          query(collection(db, `users/${uid}/questionnaire`), orderBy("completedAt", "desc"), limit(1))
         );
+        if (qSnap.empty) {
+          try {
+            qSnap = await getDocs(
+              query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
+            );
+          } catch {}
+        }
         if (qSnap.empty) {
           qSnap = await getDocs(
             query(collection(db, `users/${uid}/questionnaire`), orderBy("__name__", "desc"), limit(1))
@@ -863,7 +870,7 @@ export default function CoachClientProfilePage() {
                   "Qual alergia": onboarding.foodAllergy,
                   "Alimentos que não gosta": onboarding.foodsDisliked,
                   "Alimentos preferidos": onboarding.foodsLiked,
-                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "Não" : onboarding.takesSupplements,
+                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "N��o" : onboarding.takesSupplements,
                   "Quais suplementos": onboarding.supplements,
                   "Água (L/dia)": onboarding.waterLitersPerDay,
                   "Qualidade do sono": onboarding.sleepQuality,

@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // Initialize Firebase only in the browser to avoid SSR crashes when env vars are missing
 let appInstance: any = undefined;
@@ -26,6 +27,16 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
+    // App Check (required for Storage if enforcement is enabled)
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (siteKey) {
+      try {
+        initializeAppCheck(appInstance, {
+          provider: new ReCaptchaV3Provider(siteKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch {}
+    }
     dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
     storageInstance = getStorage(appInstance);
   } else {

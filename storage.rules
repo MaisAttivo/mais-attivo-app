@@ -54,6 +54,14 @@ service firebase.storage {
                    && fileName.matches('.*\.(png|jpe?g)$');
     }
 
+    // Regra genérica: qualquer ficheiro do próprio utilizador (PNG/JPEG/PDF até 20MB); coach tem acesso a tudo
+    match /users/{uid}/{path=**} {
+      allow read, list: if isCoach() || isSelf(uid);
+      allow write: if (isCoach() || isSelf(uid))
+                   && (request.resource.contentType in ['image/png','image/jpeg','application/pdf'])
+                   && request.resource.size < 20 * 1024 * 1024;
+    }
+
     match /{path=**} { allow read, write: if false; }
   }
 }

@@ -142,6 +142,8 @@ export default function CoachClientProfilePage() {
   const [dietSelected, setDietSelected] = useState<string | null>(null);
   const [uploadingTraining, setUploadingTraining] = useState(false);
   const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState<number | null>(null);
+  const [dietProgress, setDietProgress] = useState<number | null>(null);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);

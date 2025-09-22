@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Upload, X, ArrowLeft } from "lucide-react";
@@ -141,15 +141,28 @@ function PlansPageContent() {
       const path = `plans/${effectiveUid}/${kind}.pdf`;
       const r = ref(storage, path);
       const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      let progressed = false;
+      const timer = setTimeout(async () => {
+        if (!progressed) {
+          try { task.cancel(); } catch {}
+        }
+      }, 5000);
       task.on("state_changed", (snap) => {
         const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (pct > 0) progressed = true;
         if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
-      }, (err) => {
-        const msg = err?.message || "Falha no upload.";
-        if (kind === "training") { setTrainingError(msg); setUploadingTraining(false); }
-        else { setDietError(msg); setUploadingDiet(false); }
-      });
-      await task;
+      }, async () => {}, async () => {});
+      try {
+        await task;
+      } catch (e) {
+        if (!progressed) {
+          await uploadBytes(r, file, { contentType: "application/pdf" });
+        } else {
+          throw e;
+        }
+      } finally {
+        clearTimeout(timer);
+      }
       const url = await getDownloadURL(r);
       const docRef = doc(db, "users", effectiveUid, "plans", "latest");
       const payload: any = { updatedAt: serverTimestamp() };

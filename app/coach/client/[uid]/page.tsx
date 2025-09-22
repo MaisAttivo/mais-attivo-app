@@ -693,7 +693,7 @@ export default function CoachClientProfilePage() {
                 <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
               </label>
 
-              <label className="inline-flex items-center gap-2 text-sm">
+              <label className="inline-flex items-center gap-2 text-sm hidden">
                 <input
                   type="checkbox"
                   checked={coachOverride}

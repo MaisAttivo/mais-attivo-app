@@ -2,7 +2,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
-import { getStorage, setMaxOperationRetryTime, setMaxUploadRetryTime } from "firebase/storage";
+import { getStorage } from "firebase/storage";
 
 // Initialize Firebase only in the browser to avoid SSR crashes when env vars are missing
 let appInstance: any = undefined;

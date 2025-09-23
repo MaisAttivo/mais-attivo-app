@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "only_image_or_pdf" }, { status: 400 });
     }
     const buf = Buffer.from(await blob.arrayBuffer());
-    if (buf.length > 8 * 1024 * 1024) {
+    if (buf.length > 30 * 1024 * 1024) {
       return NextResponse.json({ error: "too_large" }, { status: 413 });
     }
 

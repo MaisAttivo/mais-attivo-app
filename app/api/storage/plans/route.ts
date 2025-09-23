@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
   try {
     const app = initAdmin();
     const auth = app.auth();
-    const bucket = app.storage().bucket(`${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`);
+    const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+    const bucketName = rawBucket.replace(/^gs:\/\//, "");
+    const bucket = app.storage().bucket(bucketName || undefined);
 
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";

@@ -14,7 +14,7 @@ export default function FotosPage() {
 }
 
 function FotosContent() {
-  const [items, setItems] = useState<Array<{ url: string; name: string; createdAt?: string | null }>>([]);
+  const [sets, setSets] = useState<Array<{ id: string; urls: string[]; coverUrl?: string; createdAt?: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [progressPct, setProgressPct] = useState<number | null>(null);
@@ -30,9 +30,9 @@ function FotosContent() {
       const res = await fetch("/api/storage/photos", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
+      setSets(Array.isArray(data.sets) ? data.sets : []);
     } catch {
-      setItems([]);
+      setSets([]);
     } finally {
       setLoading(false);
     }
@@ -40,14 +40,15 @@ function FotosContent() {
 
   useEffect(() => { fetchList(); }, []);
 
-  async function upload(file: File) {
+  async function upload(files: FileList) {
     setUploading(true);
     setProgressPct(0);
     try {
       const { getAuth } = await import("firebase/auth");
       const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
       const fd = new FormData();
-      fd.append("file", file);
+      const arr = Array.from(files).slice(0,4);
+      for (const f of arr) fd.append("files", f);
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/storage/photos");
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -76,9 +77,9 @@ function FotosContent() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
-            <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e)=>{ const f=e.currentTarget.files?.[0]; if (f) { upload(f); e.currentTarget.value = ""; } }} />
+            <input ref={inputRef} type="file" accept="image/png,image/jpeg" multiple className="hidden" onChange={(e)=>{ const fs=e.currentTarget.files; if (fs && fs.length>0) { upload(fs); e.currentTarget.value = ""; } }} />
             <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-              {uploading ? "A enviar…" : "Carregar foto"}
+              {uploading ? "A enviar…" : "Carregar até 4 fotos"}
             </Button>
             {typeof progressPct === "number" && (
               <div className="flex items-center gap-2">
@@ -94,19 +95,68 @@ function FotosContent() {
 
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Galeria</CardTitle>
+          <CardTitle>Destaques</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading || sets.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Sem fotos.</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-slate-700 mb-2">Inicial</div>
+                <button className="w-full text-left" onClick={()=>setPreview(sets[0].coverUrl || sets[0].urls[0])}>
+                  <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                    <img src={sets[0].coverUrl || sets[0].urls[0]} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                  </div>
+                </button>
+              </div>
+              <div>
+                <div className="text-sm text-slate-700 mb-2">Atual</div>
+                <button className="w-full text-left" onClick={()=>setPreview(sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0])}>
+                  <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                    <img src={sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0]} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Todos os envios</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-sm text-muted-foreground">A carregar…</div>
-          ) : items.length === 0 ? (
+          ) : sets.length === 0 ? (
             <div className="text-sm text-muted-foreground">Sem fotos.</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {items.map((it, i) => (
-                <button key={i} onClick={()=>setPreview(it.url)} className="shrink-0">
-                  <img src={it.url} alt={it.name || `Foto ${i+1}`} className="w-full h-40 object-cover rounded-xl border" />
-                </button>
+            <div className="space-y-3">
+              {sets.map((s) => (
+                <div key={s.id} className="rounded-2xl border p-3 bg-background">
+                  <div className="text-sm font-medium mb-2">{s.id}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {s.urls.map((u, i) => (
+                      <div key={u} className="relative">
+                        <button onClick={()=>setPreview(u)} className="shrink-0">
+                          <img src={u} alt={`Foto ${i+1}`} className="h-24 w-24 object-cover rounded-lg border" />
+                        </button>
+                        <button
+                          className={`absolute -top-2 -right-2 text-xs rounded px-1.5 py-0.5 ${s.coverUrl===u? 'bg-blue-600 text-white' : 'bg-slate-200'}`}
+                          title="Definir capa"
+                          onClick={async()=>{
+                            const { getAuth } = await import('firebase/auth');
+                            const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : '';
+                            await fetch('/api/storage/photos', { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...(token? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ weekId: s.id, coverUrl: u }) });
+                            await fetchList();
+                          }}
+                        >★</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}

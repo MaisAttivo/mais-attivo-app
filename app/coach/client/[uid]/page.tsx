@@ -428,82 +428,35 @@ export default function CoachClientProfilePage() {
       } catch {}
       setPlansLoading(false);
 
-      // Listar Fotos (conjuntos)
+      // Listar Fotos (via API server-side, sem depender de Storage Rules no cliente)
       try {
+        const { getAuth } = await import("firebase/auth");
+        const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+        const res = await fetch(`/api/storage/photos?uid=${encodeURIComponent(uid)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
-        if (storage) {
-          const baseRef = ref(storage, `users/${uid}/photos`);
-          const res = await listAll(baseRef);
-          const items = await Promise.all(res.items.map(async (it)=>{
-            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-            const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
-            const name = it.name; // 2025-W36-...-0_main.jpg
-            const setId = name.split("-").slice(0,3).join("-");
-            const isMain = /_main\./i.test(name);
-            return { setId, url, createdAt, isMain };
-          }));
-          const bySet = new Map<string, { createdAt: Date | null; urls: string[]; mainUrl: string }>();
-          for (const it of items) {
-            const s = bySet.get(it.setId) || { createdAt: it.createdAt, urls: [], mainUrl: "" };
-            if (!s.createdAt) s.createdAt = it.createdAt;
-            s.urls.push(it.url);
-            if (it.isMain) s.mainUrl = it.url;
-            bySet.set(it.setId, s);
-          }
-          arrFinal = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-        }
-        if (arrFinal.length === 0) {
-          try {
-            const snap = await getDocs(collection(db, `users/${uid}/photos`));
-            const tmp: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
-            snap.forEach((d) => {
-              const data: any = d.data() || {};
-              const urls: string[] = Array.isArray(data.urls) ? data.urls.filter((u: any)=> typeof u === 'string') : (typeof data.url === 'string' ? [data.url] : []);
-              if (urls.length === 0) return;
-              const ts: any = data.createdAt || data.time || data.date || null;
-              const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
-              const mainUrl = data.mainUrl && typeof data.mainUrl === 'string' ? data.mainUrl : urls[0];
-              tmp.push({ id: d.id, createdAt, urls, mainUrl });
-            });
-            if (tmp.length > 0) arrFinal = tmp.sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-          } catch {}
+        if (res.ok) {
+          const data = await res.json();
+          const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+          arrFinal = items.map((it) => ({
+            id: it.name || String(Math.random()),
+            createdAt: it.createdAt ? new Date(it.createdAt) : null,
+            mainUrl: it.url,
+            urls: [it.url],
+          })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
         }
         setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
-      // Listar InBody do utilizador (imagens)
+      // Listar InBody (via API server-side, sem depender de Storage Rules no cliente)
       try {
+        const { getAuth } = await import("firebase/auth");
+        const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+        const res = await fetch(`/api/storage/inbody?uid=${encodeURIComponent(uid)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
-        if (storage) {
-          const dirRef = ref(storage, `users/${uid}/inbody`);
-          const res = await listAll(dirRef);
-          const fromStorage = await Promise.all(res.items.map(async (it) => {
-            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-            let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
-            if (!createdAt) {
-              const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
-              const n = Number(base);
-              if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
-            }
-            return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
-          }));
-          items = fromStorage;
-        }
-        if (items.length === 0) {
-          try {
-            const snap = await getDocs(collection(db, `users/${uid}/inbody`));
-            const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
-            snap.forEach((d) => {
-              const data: any = d.data() || {};
-              const url: string | undefined = data.url || data.downloadUrl || data.href;
-              if (typeof url === 'string' && url) {
-                const ts: any = data.createdAt || data.time || data.date || null;
-                const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
-                fromFs.push({ id: d.id, url, createdAt });
-              }
-            });
-            if (fromFs.length > 0) items = fromFs;
-          } catch {}
+        if (res.ok) {
+          const data = await res.json();
+          const arr: Array<{ url: string; name: string; contentType: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+          items = arr.map((x)=>({ id: x.name, url: x.url, createdAt: x.createdAt ? new Date(x.createdAt) : null }));
         }
         items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
         setInbodyFiles(items);

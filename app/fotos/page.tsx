@@ -15,6 +15,7 @@ export default function FotosPage() {
 
 function FotosContent() {
   const [sets, setSets] = useState<Array<{ id: string; urls: string[]; coverUrl?: string; createdAt?: string | null }>>([]);
+  const [items, setItems] = useState<Array<{ url: string; name: string; createdAt?: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [progressPct, setProgressPct] = useState<number | null>(null);
@@ -32,8 +33,10 @@ function FotosContent() {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setSets(Array.isArray(data.sets) ? data.sets : []);
+      setItems(Array.isArray(data.items) ? data.items : []);
     } catch {
       setSets([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -126,23 +129,31 @@ function FotosContent() {
           <CardTitle>Destaques</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading || sets.length === 0 ? (
+          {loading ? (
+            <div className="text-sm text-muted-foreground">A carregar…</div>
+          ) : (sets.length === 0 && items.length === 0) ? (
             <div className="text-sm text-muted-foreground">Sem fotos.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-slate-700 mb-2">Inicio</div>
-                <button className="w-full text-left" onClick={()=>setPreview(sets[0].coverUrl || sets[0].urls[0])}>
+                <button className="w-full text-left" onClick={()=>{
+                  const u = sets.length ? (sets[0].coverUrl || sets[0].urls[0]) : (items.length ? items[0].url : "");
+                  if (u) setPreview(u);
+                }}>
                   <div className="relative w-full h-56 bg-muted rounded-xl overflow-hidden">
-                    <img src={sets[0].coverUrl || sets[0].urls[0]} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                    <img src={sets.length ? (sets[0].coverUrl || sets[0].urls[0]) : (items[0]?.url || "")} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
                   </div>
                 </button>
               </div>
               <div>
                 <div className="text-sm text-slate-700 mb-2">Atual</div>
-                <button className="w-full text-left" onClick={()=>setPreview(sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0])}>
+                <button className="w-full text-left" onClick={()=>{
+                  const u = sets.length ? (sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0]) : (items.length ? items[items.length-1].url : "");
+                  if (u) setPreview(u);
+                }}>
                   <div className="relative w-full h-56 bg-muted rounded-xl overflow-hidden">
-                    <img src={sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0]} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                    <img src={sets.length ? (sets[sets.length-1].coverUrl || sets[sets.length-1].urls[0]) : (items[items.length-1]?.url || "")} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
                   </div>
                 </button>
               </div>
@@ -158,9 +169,9 @@ function FotosContent() {
         <CardContent>
           {loading ? (
             <div className="text-sm text-muted-foreground">A carregar…</div>
-          ) : sets.length === 0 ? (
+          ) : (sets.length === 0 && items.length === 0) ? (
             <div className="text-sm text-muted-foreground">Sem fotos.</div>
-          ) : (
+          ) : sets.length > 0 ? (
             <div className="space-y-3">
               {sets.map((s) => (
                 <div key={s.id} className="rounded-2xl border p-3 bg-background">
@@ -185,6 +196,14 @@ function FotosContent() {
                     ))}
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {items.map((it, i) => (
+                <button key={i} onClick={()=>setPreview(it.url)} className="shrink-0">
+                  <img src={it.url} alt={it.name} className="h-24 w-24 object-cover rounded-lg border" />
+                </button>
               ))}
             </div>
           )}

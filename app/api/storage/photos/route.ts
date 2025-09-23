@@ -72,8 +72,14 @@ export async function GET(req: NextRequest) {
         for (const u of arr) items.push({ url: u, name: s.id, createdAt: created });
       }
     } else {
-      // Fallback to storage listing for legacy uploads
-      const bucket = app.storage().bucket();
+      // Fallback to storage listing for legacy uploads (try configured bucket and alternate)
+      const primary = app.storage().bucket();
+      const rawB = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+      const configured = rawB ? rawB.replace(/^gs:\/\//, "") : "";
+      const altName = configured.includes("firebasestorage.app") && (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID||"")
+        ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
+        : (configured ? configured.replace(/\.appspot\.com$/, ".firebasestorage.app") : "");
+      const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/photos/`,
         `users/${targetUid}/fotos/`,
@@ -83,11 +89,17 @@ export async function GET(req: NextRequest) {
       ];
       let collected: any[] = [];
       for (const p of prefixes) {
-        const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 });
-        collected = collected.concat(files);
+        const [files] = await primary.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
+        collected = collected.concat(files as any);
         if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
       }
-      // Filter images only
+      if (collected.length === 0 && alt) {
+        for (const p of prefixes) {
+          const [files] = await alt.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
+          collected = collected.concat(files as any);
+          if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
+        }
+      }
       const unique = new Map<string, any>();
       for (const f of collected) unique.set(f.name, f);
       const all = Array.from(unique.values()).filter((f: any) => {

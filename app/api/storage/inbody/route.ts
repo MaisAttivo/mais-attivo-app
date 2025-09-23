@@ -11,10 +11,7 @@ function initAdmin() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
   const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
   const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
-  let bucketName = rawBucket.replace(/^gs:\/\//, "");
-  if (!bucketName || bucketName.includes("firebasestorage.app") || /\.?app$/.test(bucketName)) {
-    bucketName = projectId ? `${projectId}.appspot.com` : "";
-  }
+  const bucketName = rawBucket.replace(/^gs:\/\//, "");
   let credObj: any = null;
   try { credObj = JSON.parse(raw); } catch { try { credObj = JSON.parse(`{${raw}}`); } catch { credObj = null; } }
   const initOpts: any = {};

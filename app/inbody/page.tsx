@@ -57,11 +57,17 @@ function InbodyContent() {
         const pct = Math.round((e.loaded / Math.max(1, e.total)) * 100);
         setProgressPct(Math.min(95, pct));
       };
-      await new Promise<void>((resolve, reject) => {
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
-        xhr.onerror = () => reject(new Error("network_error"));
-        xhr.send(fd);
-      });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
+          xhr.onerror = () => reject(new Error("network_error"));
+          xhr.send(fd);
+        });
+      } catch (err: any) {
+        const msg = typeof err?.message === 'string' ? err.message : 'Falha no envio';
+        alert(msg);
+        return;
+      }
       setProgressPct(100);
       await fetchList();
     } finally {

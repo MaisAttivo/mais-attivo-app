@@ -10,14 +10,18 @@ function initAdmin() {
   if (admin.apps.length) return admin.app();
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
   const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-  const bucketName = rawBucket.replace(/^gs:\/\//, "");
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
+  let bucketName = rawBucket.replace(/^gs:\/\//, "");
+  if (!bucketName || bucketName.includes("firebasestorage.app") || /\.?app$/.test(bucketName)) {
+    bucketName = projectId ? `${projectId}.appspot.com` : "";
+  }
   let credObj: any = null;
   try { credObj = JSON.parse(raw); } catch { try { credObj = JSON.parse(`{${raw}}`); } catch { credObj = null; } }
-  if (!credObj) {
-    admin.initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, storageBucket: bucketName || undefined });
-  } else {
-    admin.initializeApp({ credential: admin.credential.cert(credObj), storageBucket: bucketName || undefined });
-  }
+  const initOpts: any = {};
+  if (credObj) initOpts.credential = admin.credential.cert(credObj);
+  if (projectId) initOpts.projectId = projectId;
+  if (bucketName) initOpts.storageBucket = bucketName;
+  admin.initializeApp(initOpts);
   return admin.app();
 }
 

@@ -27,7 +27,15 @@ if (typeof window !== "undefined") {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
     dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
-    storageInstance = getStorage(appInstance);
+
+    // Explicitly select the bucket to avoid mismatches between appspot.com and firebasestorage.app
+    const bucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+    const gsUrl = bucket ? (bucket.startsWith("gs://") ? bucket : `gs://${bucket}`) : undefined;
+    try {
+      storageInstance = gsUrl ? getStorage(appInstance, gsUrl) : getStorage(appInstance);
+    } catch {
+      storageInstance = getStorage(appInstance);
+    }
   } else {
     if (process.env.NODE_ENV !== "production") {
       // Surface a helpful warning in dev instead of crashing the server render

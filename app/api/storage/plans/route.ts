@@ -47,8 +47,31 @@ export async function POST(req: NextRequest) {
     const app = initAdmin();
     const auth = app.auth();
     const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-    const bucketName = rawBucket.replace(/^gs:\/\//, "");
-    const bucket = app.storage().bucket(bucketName || undefined);
+    const envBucket = rawBucket.replace(/^gs:\/\//, "");
+    const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
+    const candidates = [
+      envBucket,
+      projectId ? `${projectId}.appspot.com` : "",
+      projectId ? `${projectId}.firebasestorage.app` : "",
+      "",
+    ].filter(Boolean);
+
+    async function saveToFirstAvailable(buf: Buffer, contentType: string, path: string): Promise<{ url: string; used: string }>{
+      let lastErr: any = null;
+      for (const name of candidates) {
+        try {
+          const b = app.storage().bucket(name || undefined);
+          const f = b.file(path);
+          await f.save(buf, { contentType, resumable: false, public: false, metadata: { cacheControl: "public,max-age=60" } });
+          const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+          return { url, used: name || "default" };
+        } catch (e: any) {
+          lastErr = e;
+          continue;
+        }
+      }
+      throw lastErr || new Error("no_bucket_available");
+    }
 
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";

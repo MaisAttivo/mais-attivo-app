@@ -152,18 +152,39 @@ function PlansPageContent() {
         if (pct > 0) progressed = true;
         if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
       }, async () => {}, async () => {});
+      let url: string | null = null;
       try {
         await task;
+        url = await getDownloadURL(r);
       } catch (e) {
-        if (!progressed) {
-          await uploadBytes(r, file, { contentType: "application/pdf" });
-        } else {
-          throw e;
+        try {
+          if (!progressed) {
+            await uploadBytes(r, file, { contentType: "application/pdf" });
+            url = await getDownloadURL(r);
+          } else {
+            throw e;
+          }
+        } catch (e2) {
+          // Final fallback: upload via server to bypass CORS
+          try {
+            const token = (await import("firebase/auth")).getAuth()?.currentUser ? await (await import("firebase/auth")).getAuth().currentUser!.getIdToken() : "";
+            const fd = new FormData();
+            fd.append("kind", kind);
+            fd.append("uid", effectiveUid);
+            fd.append("file", file);
+            const res = await fetch("/api/storage/plans", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            url = data.url || null;
+            if (!url) throw new Error("no_url");
+          } catch (e3) {
+            throw e3;
+          }
         }
       } finally {
         clearTimeout(timer);
       }
-      const url = await getDownloadURL(r);
+      if (!url) throw new Error("Falha no upload (sem URL)");
       const docRef = doc(db, "users", effectiveUid, "plans", "latest");
       const payload: any = { updatedAt: serverTimestamp() };
       if (kind === "training") payload.trainingUrl = url; else payload.dietUrl = url;

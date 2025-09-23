@@ -8,16 +8,24 @@ export const dynamic = "force-dynamic";
 
 function initAdmin() {
   if (admin.apps.length) return admin.app();
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
+  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
   const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
   const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
-  const bucketName = rawBucket.replace(/^gs:\/\//, "");
+  let bucketName = rawBucket.replace(/^gs:\/\//, "");
+  if (!bucketName && projectId) bucketName = `${projectId}.appspot.com`;
   let credObj: any = null;
-  try { credObj = JSON.parse(raw); } catch { try { credObj = JSON.parse(`{${raw}}`); } catch { credObj = null; } }
+  if (raw) {
+    let text = raw;
+    if (!text.startsWith("{")) text = `{${text}}`;
+    try { credObj = JSON.parse(text); } catch { credObj = null; }
+    if (credObj && typeof credObj.private_key === 'string') {
+      credObj.private_key = credObj.private_key.replace(/\\n/g, "\n");
+    }
+  }
   const initOpts: any = {};
-  if (credObj) initOpts.credential = admin.credential.cert(credObj);
   if (projectId) initOpts.projectId = projectId;
   if (bucketName) initOpts.storageBucket = bucketName;
+  if (credObj) initOpts.credential = admin.credential.cert(credObj);
   admin.initializeApp(initOpts);
   return admin.app();
 }

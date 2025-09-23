@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       const ct = file.type || "image/jpeg";
       if (!(ct === 'image/jpeg' || ct === 'image/png')) return NextResponse.json({ error: 'only_images' }, { status: 400 });
       const buf = Buffer.from(await file.arrayBuffer());
-      if (buf.length > 8 * 1024 * 1024) return NextResponse.json({ error: 'too_large' }, { status: 413 });
+      if (buf.length > 30 * 1024 * 1024) return NextResponse.json({ error: 'too_large' }, { status: 413 });
       const ext = ct === 'image/png' ? 'png' : 'jpg';
       const path = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const f = bucket.file(path);

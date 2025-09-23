@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
+import "firebase-admin/storage";
+import "firebase-admin/firestore";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // Lazy/Singleton admin init
 function initAdmin() {

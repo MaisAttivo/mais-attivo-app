@@ -28,9 +28,13 @@ if (typeof window !== "undefined") {
     authInstance = getAuth(appInstance);
     dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
 
-    // Explicitly select the bucket to avoid mismatches between appspot.com and firebasestorage.app
+    // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames
     const bucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-    const gsUrl = bucket ? (bucket.startsWith("gs://") ? bucket : `gs://${bucket}`) : undefined;
+    let gsUrl: string | undefined = undefined;
+    if (bucket) {
+      const isValid = bucket.startsWith("gs://") || bucket.endsWith(".appspot.com");
+      if (isValid) gsUrl = bucket.startsWith("gs://") ? bucket : `gs://${bucket}`;
+    }
     try {
       storageInstance = gsUrl ? getStorage(appInstance, gsUrl) : getStorage(appInstance);
     } catch {

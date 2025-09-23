@@ -18,6 +18,7 @@ function InbodyContent() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [progressPct, setProgressPct] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function fetchList() {
@@ -40,6 +41,7 @@ function InbodyContent() {
   useEffect(() => { fetchList(); }, []);
 
   async function upload(file: File) {
+    if (!file) return;
     setUploading(true);
     setProgressPct(0);
     try {
@@ -53,18 +55,28 @@ function InbodyContent() {
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
         const pct = Math.round((e.loaded / Math.max(1, e.total)) * 100);
-        setProgressPct(pct);
+        setProgressPct(Math.min(95, pct));
       };
       await new Promise<void>((resolve, reject) => {
         xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
         xhr.onerror = () => reject(new Error("network_error"));
         xhr.send(fd);
       });
+      setProgressPct(100);
       await fetchList();
     } finally {
       setUploading(false);
       setProgressPct(null);
     }
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (uploading) return;
+    const f = e.dataTransfer.files?.[0];
+    if (f) upload(f);
   }
 
   return (
@@ -74,26 +86,41 @@ function InbodyContent() {
           <CardTitle>InBody</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            <input ref={inputRef} type="file" accept="image/png,image/jpeg,application/pdf" className="hidden" onChange={(e)=>{ const f=e.currentTarget.files?.[0]; if (f) { upload(f); e.currentTarget.value = ""; } }} />
-            <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-              {uploading ? "A enviar…" : "Carregar ficheiro"}
-            </Button>
+          <div
+            className={`rounded-2xl border border-dashed p-6 sm:p-8 bg-muted/50 flex flex-col items-center justify-center gap-3 text-center transition-colors ${dragOver ? "border-blue-600 bg-muted" : ""}`}
+            onDragOver={(e)=>{ e.preventDefault(); setDragOver(true); }}
+            onDragLeave={()=>setDragOver(false)}
+            onDrop={onDrop}
+          >
+            <div className="text-sm text-muted-foreground">Arrasta o ficheiro (PDF/JPG/PNG) para aqui ou</div>
+            <div className="flex items-center gap-3">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/png,image/jpeg,application/pdf"
+                className="hidden"
+                onChange={(e)=>{ const f=e.currentTarget.files?.[0]; if (f) { upload(f); e.currentTarget.value = ""; } }}
+              />
+              <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+                {uploading ? "A enviar…" : "Carregar ficheiro"}
+              </Button>
+            </div>
             {typeof progressPct === "number" && (
-              <div className="flex items-center gap-2">
-                <div className="w-40 h-2 rounded bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
+              <div className="w-full max-w-xs flex items-center gap-2 mt-2">
+                <div className="w-full h-2 rounded bg-slate-200 overflow-hidden">
+                  <div className="h-full bg-blue-600 transition-all" style={{ width: `${progressPct}%` }} />
                 </div>
-                <span className="text-xs text-slate-600">{progressPct}%</span>
+                <span className="text-xs text-slate-600 min-w-8 text-right">{progressPct}%</span>
               </div>
             )}
+            <div className="text-xs text-muted-foreground">Tamanho máx.: 8MB</div>
           </div>
         </CardContent>
       </Card>
 
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Anexos</CardTitle>
+          <CardTitle>Uploads</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

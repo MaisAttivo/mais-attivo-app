@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   try {
     const app = initAdmin();
     const auth = app.auth();
+    const db = app.firestore();
     const url = new URL(req.url);
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
@@ -45,15 +46,26 @@ export async function GET(req: NextRequest) {
     const ok = await ensureCoachOrSelf(decoded.uid, targetUid);
     if (!ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-    const bucket = app.storage().bucket();
-    const prefix = `users/${targetUid}/inbody/`;
-    const [files] = await bucket.getFiles({ prefix });
-    const items = await Promise.all(files.map(async (f) => {
-      const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-      const ct = (f.metadata as any)?.contentType || "application/octet-stream";
-      return { url, name: f.name.split("/").pop() || f.name, contentType: ct, createdAt: (f.metadata as any)?.timeCreated || null };
-    }));
-    items.sort((a,b)=> (new Date(b.createdAt||0).getTime()) - (new Date(a.createdAt||0).getTime()));
+    // Prefer Firestore list, fallback to storage if empty
+    const colRef = db.collection("users").doc(targetUid).collection("inbody");
+    const snap = await colRef.orderBy("createdAt", "desc").limit(200).get();
+    let items: Array<{ url: string; name: string; contentType: string; createdAt?: string | null }> = [];
+    if (!snap.empty) {
+      items = snap.docs.map(d => {
+        const x: any = d.data() || {};
+        return { url: x.url, name: x.name || d.id, contentType: x.contentType || "application/octet-stream", createdAt: x.createdAt ? (x.createdAt.toDate ? x.createdAt.toDate().toISOString() : x.createdAt) : null };
+      }).filter(x => typeof x.url === 'string');
+    } else {
+      const bucket = app.storage().bucket();
+      const prefix = `users/${targetUid}/inbody/`;
+      const [files] = await bucket.getFiles({ prefix });
+      items = await Promise.all(files.map(async (f) => {
+        const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+        const ct = (f.metadata as any)?.contentType || "application/octet-stream";
+        return { url, name: f.name.split("/").pop() || f.name, contentType: ct, createdAt: (f.metadata as any)?.timeCreated || null };
+      }));
+      items.sort((a,b)=> (new Date(b.createdAt||0).getTime()) - (new Date(a.createdAt||0).getTime()));
+    }
     return NextResponse.json({ items });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });
@@ -89,12 +101,23 @@ export async function POST(req: NextRequest) {
     }
 
     const bucket = app.storage().bucket();
+    const db = app.firestore();
     const ts = Date.now();
     const ext = ct === "image/png" ? "png" : ct === "application/pdf" ? "pdf" : "jpg";
     const path = `users/${targetUid}/inbody/${ts}.${ext}`;
     const f = bucket.file(path);
     await f.save(buf, { contentType: ct, resumable: false, public: false, metadata: { cacheControl: "public,max-age=60" } });
     const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+
+    // Write Firestore doc
+    await db.collection("users").doc(targetUid).collection("inbody").add({
+      url,
+      name: `${ts}.${ext}`,
+      contentType: ct,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({ path, url });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });

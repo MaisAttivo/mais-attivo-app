@@ -13,6 +13,7 @@ function initAdmin() {
   const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   let bucketName = rawBucket.replace(/^gs:\/\//, "");
   if (!bucketName && projectId) bucketName = `${projectId}.appspot.com`;
+  if (bucketName.endsWith('.firebasestorage.app')) bucketName = bucketName.replace('.firebasestorage.app', '.appspot.com');
   let credObj: any = null;
   if (raw) {
     let text = raw;

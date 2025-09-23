@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 function initAdmin() {
   if (admin.apps.length) return admin.app();
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
+  const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+  const bucketName = rawBucket.replace(/^gs:\/\//, "");
   let credObj: any = null;
   try {
     credObj = JSON.parse(raw);
@@ -17,11 +19,11 @@ function initAdmin() {
     try { credObj = JSON.parse(`{${raw}}`); } catch { credObj = null; }
   }
   if (!credObj) {
-    admin.initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID });
+    admin.initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, storageBucket: bucketName || undefined });
   } else {
     admin.initializeApp({
       credential: admin.credential.cert(credObj),
-      storageBucket: `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
+      storageBucket: bucketName || undefined,
     });
   }
   return admin.app();

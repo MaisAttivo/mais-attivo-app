@@ -52,28 +52,36 @@ function FotosContent() {
     try {
       const { getAuth } = await import("firebase/auth");
       const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
-      const fd = new FormData();
-      for (const f of arr) fd.append("files", f);
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/storage/photos");
-      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      xhr.upload.onprogress = (e) => {
-        if (!e.lengthComputable) return;
-        const pct = Math.round((e.loaded / Math.max(1, e.total)) * 100);
-        setProgressPct(Math.min(95, pct));
-      };
-      try {
+      const totalBytes = arr.reduce((s, f) => s + f.size, 0);
+      let uploadedBytes = 0;
+
+      for (const file of arr) {
+        const fd = new FormData();
+        fd.append("files", file);
         await new Promise<void>((resolve, reject) => {
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "/api/storage/photos");
+          if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          xhr.upload.onprogress = (e) => {
+            if (!e.lengthComputable) return;
+            const current = uploadedBytes + e.loaded;
+            const pct = Math.round((current / Math.max(1, totalBytes)) * 100);
+            setProgressPct(Math.min(95, pct));
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              uploadedBytes += file.size;
+              setProgressPct(Math.min(95, Math.round((uploadedBytes / Math.max(1, totalBytes)) * 100)));
+              resolve();
+            } else {
+              reject(new Error(xhr.responseText));
+            }
+          };
           xhr.onerror = () => reject(new Error("network_error"));
           xhr.send(fd);
-        });
-      } catch (err: any) {
-        const msg = typeof err?.message === 'string' ? err.message : 'Falha no envio';
-        // Simple feedback to user
-        alert(msg);
-        return;
+        }).catch((err) => { throw err; });
       }
+
       setProgressPct(100);
       await fetchList();
     } finally {

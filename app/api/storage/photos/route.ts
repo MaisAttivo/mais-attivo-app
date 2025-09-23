@@ -74,9 +74,27 @@ export async function GET(req: NextRequest) {
     } else {
       // Fallback to storage listing for legacy uploads
       const bucket = app.storage().bucket();
-      const prefix = `users/${targetUid}/photos/`;
-      const [files] = await bucket.getFiles({ prefix });
-      items = await Promise.all(files.map(async (f) => {
+      const prefixes = [
+        `users/${targetUid}/photos/`,
+        `users/${targetUid}/fotos/`,
+        `fotos/${targetUid}/`,
+        `photos/${targetUid}/`,
+        `users/${targetUid}/`
+      ];
+      let collected: any[] = [];
+      for (const p of prefixes) {
+        const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 });
+        collected = collected.concat(files);
+        if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
+      }
+      // Filter images only
+      const unique = new Map<string, any>();
+      for (const f of collected) unique.set(f.name, f);
+      const all = Array.from(unique.values()).filter((f: any) => {
+        const ct = (f.metadata as any)?.contentType || "";
+        return ct.startsWith("image/");
+      });
+      items = await Promise.all(all.map(async (f: any) => {
         const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
         const createdAt = (f.metadata as any)?.timeCreated || null;
         return { url, name: f.name.split('/').pop() || f.name, createdAt };

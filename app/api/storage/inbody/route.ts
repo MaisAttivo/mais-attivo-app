@@ -60,7 +60,13 @@ export async function GET(req: NextRequest) {
         return { url: x.url, name: x.name || d.id, contentType: x.contentType || "application/octet-stream", createdAt: x.createdAt ? (x.createdAt.toDate ? x.createdAt.toDate().toISOString() : x.createdAt) : null };
       }).filter(x => typeof x.url === 'string');
     } else {
-      const bucket = app.storage().bucket();
+      const primary = app.storage().bucket();
+      const rawB = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+      const configured = rawB ? rawB.replace(/^gs:\/\//, "") : "";
+      const altName = configured.includes("firebasestorage.app") && (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID||"")
+        ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
+        : (configured ? configured.replace(/\.appspot\.com$/, ".firebasestorage.app") : "");
+      const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/inbody/`,
         `inbody/${targetUid}/`,
@@ -69,9 +75,16 @@ export async function GET(req: NextRequest) {
       ];
       let collected: any[] = [];
       for (const p of prefixes) {
-        const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 });
-        collected = collected.concat(files);
+        const [files] = await primary.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
+        collected = collected.concat(files as any);
         if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
+      }
+      if (collected.length === 0 && alt) {
+        for (const p of prefixes) {
+          const [files] = await alt.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
+          collected = collected.concat(files as any);
+          if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
+        }
       }
       const unique = new Map<string, any>();
       for (const f of collected) unique.set(f.name, f);

@@ -24,8 +24,9 @@ function InbodyContent() {
   async function fetchList() {
     setLoading(true);
     try {
-      const { getAuth } = await import("firebase/auth");
-      const u = getAuth().currentUser;
+      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
+      const a = getAuth();
+      const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
       const token = u ? await u.getIdToken() : "";
       const res = await fetch("/api/storage/inbody", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
@@ -45,8 +46,10 @@ function InbodyContent() {
     setUploading(true);
     setProgressPct(0);
     try {
-      const { getAuth } = await import("firebase/auth");
-      const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
+      const a = getAuth();
+      const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
+      const token = u ? await u.getIdToken() : "";
       const fd = new FormData();
       fd.append("file", file);
       const xhr = new XMLHttpRequest();

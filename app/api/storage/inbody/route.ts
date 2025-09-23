@@ -61,9 +61,27 @@ export async function GET(req: NextRequest) {
       }).filter(x => typeof x.url === 'string');
     } else {
       const bucket = app.storage().bucket();
-      const prefix = `users/${targetUid}/inbody/`;
-      const [files] = await bucket.getFiles({ prefix });
-      items = await Promise.all(files.map(async (f) => {
+      const prefixes = [
+        `users/${targetUid}/inbody/`,
+        `inbody/${targetUid}/`,
+        `users/${targetUid}/InBody/`,
+        `users/${targetUid}/`
+      ];
+      let collected: any[] = [];
+      for (const p of prefixes) {
+        const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 });
+        collected = collected.concat(files);
+        if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
+      }
+      const unique = new Map<string, any>();
+      for (const f of collected) unique.set(f.name, f);
+      const filtered = Array.from(unique.values()).filter((f: any) => {
+        const ct = (f.metadata as any)?.contentType || "";
+        const name = (f.name || "").toLowerCase();
+        const looksInbody = name.includes("inbody");
+        return looksInbody && (ct.startsWith("image/") || ct === "application/pdf");
+      });
+      items = await Promise.all(filtered.map(async (f: any) => {
         const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
         const ct = (f.metadata as any)?.contentType || "application/octet-stream";
         return { url, name: f.name.split("/").pop() || f.name, contentType: ct, createdAt: (f.metadata as any)?.timeCreated || null };

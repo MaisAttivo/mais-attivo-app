@@ -62,14 +62,28 @@ export async function GET(req: NextRequest) {
 
     const ref = db.collection("users").doc(targetUid).collection("photoSets");
     const snap = await ref.orderBy("createdAt","asc").limit(120).get();
-    const sets = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    let sets = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
 
-    // Flatten items for backward compatibility
-    const items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
-    for (const s of sets) {
-      const arr: string[] = Array.isArray(s.urls) ? s.urls : [];
-      for (const u of arr) items.push({ url: u, name: s.id, createdAt: s.createdAt ? (s.createdAt.toDate ? s.createdAt.toDate().toISOString() : s.createdAt) : null });
+    let items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
+    if (sets.length > 0) {
+      for (const s of sets) {
+        const arr: string[] = Array.isArray(s.urls) ? s.urls : [];
+        const created = s.createdAt ? (s.createdAt.toDate ? s.createdAt.toDate().toISOString() : s.createdAt) : null;
+        for (const u of arr) items.push({ url: u, name: s.id, createdAt: created });
+      }
+    } else {
+      // Fallback to storage listing for legacy uploads
+      const bucket = app.storage().bucket();
+      const prefix = `users/${targetUid}/photos/`;
+      const [files] = await bucket.getFiles({ prefix });
+      items = await Promise.all(files.map(async (f) => {
+        const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+        const createdAt = (f.metadata as any)?.timeCreated || null;
+        return { url, name: f.name.split('/').pop() || f.name, createdAt };
+      }));
+      items.sort((a,b)=> (new Date(a.createdAt||0).getTime()) - (new Date(b.createdAt||0).getTime()));
     }
+
     return NextResponse.json({ sets, items });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });

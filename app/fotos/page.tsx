@@ -26,8 +26,9 @@ function FotosContent() {
   async function fetchList() {
     setLoading(true);
     try {
-      const { getAuth } = await import("firebase/auth");
-      const u = getAuth().currentUser;
+      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
+      const a = getAuth();
+      const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
       const token = u ? await u.getIdToken() : "";
       const res = await fetch("/api/storage/photos", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
@@ -50,8 +51,10 @@ function FotosContent() {
     setUploading(true);
     setProgressPct(0);
     try {
-      const { getAuth } = await import("firebase/auth");
-      const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+      const { getAuth, onAuthStateChanged } = await import("firebase/auth");
+      const a = getAuth();
+      const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
+      const token = u ? await u.getIdToken() : "";
       const totalBytes = arr.reduce((s, f) => s + f.size, 0);
       let uploadedBytes = 0;
 
@@ -201,8 +204,10 @@ function FotosContent() {
                           className={`absolute -top-2 -right-2 text-xs rounded px-1.5 py-0.5 ${s.coverUrl===u? 'bg-blue-600 text-white' : 'bg-slate-200'}`}
                           title="Definir capa"
                           onClick={async()=>{
-                            const { getAuth } = await import('firebase/auth');
-                            const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : '';
+                            const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+                            const a = getAuth();
+                            const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
+                            const token = u ? await u.getIdToken() : '';
                             await fetch('/api/storage/photos', { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...(token? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ weekId: s.id, coverUrl: u }) });
                             await fetchList();
                           }}

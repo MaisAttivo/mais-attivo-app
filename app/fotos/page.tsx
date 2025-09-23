@@ -81,8 +81,11 @@ function FotosContent() {
               {uploading ? "A enviar…" : "Carregar foto"}
             </Button>
             {typeof progressPct === "number" && (
-              <div className="w-40 h-2 rounded bg-slate-200 overflow-hidden">
-                <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
+              <div className="flex items-center gap-2">
+                <div className="w-40 h-2 rounded bg-slate-200 overflow-hidden">
+                  <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
+                </div>
+                <span className="text-xs text-slate-600">{progressPct}%</span>
               </div>
             )}
           </div>

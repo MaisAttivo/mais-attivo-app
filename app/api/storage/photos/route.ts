@@ -80,11 +80,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Fallback to storage listing for legacy uploads (try configured bucket and alternate)
       const primary = app.storage().bucket();
-      const rawB = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-      const configured = rawB ? rawB.replace(/^gs:\/\//, "") : "";
-      const altName = configured.includes("firebasestorage.app") && (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID||"")
-        ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
-        : (configured ? configured.replace(/\.appspot\.com$/, ".firebasestorage.app") : "");
+      const altName = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
       const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/photos/`,
@@ -94,17 +90,14 @@ export async function GET(req: NextRequest) {
         `users/${targetUid}/`
       ];
       let collected: any[] = [];
-      for (const p of prefixes) {
-        const [files] = await primary.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
-        collected = collected.concat(files as any);
-        if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
-      }
-      if (collected.length === 0 && alt) {
+      const buckets = [primary, ...(alt ? [alt] : [])];
+      for (const b of buckets) {
         for (const p of prefixes) {
-          const [files] = await alt.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
+          const [files] = await b.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
           collected = collected.concat(files as any);
           if (collected.length >= 1 && p !== `users/${targetUid}/`) break;
         }
+        if (collected.length > 0) break;
       }
       const unique = new Map<string, any>();
       for (const f of collected) unique.set(f.name, f);
@@ -131,7 +124,8 @@ export async function POST(req: NextRequest) {
     const app = initAdmin();
     const auth = app.auth();
     const db = app.firestore();
-    const bucket = app.storage().bucket();
+    const uploadBucketName = (process.env.FIREBASE_UPLOAD_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const bucket = uploadBucketName ? admin.storage().bucket(uploadBucketName) : app.storage().bucket();
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
     if (!idToken) return NextResponse.json({ error: "missing_token" }, { status: 401 });

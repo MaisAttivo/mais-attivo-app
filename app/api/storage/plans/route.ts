@@ -104,13 +104,8 @@ export async function POST(req: NextRequest) {
     }
 
     const path = `plans/${targetUid}/${kind}.pdf`;
-    const fileRef = bucket.file(path);
-    await fileRef.save(buf, { contentType: ct, resumable: false, public: false, metadata: { cacheControl: "public,max-age=60" } });
-
-    // Generate a signed URL valid for 7 days
-    const [url] = await fileRef.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-
-    return NextResponse.json({ path, url });
+    const { url, used } = await saveToFirstAvailable(buf, ct, path);
+    return NextResponse.json({ path, url, bucket: used });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });
   }

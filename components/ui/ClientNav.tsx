@@ -48,12 +48,18 @@ export default function ClientNav() {
   useEffect(() => {
     const hide = () => {
       document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
-        const t = (el as HTMLElement).innerText.trim();
-        if (t === 'Fotos' || t === 'InBody') (el as HTMLElement).style.display = 'none';
+        const txt = (el as HTMLElement).textContent?.toLowerCase().trim() || '';
+        const attr = (el as HTMLElement).getAttribute('data-radix-collection-item') || '';
+        if (txt.includes('fotos') || txt.includes('inbody') || /Fotos|InBody/i.test(attr)) {
+          (el as HTMLElement).remove();
+        }
       });
     };
-    const id = setInterval(hide, 500);
-    return () => clearInterval(id);
+    hide();
+    const ob = new MutationObserver(hide);
+    const root = document.body;
+    ob.observe(root, { childList: true, subtree: true });
+    return () => ob.disconnect();
   }, []);
 
   return (

@@ -8,6 +8,7 @@ export default function EnablePushButton() {
   const [perm, setPerm] = useState<Perm>("default");
   const [optedIn, setOptedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showBlockedHelp, setShowBlockedHelp] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -33,6 +34,16 @@ export default function EnablePushButton() {
       } catch {
         setOptedIn(null);
       }
+
+      try {
+        const dismissed = typeof sessionStorage !== "undefined" && sessionStorage.getItem("attivo_push_blocked_dismissed") === "1";
+        if (!dismissed) {
+          const currentPerm: Perm = typeof OneSignal.Notifications?.getPermissionStatus === "function"
+            ? await OneSignal.Notifications.getPermissionStatus()
+            : (typeof Notification !== "undefined" ? (Notification.permission as Perm) : "default");
+          if (currentPerm === "denied") setShowBlockedHelp(true);
+        }
+      } catch {}
     });
   }, []);
 
@@ -95,13 +106,52 @@ export default function EnablePushButton() {
 
   if (perm === "denied") {
     return (
-      <span
-        className="inline-flex items-center rounded-[20px] border-[3px] border-slate-400 bg-white px-3 py-1.5 text-xs text-slate-600 shadow"
-        title="Notificações bloqueadas no navegador"
-        aria-label="Notificações bloqueadas"
-      >
-        🚫
-      </span>
+      <>
+        <button
+          type="button"
+          onClick={() => setShowBlockedHelp(true)}
+          className="inline-flex items-center rounded-[20px] border-[3px] border-slate-400 bg-white px-3 py-1.5 text-xs text-slate-600 shadow hover:bg-slate-50"
+          title="Notificações bloqueadas no navegador"
+          aria-label="Notificações bloqueadas"
+        >
+          🚫
+        </button>
+
+        {showBlockedHelp && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => {
+                try { sessionStorage.setItem("attivo_push_blocked_dismissed", "1"); } catch {}
+                setShowBlockedHelp(false);
+              }}
+            />
+            <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-lg ring-2 ring-rose-400 p-5">
+              <h2 className="text-lg font-semibold text-rose-700">Notificações bloqueadas</h2>
+              <p className="mt-2 text-sm text-slate-700">
+                Para ativar, abre as definições do site no teu navegador e permite as notificações.
+              </p>
+              <ul className="mt-2 text-xs text-slate-600 list-disc pl-5 space-y-1">
+                <li>Clica no cadeado ao lado do endereço.</li>
+                <li>Vai a Permissões &gt; Notificações &gt; Permitir.</li>
+                <li>Recarrega a página e toca no sino para ativar.</li>
+              </ul>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try { sessionStorage.setItem("attivo_push_blocked_dismissed", "1"); } catch {}
+                    setShowBlockedHelp(false);
+                  }}
+                  className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
+                >
+                  Ok, percebi
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 

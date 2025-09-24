@@ -161,7 +161,9 @@ export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, 
 
           {dsSeries.map((s, idx) => (
             <g key={idx}>
-              <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
+              {(s.drawLine ?? true) && (
+                <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
+              )}
               {s.points.map((p, i) => (
                 <circle
                   key={i}

@@ -118,6 +118,7 @@ export default function DashboardPage() {
       if (!u) {
         setUid(null);
         setLoading(false);
+        try { router.replace("/login"); } catch {}
         return;
       }
       setUid(u.uid);

@@ -19,6 +19,9 @@ export default function OneSignalInit() {
         appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true, // útil em dev local
         notifyButton: { enable: false },    // vamos usar o nosso botão
+        serviceWorkerPath: "/OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "/OneSignalSDKUpdaterWorker.js",
+        serviceWorkerParam: { scope: "/" },
       });
     });
   }, []);

@@ -28,13 +28,13 @@ export async function ensureUserDoc(
   try {
     snap = await getDoc(ref);
   } catch (e) {
-    // Network/Firestore unavailable — continue with defaults to avoid blocking login
+    // Network/Firestore unavailable — continue with safe defaults (do NOT force onboarding)
     return {
       id: user.uid,
       email: user.email || "",
       name: user.displayName || "",
       role: fallbackRole,
-      onboardingDone: false,
+      onboardingDone: true,
       workoutFrequency: 0,
       metaAgua: null,
     };

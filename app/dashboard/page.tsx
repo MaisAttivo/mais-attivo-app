@@ -141,8 +141,14 @@ export default function DashboardPage() {
       let dn = (udata.fullName || udata.name || udata.nome || "").toString().trim();
       if (!dn) {
         try {
-          let qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+          let qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("completedAt", "desc"), limit(1));
           let sQ = await getDocs(qQ);
+          if (sQ.empty) {
+            try {
+              qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1));
+              sQ = await getDocs(qQ);
+            } catch {}
+          }
           if (sQ.empty) {
             try {
               qQ = query(collection(db, `users/${uid}/questionnaire`), orderBy("__name__", "desc"), limit(1));

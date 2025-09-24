@@ -45,9 +45,14 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
 
   const series: Series[] = useMemo(() => {
     if (mode.key === "peso") {
+      // Linha azul: passa pelos pontos da média semanal e também pelos pontos de check-in
+      const mergedMap = new Map<number, { x: number; y: number }>();
+      for (const p of data.pesoSemanal) mergedMap.set(p.x, { x: p.x, y: p.y });
+      for (const p of data.pesoCheckin) mergedMap.set(p.x, { x: p.x, y: p.y }); // dá prioridade ao check-in no mesmo dia
+      const merged = Array.from(mergedMap.values()).sort((a,b)=>a.x-b.x);
       return [
-        { name: "Peso semanal (kg)", color: "#2563eb", points: data.pesoSemanal },
-        { name: "Peso check-in (kg)", color: "#16a34a", points: data.pesoCheckin },
+        { name: "Média Semanal", color: "#2563eb", points: merged, drawLine: true },
+        { name: "Check-in", color: "#16a34a", points: data.pesoCheckin, drawLine: false },
       ];
     }
     if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];

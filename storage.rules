@@ -7,55 +7,22 @@ service firebase.storage {
         request.auth.token.role == 'coach' ||
         request.auth.token.role == 'admin' ||
         request.auth.token.coach == true ||
-        // Fallback to Firestore role when custom claims aren't set
         get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['coach', 'admin']
       );
     }
     function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
     function isPdf() { return request.resource.contentType == 'application/pdf'; }
-    function isImage() { return request.resource.contentType in ['image/png','image/jpeg']; }
-    function canUploadPhotos(uid) {
-      return (
-        get(/databases/(default)/documents/users/$(uid)).data.imageUseConsent == true ||
-        get(/databases/(default)/documents/users/$(uid)).data.imageUploadAllowedByCoach == true
-      );
-    }
 
-    // Planos (PDF)
+    // Plans (PDF)
+    match /plans/{uid} {
+      allow list: if isCoach() || isSelf(uid);
+    }
     match /plans/{uid}/{fileName} {
-      allow read, list: if isCoach() || isSelf(uid);
-      allow write: if isCoach() && isPdf() && fileName.matches('.*\.pdf$');
+      allow read: if isCoach() || isSelf(uid);
+      allow write: if isCoach() && isPdf() && fileName.matches('.*\\.pdf$');
     }
 
-    // InBody (PNG/JPEG/PDF até 8MB)
-    match /users/{uid}/inbody/{fileName} {
-      allow read, list: if isCoach() || isSelf(uid);
-      allow write: if (isCoach() || isSelf(uid))
-                   && (isImage() || isPdf())
-                   && request.resource.size < 8 * 1024 * 1024
-                   && fileName.matches('.*\.(png|jpe?g|pdf)$');
-    }
-
-    // Weekly Feedback (PNG/JPEG até 8MB)
-    match /users/{uid}/weekly/{fileName} {
-      allow read, list: if isCoach() || isSelf(uid);
-      allow write: if (isCoach() || isSelf(uid))
-                   && isImage()
-                   && request.resource.size < 8 * 1024 * 1024
-                   && fileName.matches('.*\.(png|jpe?g)$');
-    }
-
-    // Photos (PNG/JPEG até 8MB) — requer consentimento do cliente OU override do coach
-    match /users/{uid}/photos/{fileName} {
-      allow read, list: if isCoach() || isSelf(uid);
-      allow write: if isImage()
-                   && request.resource.size < 8 * 1024 * 1024
-                   && fileName.matches('.*\.(png|jpe?g)$')
-                   && (
-                        isCoach() || (isSelf(uid) && canUploadPhotos(uid))
-                      );
-    }
-
+    // Deny everything else
     match /{path=**} { allow read, write: if false; }
   }
 }

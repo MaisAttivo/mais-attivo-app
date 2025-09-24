@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-export type Series = { name: string; color: string; points: { x: number; y: number }[] };
+export type Series = { name: string; color: string; points: { x: number; y: number }[]; drawLine?: boolean };
 
 export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, yUnit }: { series: Series[]; height?: number; xLabel?: string; yLabel?: string; yUnit?: string }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -161,7 +161,9 @@ export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, 
 
           {dsSeries.map((s, idx) => (
             <g key={idx}>
-              <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
+              {(s.drawLine ?? true) && (
+                <path d={pathFor(s.points)} fill="none" stroke={s.color} strokeWidth={2} />
+              )}
               {s.points.map((p, i) => (
                 <circle
                   key={i}

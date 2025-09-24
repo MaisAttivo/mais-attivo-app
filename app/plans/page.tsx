@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Upload, X, ArrowLeft } from "lucide-react";
@@ -58,6 +58,8 @@ function PlansPageContent() {
   const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
   const [uploadingTraining, setUploadingTraining] = useState(false);
   const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState<number | null>(null);
+  const [dietProgress, setDietProgress] = useState<number | null>(null);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const search = useSearchParams();
@@ -74,41 +76,50 @@ function PlansPageContent() {
     let alive = true;
     (async () => {
       setPlansLoading(true);
+      const withTimeout = async <T,>(p: Promise<T>, ms: number): Promise<T> =>
+        await Promise.race([
+          p,
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+        ]);
       try {
-        let data: any = {};
-        // Try Firestore doc users/{uid}/plans/latest
-        try {
-          const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
-          data = snap.data() || {};
-        } catch {}
-
-        // Fallback: subcollection docs with type/url
-        if ((!data.trainingUrl || !data.dietUrl)) {
-          try {
-            const qs = await getDocs(collection(db, "users", effectiveUid, "plans"));
-            const all: any[] = [];
-            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
-            const treino = all.find(d => (d.type === "treino" || d.type === "training") && d.url);
-            const alim = all.find(d => (d.type === "alimentacao" || d.type === "diet") && d.url);
-            data = { ...data, ...(treino ? { trainingUrl: treino.url } : {}), ...(alim ? { dietUrl: alim.url } : {}) };
-          } catch {}
-        }
-
-        // Fallback: direct Storage URLs at plans/{uid}/{kind}.pdf
-        if (!data.trainingUrl) {
-          try {
-            const r = ref(storage, `plans/${effectiveUid}/training.pdf`);
-            data.trainingUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        if (!data.dietUrl) {
-          try {
-            const r = ref(storage, `plans/${effectiveUid}/diet.pdf`);
-            data.dietUrl = await getDownloadURL(r);
-          } catch {}
-        }
-
-        if (alive) setPlan({ trainingUrl: data.trainingUrl || null, dietUrl: data.dietUrl || null });
+        const latestP = withTimeout(
+          (async () => {
+            try {
+              const snap = await getDoc(doc(db, "users", effectiveUid, "plans", "latest"));
+              return (snap.data() as any) || {};
+            } catch { return {}; }
+          })(),
+          4000
+        );
+        const collP = withTimeout(
+          (async () => {
+            try {
+              const qs = await getDocs(collection(db, "users", effectiveUid, "plans"));
+              const all: any[] = [];
+              qs.forEach((d) => all.push({ id: d.id, ...(d.data() as any) }));
+              const treino = all.find((d) => (d.type === "treino" || d.type === "training") && d.url);
+              const alim = all.find((d) => (d.type === "alimentacao" || d.type === "diet") && d.url);
+              return { trainingUrl: treino?.url, dietUrl: alim?.url };
+            } catch { return {}; }
+          })(),
+          4000
+        );
+        const storageP = withTimeout(
+          (async () => {
+            const out: any = {};
+            try { out.trainingUrl = await getDownloadURL(ref(storage, `plans/${effectiveUid}/training.pdf`)); } catch {}
+            try { out.dietUrl = await getDownloadURL(ref(storage, `plans/${effectiveUid}/diet.pdf`)); } catch {}
+            return out;
+          })(),
+          4000
+        );
+        const [latest, fromColl, fromStorage] = await Promise.allSettled([latestP, collP, storageP]);
+        const a = latest.status === "fulfilled" ? latest.value as any : {};
+        const b = fromColl.status === "fulfilled" ? fromColl.value as any : {};
+        const c = fromStorage.status === "fulfilled" ? fromStorage.value as any : {};
+        const trainingUrl = a.trainingUrl || b.trainingUrl || c.trainingUrl || null;
+        const dietUrl = a.dietUrl || b.dietUrl || c.dietUrl || null;
+        if (alive) setPlan({ trainingUrl, dietUrl });
       } finally {
         if (alive) setPlansLoading(false);
       }
@@ -129,8 +140,51 @@ function PlansPageContent() {
 
       const path = `plans/${effectiveUid}/${kind}.pdf`;
       const r = ref(storage, path);
-      await uploadBytes(r, file, { contentType: "application/pdf" });
-      const url = await getDownloadURL(r);
+      const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      let progressed = false;
+      const timer = setTimeout(async () => {
+        if (!progressed) {
+          try { task.cancel(); } catch {}
+        }
+      }, 5000);
+      task.on("state_changed", (snap) => {
+        const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (pct > 0) progressed = true;
+        if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
+      }, async () => {}, async () => {});
+      let url: string | null = null;
+      try {
+        await task;
+        url = await getDownloadURL(r);
+      } catch (e) {
+        try {
+          if (!progressed) {
+            await uploadBytes(r, file, { contentType: "application/pdf" });
+            url = await getDownloadURL(r);
+          } else {
+            throw e;
+          }
+        } catch (e2) {
+          // Final fallback: upload via server to bypass CORS
+          try {
+            const token = (await import("firebase/auth")).getAuth()?.currentUser ? await (await import("firebase/auth")).getAuth().currentUser!.getIdToken() : "";
+            const fd = new FormData();
+            fd.append("kind", kind);
+            fd.append("uid", effectiveUid);
+            fd.append("file", file);
+            const res = await fetch("/api/storage/plans", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            url = data.url || null;
+            if (!url) throw new Error("no_url");
+          } catch (e3) {
+            throw e3;
+          }
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!url) throw new Error("Falha no upload (sem URL)");
       const docRef = doc(db, "users", effectiveUid, "plans", "latest");
       const payload: any = { updatedAt: serverTimestamp() };
       if (kind === "training") payload.trainingUrl = url; else payload.dietUrl = url;
@@ -141,7 +195,8 @@ function PlansPageContent() {
       if (kind === "training") setTrainingError(msg); else setDietError(msg);
       console.error("Upload planos falhou", e);
     } finally {
-      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+      if (kind === "training") { setUploadingTraining(false); setTrainingProgress(null); }
+      else { setUploadingDiet(false); setDietProgress(null); }
     }
   }
 
@@ -176,8 +231,16 @@ function PlansPageContent() {
                       />
                       <Button size="sm" onClick={() => trainingInputRef.current?.click()} disabled={uploadingTraining}>
                         <Upload className="h-4 w-4" />
-                        {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
+                        {uploadingTraining ? `A enviar… ${trainingProgress ?? 0}%` : "Escolher ficheiro"}
                       </Button>
+                      {typeof trainingProgress === "number" && (
+                        <div className="w-full max-w-xs">
+                          <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all" style={{ width: `${trainingProgress}%` }} />
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-1">{trainingProgress}%</div>
+                        </div>
+                      )}
                       {trainingError ? (
                         <div className="text-xs text-red-600 text-left">{trainingError}</div>
                       ) : (
@@ -197,8 +260,16 @@ function PlansPageContent() {
                       />
                       <Button size="sm" onClick={() => dietInputRef.current?.click()} disabled={uploadingDiet}>
                         <Upload className="h-4 w-4" />
-                        {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
+                        {uploadingDiet ? `A enviar… ${dietProgress ?? 0}%` : "Escolher ficheiro"}
                       </Button>
+                      {typeof dietProgress === "number" && (
+                        <div className="w-full max-w-xs">
+                          <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                            <div className="h-full bg-blue-600 transition-all" style={{ width: `${dietProgress}%` }} />
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-1">{dietProgress}%</div>
+                        </div>
+                      )}
                       {dietError ? (
                         <div className="text-xs text-red-600 text-left">{dietError}</div>
                       ) : (

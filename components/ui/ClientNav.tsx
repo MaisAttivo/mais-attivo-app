@@ -44,6 +44,24 @@ export default function ClientNav() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  // Safety net: hide legacy items if some cached bundle still renders them
+  useEffect(() => {
+    const hide = () => {
+      document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
+        const txt = (el as HTMLElement).textContent?.toLowerCase().trim() || '';
+        const attr = (el as HTMLElement).getAttribute('data-radix-collection-item') || '';
+        if (txt.includes('fotos') || txt.includes('inbody') || /Fotos|InBody/i.test(attr)) {
+          (el as HTMLElement).remove();
+        }
+      });
+    };
+    hide();
+    const ob = new MutationObserver(hide);
+    const root = document.body;
+    ob.observe(root, { childList: true, subtree: true });
+    return () => ob.disconnect();
+  }, []);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

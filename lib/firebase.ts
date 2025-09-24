@@ -26,8 +26,20 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
-    dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, experimentalForceLongPolling: true, useFetchStreams: false });
-    storageInstance = getStorage(appInstance);
+    dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true, useFetchStreams: false });
+
+    // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames
+    const bucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+    let gsUrl: string | undefined = undefined;
+    if (bucket) {
+      const isValid = bucket.startsWith("gs://") || bucket.endsWith(".appspot.com");
+      if (isValid) gsUrl = bucket.startsWith("gs://") ? bucket : `gs://${bucket}`;
+    }
+    try {
+      storageInstance = gsUrl ? getStorage(appInstance, gsUrl) : getStorage(appInstance);
+    } catch {
+      storageInstance = getStorage(appInstance);
+    }
   } else {
     if (process.env.NODE_ENV !== "production") {
       // Surface a helpful warning in dev instead of crashing the server render

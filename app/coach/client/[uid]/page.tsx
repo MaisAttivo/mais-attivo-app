@@ -23,7 +23,7 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
-import { ref, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL, listAll, getMetadata } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -142,6 +142,8 @@ export default function CoachClientProfilePage() {
   const [dietSelected, setDietSelected] = useState<string | null>(null);
   const [uploadingTraining, setUploadingTraining] = useState(false);
   const [uploadingDiet, setUploadingDiet] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState<number | null>(null);
+  const [dietProgress, setDietProgress] = useState<number | null>(null);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);
@@ -160,7 +162,6 @@ export default function CoachClientProfilePage() {
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
   const [imgConsent, setImgConsent] = useState<boolean>(false);
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
-  const [coachOverride, setCoachOverride] = useState<boolean>(false);
 
   const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding" | "notificacoes">("daily");
 
@@ -226,7 +227,6 @@ export default function CoachClientProfilePage() {
       setPlEnabled(!!u.powerlifting);
       setImgConsent(!!u.imageUseConsent);
       setImgConsentAt(toDate(u.imageUseConsentAt ?? null));
-      setCoachOverride(!!u.imageUploadAllowedByCoach);
 
       const userLastDt = toDateFlexible(u.lastCheckinDate);
       const userNextDt = toDateFlexible(u.nextCheckinDate);
@@ -245,8 +245,15 @@ export default function CoachClientProfilePage() {
       let qd: any = null;
       try {
         let qSnap = await getDocs(
-          query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
+          query(collection(db, `users/${uid}/questionnaire`), orderBy("completedAt", "desc"), limit(1))
         );
+        if (qSnap.empty) {
+          try {
+            qSnap = await getDocs(
+              query(collection(db, `users/${uid}/questionnaire`), orderBy("createdAt", "desc"), limit(1))
+            );
+          } catch {}
+        }
         if (qSnap.empty) {
           qSnap = await getDocs(
             query(collection(db, `users/${uid}/questionnaire`), orderBy("__name__", "desc"), limit(1))
@@ -286,18 +293,42 @@ export default function CoachClientProfilePage() {
         const massaGorda: { x: number; y: number }[] = [];
         const gorduraVisceral: { x: number; y: number }[] = [];
 
-        // Weekly weights → mapear para 2ª feira
-        let qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
-        let wfSnap = await getDocs(qW);
-        if (wfSnap.empty) {
-          try { qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+        // Weekly average from dailies for a cleaner chart
+        let qD = query(collection(db, `users/${uid}/dailyFeedback`), orderBy("date", "asc"), limit(400));
+        let dSnap = await getDocs(qD);
+        if (dSnap.empty) {
+          try { qD = query(collection(db, `users/${uid}/dailyFeedback`), orderBy("__name__", "asc"), limit(400)); dSnap = await getDocs(qD); } catch {}
         }
-        wfSnap.forEach((d) => {
-          const id = d.id;
-          const val: any = (d.data() as any).pesoAtualKg;
-          const monday = parseWeekMondayFromId(id);
-          if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
+        const wmap = new Map<number, { sum: number; count: number }>();
+        dSnap.forEach((doc) => {
+          const data: any = doc.data() || {};
+          const dt: Date = data.date?.toDate?.() || (function(){ const m=doc.id.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return null as any; return new Date(Date.UTC(+m[1], +m[2]-1, +m[3])); })();
+          const w = typeof data.weight === 'number' ? data.weight : typeof data.peso === 'number' ? data.peso : null;
+          if (!dt || typeof w !== 'number') return;
+          const d = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+          const dow = d.getUTCDay() || 7; if (dow !== 1) d.setUTCDate(d.getUTCDate() - (dow - 1)); d.setUTCHours(0,0,0,0);
+          const k = +d;
+          const prev = wmap.get(k) || { sum: 0, count: 0 };
+          prev.sum += w; prev.count += 1;
+          wmap.set(k, prev);
         });
+        if (wmap.size > 0) {
+          const arr = Array.from(wmap.entries()).sort((a,b)=>a[0]-b[0]).map(([k,v])=>({ x: k, y: Number((v.sum / v.count).toFixed(2)) }));
+          pesoSemanal.push(...arr);
+        } else {
+          // Fallback to weeklyFeedback if no dailies
+          let qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
+          let wfSnap = await getDocs(qW);
+          if (wfSnap.empty) {
+            try { qW = query(collection(db, `users/${uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+          }
+          wfSnap.forEach((d) => {
+            const id = d.id;
+            const val: any = (d.data() as any).pesoAtualKg;
+            const monday = parseWeekMondayFromId(id);
+            if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
+          });
+        }
 
         // Check-ins (até 100)
         let qC = query(collection(db, `users/${uid}/checkins`), orderBy("date", "asc"), limit(100));
@@ -389,116 +420,67 @@ export default function CoachClientProfilePage() {
       setMetaAgua(meta);
       setMetaSource(source);
 
-      // Carregar planos (PDFs)
+      // Carregar planos (PDFs) com paralelismo e timeout
       try {
-        const planSnap = await getDoc(doc(db, "users", uid, "plans", "latest"));
-        let planData: any = planSnap.data() || {};
-        if ((!planData.trainingUrl || !planData.dietUrl)) {
-          try {
-            const qs = await getDocs(collection(db, `users/${uid}/plans`));
-            const all: any[] = [];
-            qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) }));
-            const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url);
-            const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url);
-            planData = { ...planData, ...(treino ? { trainingUrl: treino.url, trainingUpdatedAt: treino.createdAt || treino.updatedAt } : {}), ...(alim ? { dietUrl: alim.url, dietUpdatedAt: alim.createdAt || alim.updatedAt } : {}) };
-          } catch {}
-        }
-        // Fallback direto ao Storage
-        if (!planData.trainingUrl && storage) {
-          try {
-            const r = ref(storage, `plans/${uid}/training.pdf`);
-            planData.trainingUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        if (!planData.dietUrl && storage) {
-          try {
-            const r = ref(storage, `plans/${uid}/diet.pdf`);
-            planData.dietUrl = await getDownloadURL(r);
-          } catch {}
-        }
-        setTrainingUrl(planData.trainingUrl || null);
-        setDietUrl(planData.dietUrl || null);
-        setTrainingAt(toDate(planData.trainingUpdatedAt ?? null));
-        setDietAt(toDate(planData.dietUpdatedAt ?? null));
+        const withTimeout = async <T,>(p: Promise<T>, ms: number): Promise<T> =>
+          await Promise.race([
+            p,
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+          ]);
+        const latestP = withTimeout(
+          (async () => { try { const s = await getDoc(doc(db, "users", uid, "plans", "latest")); return (s.data() as any) || {}; } catch { return {}; } })(),
+          4000
+        );
+        const collP = withTimeout(
+          (async () => { try { const qs = await getDocs(collection(db, `users/${uid}/plans`)); const all: any[] = []; qs.forEach(d=> all.push({ id: d.id, ...(d.data() as any) })); const treino = all.find(d => (d.type == "treino" || d.type == "training") && d.url); const alim = all.find(d => (d.type == "alimentacao" || d.type == "diet") && d.url); return { trainingUrl: treino?.url, dietUrl: alim?.url, trainingUpdatedAt: treino?.createdAt || treino?.updatedAt, dietUpdatedAt: alim?.createdAt || alim?.updatedAt }; } catch { return {}; } })(),
+          4000
+        );
+        const storageP = withTimeout(
+          (async () => { const out: any = {}; try { out.trainingUrl = await getDownloadURL(ref(storage, `plans/${uid}/training.pdf`)); } catch {} try { out.dietUrl = await getDownloadURL(ref(storage, `plans/${uid}/diet.pdf`)); } catch {} return out; })(),
+          4000
+        );
+        const [aR, bR, cR] = await Promise.allSettled([latestP, collP, storageP]);
+        const a = aR.status === "fulfilled" ? aR.value as any : {};
+        const b = bR.status === "fulfilled" ? bR.value as any : {};
+        const c = cR.status === "fulfilled" ? cR.value as any : {};
+        const trainingUrl = a.trainingUrl || b.trainingUrl || c.trainingUrl || null;
+        const dietUrl = a.dietUrl || b.dietUrl || c.dietUrl || null;
+        setTrainingUrl(trainingUrl);
+        setDietUrl(dietUrl);
+        setTrainingAt(toDate(a.trainingUpdatedAt ?? b.trainingUpdatedAt ?? null));
+        setDietAt(toDate(a.dietUpdatedAt ?? b.dietUpdatedAt ?? null));
       } catch {}
       setPlansLoading(false);
 
-      // Listar Fotos (conjuntos)
+      // Listar Fotos (via API server-side, sem depender de Storage Rules no cliente)
       try {
+        const { getAuth } = await import("firebase/auth");
+        const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+        const res = await fetch(`/api/storage/photos?uid=${encodeURIComponent(uid)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
-        if (storage) {
-          const baseRef = ref(storage, `users/${uid}/photos`);
-          const res = await listAll(baseRef);
-          const items = await Promise.all(res.items.map(async (it)=>{
-            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-            const createdAt = meta.timeCreated ? new Date(meta.timeCreated) : null;
-            const name = it.name; // 2025-W36-...-0_main.jpg
-            const setId = name.split("-").slice(0,3).join("-");
-            const isMain = /_main\./i.test(name);
-            return { setId, url, createdAt, isMain };
-          }));
-          const bySet = new Map<string, { createdAt: Date | null; urls: string[]; mainUrl: string }>();
-          for (const it of items) {
-            const s = bySet.get(it.setId) || { createdAt: it.createdAt, urls: [], mainUrl: "" };
-            if (!s.createdAt) s.createdAt = it.createdAt;
-            s.urls.push(it.url);
-            if (it.isMain) s.mainUrl = it.url;
-            bySet.set(it.setId, s);
-          }
-          arrFinal = Array.from(bySet.entries()).map(([id, s])=>({ id, createdAt: s.createdAt || null, urls: s.urls, mainUrl: s.mainUrl || s.urls[0] })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-        }
-        if (arrFinal.length === 0) {
-          try {
-            const snap = await getDocs(collection(db, `users/${uid}/photos`));
-            const tmp: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
-            snap.forEach((d) => {
-              const data: any = d.data() || {};
-              const urls: string[] = Array.isArray(data.urls) ? data.urls.filter((u: any)=> typeof u === 'string') : (typeof data.url === 'string' ? [data.url] : []);
-              if (urls.length === 0) return;
-              const ts: any = data.createdAt || data.time || data.date || null;
-              const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
-              const mainUrl = data.mainUrl && typeof data.mainUrl === 'string' ? data.mainUrl : urls[0];
-              tmp.push({ id: d.id, createdAt, urls, mainUrl });
-            });
-            if (tmp.length > 0) arrFinal = tmp.sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
-          } catch {}
+        if (res.ok) {
+          const data = await res.json();
+          const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+          arrFinal = items.map((it) => ({
+            id: it.name || String(Math.random()),
+            createdAt: it.createdAt ? new Date(it.createdAt) : null,
+            mainUrl: it.url,
+            urls: [it.url],
+          })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
         }
         setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
 
-      // Listar InBody do utilizador (imagens)
+      // Listar InBody (via API server-side, sem depender de Storage Rules no cliente)
       try {
+        const { getAuth } = await import("firebase/auth");
+        const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : "";
+        const res = await fetch(`/api/storage/inbody?uid=${encodeURIComponent(uid)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         let items: Array<{ id: string; url: string; createdAt: Date | null }> = [];
-        if (storage) {
-          const dirRef = ref(storage, `users/${uid}/inbody`);
-          const res = await listAll(dirRef);
-          const fromStorage = await Promise.all(res.items.map(async (it) => {
-            const [url, meta] = await Promise.all([getDownloadURL(it), getMetadata(it)]);
-            let createdAt: Date | null = meta.timeCreated ? new Date(meta.timeCreated) : null;
-            if (!createdAt) {
-              const base = it.name.replace(/\.(png|jpg|jpeg)$/i, "");
-              const n = Number(base);
-              if (Number.isFinite(n) && n > 0) createdAt = new Date(n);
-            }
-            return { id: it.name, url, createdAt } as { id: string; url: string; createdAt: Date | null };
-          }));
-          items = fromStorage;
-        }
-        if (items.length === 0) {
-          try {
-            const snap = await getDocs(collection(db, `users/${uid}/inbody`));
-            const fromFs: Array<{ id: string; url: string; createdAt: Date | null }> = [];
-            snap.forEach((d) => {
-              const data: any = d.data() || {};
-              const url: string | undefined = data.url || data.downloadUrl || data.href;
-              if (typeof url === 'string' && url) {
-                const ts: any = data.createdAt || data.time || data.date || null;
-                const createdAt: Date | null = ts?.toDate?.() || (typeof ts === 'number' ? new Date(ts) : null);
-                fromFs.push({ id: d.id, url, createdAt });
-              }
-            });
-            if (fromFs.length > 0) items = fromFs;
-          } catch {}
+        if (res.ok) {
+          const data = await res.json();
+          const arr: Array<{ url: string; name: string; contentType: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+          items = arr.map((x)=>({ id: x.name, url: x.url, createdAt: x.createdAt ? new Date(x.createdAt) : null }));
         }
         items.sort((a,b)=>((b.createdAt?.getTime()||0)-(a.createdAt?.getTime()||0)) || b.id.localeCompare(a.id));
         setInbodyFiles(items);
@@ -587,8 +569,49 @@ export default function CoachClientProfilePage() {
 
       const path = `plans/${uid}/${kind}.pdf`;
       const r = ref(storage, path);
-      await uploadBytes(r, file, { contentType: "application/pdf" });
-      const url = await getDownloadURL(r);
+      const task = uploadBytesResumable(r, file, { contentType: "application/pdf" });
+      let progressed = false;
+      const timer = setTimeout(async () => {
+        if (!progressed) { try { task.cancel(); } catch {} }
+      }, 5000);
+      task.on("state_changed", (snap) => {
+        const pct = Math.round((snap.bytesTransferred / Math.max(1, snap.totalBytes)) * 100);
+        if (pct > 0) progressed = true;
+        if (kind === "training") setTrainingProgress(pct); else setDietProgress(pct);
+      }, async () => {}, async () => {});
+      let url: string | null = null;
+      try {
+        await task;
+        url = await getDownloadURL(r);
+      } catch (e) {
+        try {
+          if (!progressed) {
+            await uploadBytes(r, file, { contentType: "application/pdf" });
+            url = await getDownloadURL(r);
+          } else {
+            throw e;
+          }
+        } catch (e2) {
+          // Final fallback: upload via server to bypass CORS
+          try {
+            const token = (await import("firebase/auth")).getAuth()?.currentUser ? await (await import("firebase/auth")).getAuth().currentUser!.getIdToken() : "";
+            const fd = new FormData();
+            fd.append("kind", kind);
+            fd.append("uid", uid);
+            fd.append("file", file);
+            const res = await fetch("/api/storage/plans", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            url = data.url || null;
+            if (!url) throw new Error("no_url");
+          } catch (e3) {
+            throw e3;
+          }
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!url) throw new Error("Falha no upload (sem URL)");
       const payload: any = { updatedAt: serverTimestamp() };
       if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }
       else { payload.dietUrl = url; payload.dietUpdatedAt = serverTimestamp(); }
@@ -599,7 +622,8 @@ export default function CoachClientProfilePage() {
       if (kind === "training") setTrainingError(msg); else setDietError(msg);
       console.error("Upload plano falhou", e);
     } finally {
-      if (kind === "training") setUploadingTraining(false); else setUploadingDiet(false);
+      if (kind === "training") { setUploadingTraining(false); setTrainingProgress(null); }
+      else { setUploadingDiet(false); setDietProgress(null); }
     }
   }
 
@@ -676,22 +700,6 @@ export default function CoachClientProfilePage() {
                 <span>{savingActive ? "A atualizar…" : "Conta ativa"}</span>
               </label>
 
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={coachOverride}
-                  onChange={async (e) => {
-                    const val = e.currentTarget.checked;
-                    setCoachOverride(val);
-                    try {
-                      await updateDoc(doc(db, "users", uid), { imageUploadAllowedByCoach: val, updatedAt: serverTimestamp() });
-                    } catch (err) {
-                      setCoachOverride(!val);
-                    }
-                  }}
-                />
-                <span>Permitir upload de fotos</span>
-              </label>
 
               <label className="inline-flex items-center gap-2 text-sm">
                 <input
@@ -863,7 +871,7 @@ export default function CoachClientProfilePage() {
                   "Qual alergia": onboarding.foodAllergy,
                   "Alimentos que não gosta": onboarding.foodsDisliked,
                   "Alimentos preferidos": onboarding.foodsLiked,
-                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "Não" : onboarding.takesSupplements,
+                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "N��o" : onboarding.takesSupplements,
                   "Quais suplementos": onboarding.supplements,
                   "Água (L/dia)": onboarding.waterLitersPerDay,
                   "Qualidade do sono": onboarding.sleepQuality,
@@ -1069,6 +1077,14 @@ export default function CoachClientProfilePage() {
                       <Upload className="h-4 w-4" />
                       {uploadingTraining ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
+                    {typeof trainingProgress === "number" && (
+                      <div className="w-full max-w-xs mt-2">
+                        <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                          <div className="h-full bg-blue-600 transition-all" style={{ width: `${trainingProgress}%` }} />
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-1">{trainingProgress}%</div>
+                      </div>
+                    )}
                     {trainingError ? (
                       <div className="text-xs text-red-600 text-left">{trainingError}</div>
                     ) : (
@@ -1108,6 +1124,14 @@ export default function CoachClientProfilePage() {
                       <Upload className="h-4 w-4" />
                       {uploadingDiet ? "A enviar…" : "Escolher ficheiro"}
                     </Button>
+                    {typeof dietProgress === "number" && (
+                      <div className="w-full max-w-xs mt-2">
+                        <div className="h-2 rounded bg-slate-200 overflow-hidden">
+                          <div className="h-full bg-blue-600 transition-all" style={{ width: `${dietProgress}%` }} />
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-1">{dietProgress}%</div>
+                      </div>
+                    )}
                     {dietError ? (
                       <div className="text-xs text-red-600 text-left">{dietError}</div>
                     ) : (

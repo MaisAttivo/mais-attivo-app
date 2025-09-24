@@ -32,16 +32,10 @@ function mapBucketName(name?: string) {
 }
 
 async function saveToAnyBucket(app: admin.app.App, path: string, buf: Buffer, contentType: string): Promise<{ url: string; bucket: string }>{
-  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   const primary = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
   const alt = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
-  const candidates = [
-    primary,
-    alt,
-    projectId ? `${projectId}.appspot.com` : "",
-    projectId ? `${projectId}.firebasestorage.app` : "",
-    "",
-  ].filter(Boolean);
+  const candidates = [primary, alt].filter(Boolean);
+  if (candidates.length === 0) throw new Error('no_bucket_configured');
 
   let lastErr: any = null;
   for (const name of candidates) {

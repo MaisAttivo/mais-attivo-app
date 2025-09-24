@@ -26,6 +26,12 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
+    try {
+      // Garantir sessão persiste após fechar o browser
+      // Nota: não bloquear UI se falhar (navegador sem storage)
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      setPersistence(authInstance, browserLocalPersistence);
+    } catch {}
     dbInstance = initializeFirestore(appInstance, { experimentalForceLongPolling: true });
 
     // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames

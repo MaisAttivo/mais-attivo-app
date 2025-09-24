@@ -7,6 +7,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import "./globals.css";
 import ClientNav from "@/components/ui/ClientNav";
+import OneSignalInit from "./OneSignalInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -97,6 +98,7 @@ export default function RootLayout({
         ) : (
           children
         )}
+        <OneSignalInit />
       </body>
     </html>
   );

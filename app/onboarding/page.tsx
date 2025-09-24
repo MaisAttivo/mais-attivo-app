@@ -108,6 +108,13 @@ export default function OnboardingPage() {
       const wf = Math.max(0, parseInt(String(workoutFrequency as any), 10) || 0);
       const weightN = toNum(weightKg);
       const metaAguaCalc = weightN > 0 ? Number((weightN * 0.05).toFixed(2)) : 4;
+      try {
+        await updateDoc(doc(db, "users", uid), {
+          healthDataExplicitConsent: true,
+          updatedAt: serverTimestamp(),
+        });
+      } catch {}
+
       await addDoc(collection(db, `users/${uid}/questionnaire`), {
         // pessoais
         fullName: fullName.trim(),

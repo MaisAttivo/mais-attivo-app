@@ -50,19 +50,42 @@ export default function EvolucaoPage() {
         const massaGorda: { x: number; y: number }[] = [];
         const gorduraVisceral: { x: number; y: number }[] = [];
 
-        // Weekly weights (limit 60)
+        // Weekly average from dailies (cleaner): group dailyFeedback by ISO week (Monday) and average weight
         try {
-          let qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
-          let wfSnap = await getDocs(qW);
-          if (wfSnap.empty) {
-            try { qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+          let qD = query(collection(db, `users/${u.uid}/dailyFeedback`), orderBy("date", "asc"), limit(400));
+          let dSnap = await getDocs(qD);
+          if (dSnap.empty) {
+            try { qD = query(collection(db, `users/${u.uid}/dailyFeedback`), orderBy("__name__", "asc"), limit(400)); dSnap = await getDocs(qD); } catch {}
           }
-          wfSnap.forEach((d) => {
-            const id = d.id;
-            const val: any = d.get("pesoAtualKg");
-            const monday = parseWeekMondayFromId(id);
-            if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
+          const map = new Map<number, { sum: number; count: number }>();
+          dSnap.forEach((d) => {
+            const data: any = d.data() || {};
+            const dt: Date = data.date?.toDate?.() || (function(){ const m=d.id.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return null as any; return new Date(Date.UTC(+m[1], +m[2]-1, +m[3])); })();
+            const w = typeof data.weight === 'number' ? data.weight : typeof data.peso === 'number' ? data.peso : null;
+            if (!dt || typeof w !== 'number') return;
+            const monday = mondayOfSameWeekUTC(dt);
+            const k = +monday;
+            const prev = map.get(k) || { sum: 0, count: 0 };
+            prev.sum += w; prev.count += 1;
+            map.set(k, prev);
           });
+          if (map.size > 0) {
+            const arr = Array.from(map.entries()).sort((a,b)=>a[0]-b[0]).map(([k,v])=>({ x: k, y: Number((v.sum / v.count).toFixed(2)) }));
+            pesoSemanal.push(...arr);
+          } else {
+            // Fallback to weeklyFeedback if no dailies
+            let qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("__name__", "asc"), limit(120));
+            let wfSnap = await getDocs(qW);
+            if (wfSnap.empty) {
+              try { qW = query(collection(db, `users/${u.uid}/weeklyFeedback`), orderBy("weekEndDate", "asc"), limit(120)); wfSnap = await getDocs(qW); } catch {}
+            }
+            wfSnap.forEach((d) => {
+              const id = d.id;
+              const val: any = d.get("pesoAtualKg");
+              const monday = parseWeekMondayFromId(id);
+              if (typeof val === "number" && monday) pesoSemanal.push({ x: +monday, y: val });
+            });
+          }
         } catch {}
 
         // Check-ins (peso + outras métricas)

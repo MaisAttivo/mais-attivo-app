@@ -9,11 +9,12 @@ export default function EnablePushButton() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const OneSignal = (window as any).OneSignal || [];
-    OneSignal.push(async () => {
+    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
+    queue.push(async () => {
       setReady(true);
       try {
-        const perm = await OneSignal.Notifications.getPermissionStatus();
+        const OS = (window as any).OneSignal;
+        const perm = await OS?.Notifications?.getPermissionStatus?.();
         if (perm === "granted") setStatus("enabled");
         if (perm === "denied") setStatus("blocked");
       } catch {}
@@ -27,20 +28,22 @@ export default function EnablePushButton() {
   };
 
   const handleBellClick = async () => {
-    const OneSignal = (window as any).OneSignal || [];
-    OneSignal.push(async () => {
+    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
+    queue.push(async () => {
       try {
+        const OS = (window as any).OneSignal;
         if (status === "default") {
-          if (OneSignal.Slidedown?.promptPush) {
-            await OneSignal.Slidedown.promptPush();
-          } else if (OneSignal.Notifications?.requestPermission) {
-            await OneSignal.Notifications.requestPermission();
+          if (OS?.Slidedown?.promptPush) {
+            await OS.Slidedown.promptPush();
+          } else if (OS?.Notifications?.requestPermission) {
+            await OS.Notifications.requestPermission();
           }
         }
       } catch {}
 
       try {
-        const perm = await OneSignal.Notifications.getPermissionStatus();
+        const OS = (window as any).OneSignal;
+        const perm = await OS?.Notifications?.getPermissionStatus?.();
         const next = perm === "granted" ? "enabled" : perm === "denied" ? "blocked" : "default";
         if (next !== status) {
           setStatus(next);

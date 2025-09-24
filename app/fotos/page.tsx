@@ -47,52 +47,52 @@ function FotosContent() {
 
   // Compress image on the client to avoid 413 (proxy payload limits)
   async function compressImage(file: File): Promise<File> {
-    const maxSide = 1600; // cap largest dimension
+    const TARGET_MAX = 2.5 * 1024 * 1024; // ~2.5MB to avoid proxy limits
     const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    const quality = type === 'image/png' ? undefined : 0.82;
 
-    const bitmap = await (async () => {
+    const loadBitmap = async (): Promise<any> => {
       if ('createImageBitmap' in window) {
         try { return await createImageBitmap(file); } catch {}
       }
-      return await new Promise<ImageBitmap>((resolve, reject) => {
+      return await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
-        img.onload = () => {
-          try {
-            // @ts-ignore
-            const bmp = typeof createImageBitmap === 'function' ? createImageBitmap(img) : img;
-            // If createImageBitmap not available, we will draw from <img>
-            // We resolve with any to keep types minimal
-            // @ts-ignore
-            resolve(bmp);
-          } catch (e) { reject(e); }
-        };
+        img.onload = () => resolve(img);
         img.onerror = reject;
         img.src = URL.createObjectURL(file);
       });
-    })();
+    };
 
-    const w = (bitmap as any).width || (file as any).width;
-    const h = (bitmap as any).height || (file as any).height;
-    const scale = Math.min(1, maxSide / Math.max(w || 1, h || 1));
-    const outW = Math.max(1, Math.round((w || 1) * scale));
-    const outH = Math.max(1, Math.round((h || 1) * scale));
+    const src = await loadBitmap();
+    let w = (src as any).width;
+    let h = (src as any).height;
+    let maxSide = 1600;
+    let quality = type === 'image/png' ? undefined : 0.82 as number | undefined;
 
-    let blob: Blob | null = null;
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = outW; canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('no_ctx');
-      // @ts-ignore drawImage accepts ImageBitmap or HTMLImageElement
-      ctx.drawImage(bitmap as any, 0, 0, outW, outH);
-      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), type, quality));
-    } catch {}
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
 
-    if (!blob || blob.size >= file.size) return file; // fallback to original if larger/failed
     const nameBase = file.name.replace(/\.[^.]+$/, '');
     const ext = type === 'image/png' ? 'png' : 'jpg';
-    return new File([blob], `${nameBase}.${ext}` , { type });
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const scale = Math.min(1, maxSide / Math.max(w || 1, h || 1));
+      const outW = Math.max(1, Math.round((w || 1) * scale));
+      const outH = Math.max(1, Math.round((h || 1) * scale));
+      canvas.width = outW; canvas.height = outH;
+      // @ts-ignore drawImage accepts ImageBitmap or HTMLImageElement
+      ctx.drawImage(src as any, 0, 0, outW, outH);
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+      if (blob && blob.size < Math.min(file.size, TARGET_MAX)) {
+        return new File([blob], `${nameBase}.${ext}`, { type });
+      }
+      // tighten constraints
+      maxSide = Math.floor(maxSide * 0.8);
+      if (quality && quality > 0.6) quality = +(quality - 0.08).toFixed(2);
+    }
+
+    // Fallback to original if not smaller
+    return file;
   }
 
   async function upload(files: FileList) {

@@ -28,8 +28,7 @@ function initAdmin() {
 
 function mapBucketName(name?: string) {
   const n = (name || "").trim().replace(/^gs:\/\//, "");
-  if (!n) return "";
-  return n.endsWith('.firebasestorage.app') ? n.replace('.firebasestorage.app', '.appspot.com') : n;
+  return n;
 }
 
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {

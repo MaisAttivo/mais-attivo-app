@@ -19,9 +19,9 @@ function initAdmin() {
       credObj.private_key = credObj.private_key.replace(/\\n/g, "\n");
     }
   }
-  const initOpts: any = {};
+  if (!credObj) throw new Error('missing_service_account');
+  const initOpts: any = { credential: admin.credential.cert(credObj) };
   if (projectId) initOpts.projectId = projectId;
-  if (credObj) initOpts.credential = admin.credential.cert(credObj);
   admin.initializeApp(initOpts);
   return admin.app();
 }

@@ -63,7 +63,10 @@ export default function RootLayout({
               )}
             </header>
             {uid && role === "client" && (
-              <div className="fixed right-4 top-4 z-50" aria-label="Navegação do cliente">
+              <div className="fixed right-4 top-4 z-50 flex items-center gap-2" aria-label="Navegação do cliente">
+                {/* Toggle de notificações no canto superior */}
+                {/* Mantém estilo discreto e pequeno */}
+                <EnablePushButton />
                 <ClientNav />
               </div>
             )}

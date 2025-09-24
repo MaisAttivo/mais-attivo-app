@@ -5,14 +5,13 @@ import "firebase-admin/firestore";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { Storage } from "@google-cloud/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function initAdmin() {
-  if (admin.apps.length) return admin.app();
+function getCred() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
-  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   let credObj: any = null;
   if (raw) {
     let text = raw;
@@ -23,6 +22,13 @@ function initAdmin() {
     }
   }
   if (!credObj) throw new Error('missing_service_account');
+  return credObj;
+}
+
+function initAdmin() {
+  if (admin.apps.length) return admin.app();
+  const credObj = getCred();
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   // Ensure google-cloud libraries find ADC by pointing to a temp JSON file
   try {
     const p = path.join(os.tmpdir(), `gcp-key-${process.pid}.json`);
@@ -42,7 +48,10 @@ function mapBucketName(name?: string) {
   return n;
 }
 
-async function saveToAnyBucket(app: admin.app.App, path: string, buf: Buffer, contentType: string): Promise<{ url: string; bucket: string }>{
+async function saveToAnyBucketDirect(pathName: string, buf: Buffer, contentType: string): Promise<{ url: string; bucket: string }>{
+  const cred = getCred();
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+  const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
   const primary = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
   const alt = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
   const candidates = [primary, alt].filter(Boolean);
@@ -51,11 +60,11 @@ async function saveToAnyBucket(app: admin.app.App, path: string, buf: Buffer, co
   let lastErr: any = null;
   for (const name of candidates) {
     try {
-      const b = app.storage().bucket(name || undefined);
-      const f = b.file(path);
+      const b = storage.bucket(name);
+      const f = b.file(pathName);
       await f.save(buf, { contentType, resumable: false, public: false, metadata: { cacheControl: 'public,max-age=60' } });
       const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-      return { url, bucket: name || 'default' };
+      return { url, bucket: name };
     } catch (e: any) {
       lastErr = e;
       continue;
@@ -111,11 +120,13 @@ export async function GET(req: NextRequest) {
         for (const u of arr) items.push({ url: u, name: s.id, createdAt: created });
       }
     } else {
-      // Fallback to storage listing across configured buckets
+      // Fallback to storage listing across configured buckets using explicit credentials
+      const cred = getCred();
+      const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+      const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
       const primaryName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-      const primary = primaryName ? admin.storage().bucket(primaryName) : app.storage().bucket();
       const altName = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
-      const alt = altName ? admin.storage().bucket(altName) : null;
+      const buckets = [primaryName, altName].filter(Boolean).map((n)=> storage.bucket(n as string));
       const prefixes = [
         `users/${targetUid}/photos/`,
         `users/${targetUid}/fotos/`,
@@ -124,7 +135,6 @@ export async function GET(req: NextRequest) {
         `users/${targetUid}/`
       ];
       let collected: any[] = [];
-      const buckets = [primary, ...(alt ? [alt] : [])];
       for (const b of buckets) {
         for (const p of prefixes) {
           const [files] = await b.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
@@ -186,7 +196,7 @@ export async function POST(req: NextRequest) {
       const ext = ct === 'image/png' ? 'png' : 'jpg';
       const path = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       try {
-        const { url } = await saveToAnyBucket(app, path, buf, ct);
+        const { url } = await saveToAnyBucketDirect(path, buf, ct);
         uploadedUrls.push(url);
       } catch (err: any) {
         return NextResponse.json({ error: 'upload_failed', message: err?.message || String(err) }, { status: 500 });

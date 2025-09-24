@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-export type Series = { name: string; color: string; points: { x: number; y: number }[] };
+export type Series = { name: string; color: string; points: { x: number; y: number }[]; drawLine?: boolean };
 
 export default function SimpleLineChart({ series, height = 180, xLabel, yLabel, yUnit }: { series: Series[]; height?: number; xLabel?: string; yLabel?: string; yUnit?: string }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);

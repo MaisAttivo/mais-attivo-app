@@ -52,7 +52,7 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
       const merged = Array.from(mergedMap.values()).sort((a,b)=>a.x-b.x);
       return [
         { name: "Check-in", color: "#16a34a", points: data.pesoCheckin, drawLine: false },
-        { name: "Peso (linha)", color: "#2563eb", points: merged, drawLine: true },
+        { name: "Média Semanal", color: "#2563eb", points: merged, drawLine: true },
       ];
     }
     if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];

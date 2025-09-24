@@ -31,6 +31,34 @@ function mapBucketName(name?: string) {
   return n;
 }
 
+async function saveToAnyBucket(app: admin.app.App, path: string, buf: Buffer, contentType: string): Promise<{ url: string; bucket: string }>{
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
+  const primary = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const alt = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
+  const candidates = [
+    primary,
+    alt,
+    projectId ? `${projectId}.appspot.com` : "",
+    projectId ? `${projectId}.firebasestorage.app` : "",
+    "",
+  ].filter(Boolean);
+
+  let lastErr: any = null;
+  for (const name of candidates) {
+    try {
+      const b = app.storage().bucket(name || undefined);
+      const f = b.file(path);
+      await f.save(buf, { contentType, resumable: false, public: false, metadata: { cacheControl: 'public,max-age=60' } });
+      const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      return { url, bucket: name || 'default' };
+    } catch (e: any) {
+      lastErr = e;
+      continue;
+    }
+  }
+  throw lastErr || new Error('no_bucket_available');
+}
+
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {
   try {
     if (userId === targetUid) return true;
@@ -125,8 +153,7 @@ export async function POST(req: NextRequest) {
     const app = initAdmin();
     const auth = app.auth();
     const db = app.firestore();
-    const uploadBucketName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const bucket = uploadBucketName ? admin.storage().bucket(uploadBucketName) : app.storage().bucket();
+    // choose bucket dynamically with fallbacks
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
     if (!idToken) return NextResponse.json({ error: "missing_token" }, { status: 401 });
@@ -153,14 +180,12 @@ export async function POST(req: NextRequest) {
       if (buf.length > 30 * 1024 * 1024) return NextResponse.json({ error: 'too_large' }, { status: 413 });
       const ext = ct === 'image/png' ? 'png' : 'jpg';
       const path = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const f = bucket.file(path);
       try {
-        await f.save(buf, { contentType: ct, resumable: false, public: false, metadata: { cacheControl: 'public,max-age=60' } });
+        const { url } = await saveToAnyBucket(app, path, buf, ct);
+        uploadedUrls.push(url);
       } catch (err: any) {
         return NextResponse.json({ error: 'upload_failed', message: err?.message || String(err) }, { status: 500 });
       }
-      const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-      uploadedUrls.push(url);
     }
 
     const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);

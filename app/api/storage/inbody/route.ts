@@ -9,11 +9,7 @@ export const dynamic = "force-dynamic";
 function initAdmin() {
   if (admin.apps.length) return admin.app();
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
-  const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
   const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
-  let bucketName = rawBucket.replace(/^gs:\/\//, "");
-  if (!bucketName && projectId) bucketName = `${projectId}.appspot.com`;
-  if (bucketName.endsWith('.firebasestorage.app')) bucketName = bucketName.replace('.firebasestorage.app', '.appspot.com');
   let credObj: any = null;
   if (raw) {
     let text = raw;
@@ -25,10 +21,15 @@ function initAdmin() {
   }
   const initOpts: any = {};
   if (projectId) initOpts.projectId = projectId;
-  if (bucketName) initOpts.storageBucket = bucketName;
   if (credObj) initOpts.credential = admin.credential.cert(credObj);
   admin.initializeApp(initOpts);
   return admin.app();
+}
+
+function mapBucketName(name?: string) {
+  const n = (name || "").trim().replace(/^gs:\/\//, "");
+  if (!n) return "";
+  return n.endsWith('.firebasestorage.app') ? n.replace('.firebasestorage.app', '.appspot.com') : n;
 }
 
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {

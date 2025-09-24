@@ -10,59 +10,72 @@ export default function EnablePushButton() {
   const [busy, setBusy] = useState(false);
   const [showBlockedHelp, setShowBlockedHelp] = useState(false);
 
+  // Ensure we read current permission + opt-in state once OneSignal is ready
   useEffect(() => {
     if (typeof window === "undefined") return;
     const OneSignal = (window as any).OneSignal || [];
     OneSignal.push(async () => {
       setReady(true);
-      try {
-        let p: Perm = "default";
-        if (typeof OneSignal.Notifications?.getPermissionStatus === "function") {
-          p = await OneSignal.Notifications.getPermissionStatus();
-        } else if (typeof Notification !== "undefined") {
-          p = Notification.permission as Perm;
-        }
-        setPerm(p);
-      } catch {}
-      try {
-        const inVal =
-          (OneSignal.User?.PushSubscription?.optedIn as boolean | undefined) ??
-          (typeof OneSignal.User?.PushSubscription?.optedIn === "function"
-            ? await OneSignal.User.PushSubscription.optedIn()
-            : undefined);
-        if (typeof inVal === "boolean") setOptedIn(inVal);
-      } catch {
-        setOptedIn(null);
-      }
-
+      await refreshState();
+      // If user has this site blocked, offer inline help once (per session)
       try {
         const dismissed = typeof sessionStorage !== "undefined" && sessionStorage.getItem("attivo_push_blocked_dismissed") === "1";
         if (!dismissed) {
-          const currentPerm: Perm = typeof OneSignal.Notifications?.getPermissionStatus === "function"
-            ? await OneSignal.Notifications.getPermissionStatus()
-            : (typeof Notification !== "undefined" ? (Notification.permission as Perm) : "default");
+          const currentPerm: Perm = await getPermission(OneSignal);
           if (currentPerm === "denied") setShowBlockedHelp(true);
         }
       } catch {}
     });
   }, []);
 
+  const getPermission = async (OneSignal: any): Promise<Perm> => {
+    try {
+      if (typeof OneSignal?.Notifications?.getPermissionStatus === "function") {
+        return await OneSignal.Notifications.getPermissionStatus();
+      }
+      if (typeof Notification !== "undefined" && typeof Notification.permission === "string") {
+        return Notification.permission as Perm;
+      }
+    } catch {}
+    return "default";
+  };
+
   const refreshState = async () => {
     try {
       const OneSignal = (window as any).OneSignal || [];
-      const p: Perm = typeof OneSignal.Notifications?.getPermissionStatus === "function"
-        ? await OneSignal.Notifications.getPermissionStatus()
-        : (typeof Notification !== "undefined" ? (Notification.permission as Perm) : "default");
+      const p = await getPermission(OneSignal);
       setPerm(p);
       try {
         const inVal =
-          (OneSignal.User?.PushSubscription?.optedIn as boolean | undefined) ??
-          (typeof OneSignal.User?.PushSubscription?.optedIn === "function"
+          (OneSignal?.User?.PushSubscription?.optedIn as boolean | undefined) ??
+          (typeof OneSignal?.User?.PushSubscription?.optedIn === "function"
             ? await OneSignal.User.PushSubscription.optedIn()
             : undefined);
         if (typeof inVal === "boolean") setOptedIn(inVal);
-      } catch {}
+        else setOptedIn(null);
+      } catch {
+        setOptedIn(null);
+      }
     } catch {}
+  };
+
+  const requestPermissionAndOptIn = async () => {
+    const OneSignal = (window as any).OneSignal || [];
+    // Try native Notification first (more reliable UX prompts on Chrome)
+    try {
+      if (typeof Notification !== "undefined" && typeof Notification.requestPermission === "function") {
+        const res: any = await Notification.requestPermission();
+        if (res === "granted") {
+          try { if (OneSignal?.User?.PushSubscription?.optIn) await OneSignal.User.PushSubscription.optIn(); } catch {}
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to OneSignal helpers
+    try { if (OneSignal?.Slidedown?.promptPush) await OneSignal.Slidedown.promptPush(); } catch {}
+    try { if (OneSignal?.Notifications?.requestPermission) await OneSignal.Notifications.requestPermission(); } catch {}
+    try { if (OneSignal?.User?.PushSubscription?.optIn) await OneSignal.User.PushSubscription.optIn(); } catch {}
   };
 
   const toggle = async () => {
@@ -72,29 +85,15 @@ export default function EnablePushButton() {
     const OneSignal = (window as any).OneSignal || [];
     OneSignal.push(async () => {
       try {
-        if (perm === "denied") {
-          setBusy(false);
+        const currentPerm: Perm = await getPermission(OneSignal);
+        if (currentPerm === "denied") {
+          setShowBlockedHelp(true);
           return;
         }
-        if (perm === "default" || optedIn === false) {
-          try {
-            if (OneSignal.Slidedown?.promptPush) {
-              await OneSignal.Slidedown.promptPush();
-            } else if (OneSignal.Notifications?.requestPermission) {
-              await OneSignal.Notifications.requestPermission();
-            }
-          } catch {}
-          try {
-            if (OneSignal.User?.PushSubscription?.optIn) {
-              await OneSignal.User.PushSubscription.optIn();
-            }
-          } catch {}
+        if (currentPerm === "default" || optedIn === false) {
+          await requestPermissionAndOptIn();
         } else {
-          try {
-            if (OneSignal.User?.PushSubscription?.optOut) {
-              await OneSignal.User.PushSubscription.optOut();
-            }
-          } catch {}
+          try { if (OneSignal?.User?.PushSubscription?.optOut) await OneSignal.User.PushSubscription.optOut(); } catch {}
         }
       } finally {
         await refreshState();

@@ -154,7 +154,11 @@ export async function POST(req: NextRequest) {
       const ext = ct === 'image/png' ? 'png' : 'jpg';
       const path = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const f = bucket.file(path);
-      await f.save(buf, { contentType: ct, resumable: false, public: false, metadata: { cacheControl: 'public,max-age=60' } });
+      try {
+        await f.save(buf, { contentType: ct, resumable: false, public: false, metadata: { cacheControl: 'public,max-age=60' } });
+      } catch (err: any) {
+        return NextResponse.json({ error: 'upload_failed', message: err?.message || String(err) }, { status: 500 });
+      }
       const [url] = await f.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
       uploadedUrls.push(url);
     }

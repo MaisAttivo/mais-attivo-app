@@ -45,6 +45,56 @@ function FotosContent() {
 
   useEffect(() => { fetchList(); }, []);
 
+  // Compress image on the client to avoid 413 (proxy payload limits)
+  async function compressImage(file: File): Promise<File> {
+    const maxSide = 1600; // cap largest dimension
+    const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    const quality = type === 'image/png' ? undefined : 0.82;
+
+    const bitmap = await (async () => {
+      if ('createImageBitmap' in window) {
+        try { return await createImageBitmap(file); } catch {}
+      }
+      return await new Promise<ImageBitmap>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            // @ts-ignore
+            const bmp = typeof createImageBitmap === 'function' ? createImageBitmap(img) : img;
+            // If createImageBitmap not available, we will draw from <img>
+            // We resolve with any to keep types minimal
+            // @ts-ignore
+            resolve(bmp);
+          } catch (e) { reject(e); }
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    })();
+
+    const w = (bitmap as any).width || (file as any).width;
+    const h = (bitmap as any).height || (file as any).height;
+    const scale = Math.min(1, maxSide / Math.max(w || 1, h || 1));
+    const outW = Math.max(1, Math.round((w || 1) * scale));
+    const outH = Math.max(1, Math.round((h || 1) * scale));
+
+    let blob: Blob | null = null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = outW; canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('no_ctx');
+      // @ts-ignore drawImage accepts ImageBitmap or HTMLImageElement
+      ctx.drawImage(bitmap as any, 0, 0, outW, outH);
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), type, quality));
+    } catch {}
+
+    if (!blob || blob.size >= file.size) return file; // fallback to original if larger/failed
+    const nameBase = file.name.replace(/\.[^.]+$/, '');
+    const ext = type === 'image/png' ? 'png' : 'jpg';
+    return new File([blob], `${nameBase}.${ext}` , { type });
+  }
+
   async function upload(files: FileList) {
     const arr = Array.from(files).slice(0, 4);
     if (arr.length === 0) return;
@@ -55,10 +105,9 @@ function FotosContent() {
       const a = getAuth();
       const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
       const token = u ? await u.getIdToken() : "";
-      const totalBytes = arr.reduce((s, f) => s + f.size, 0);
-      let uploadedBytes = 0;
 
-      for (const file of arr) {
+      for (const original of arr) {
+        const file = await compressImage(original);
         const fd = new FormData();
         fd.append("files", file);
         await new Promise<void>((resolve, reject) => {
@@ -67,17 +116,15 @@ function FotosContent() {
           if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
           xhr.upload.onprogress = (e) => {
             if (!e.lengthComputable) return;
-            const current = uploadedBytes + e.loaded;
-            const pct = Math.round((current / Math.max(1, totalBytes)) * 100);
+            const pct = Math.round((e.loaded / Math.max(1, e.total || file.size)) * 100);
             setProgressPct(Math.min(95, pct));
           };
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              uploadedBytes += file.size;
-              setProgressPct(Math.min(95, Math.round((uploadedBytes / Math.max(1, totalBytes)) * 100)));
+              setProgressPct(95);
               resolve();
             } else {
-              reject(new Error(xhr.responseText));
+              reject(new Error(xhr.responseText || `status_${xhr.status}`));
             }
           };
           xhr.onerror = () => reject(new Error("network_error"));

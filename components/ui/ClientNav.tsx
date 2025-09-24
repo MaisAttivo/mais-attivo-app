@@ -58,8 +58,6 @@ export default function ClientNav() {
         <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/fotos")}>Fotos</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
         {showPowerlifting && (
           <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
         )}

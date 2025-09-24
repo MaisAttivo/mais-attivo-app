@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import "firebase-admin/storage";
 import "firebase-admin/firestore";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,13 +22,16 @@ function initAdmin() {
       credObj.private_key = credObj.private_key.replace(/\\n/g, "\n");
     }
   }
-  const initOpts: any = {};
+  if (!credObj) throw new Error('missing_service_account');
+  try {
+    const p = path.join(os.tmpdir(), `gcp-key-${process.pid}.json`);
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+      fs.writeFileSync(p, JSON.stringify(credObj), { encoding: 'utf8' });
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = p;
+    }
+  } catch {}
+  const initOpts: any = { credential: admin.credential.cert(credObj) };
   if (projectId) initOpts.projectId = projectId;
-  if (credObj) {
-    initOpts.credential = admin.credential.cert(credObj);
-  } else {
-    throw new Error('missing_service_account');
-  }
   admin.initializeApp(initOpts);
   return admin.app();
 }

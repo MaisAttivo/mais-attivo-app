@@ -1,12 +1,11 @@
 "use client";
 
-"use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { useSession } from "@/lib/auth";
 
 type YesNoPT = "Sim" | "Não";
 
@@ -24,6 +23,15 @@ export default function OnboardingPage() {
     });
     return () => unsub();
   }, [router]);
+
+  // Se já terminou onboarding ou é coach, não deve ver esta página
+  const { uid: sUid, role, onboardingDone, loading: sLoading } = useSession();
+  useEffect(() => {
+    if (sLoading) return;
+    if (!sUid) { router.replace("/login"); return; }
+    if (role === "coach") { router.replace("/coach"); return; }
+    if (onboardingDone) { router.replace("/dashboard"); }
+  }, [sUid, role, onboardingDone, sLoading, router]);
 
   // --- DADOS PESSOAIS ---
   const [fullName, setFullName] = useState("");

@@ -51,8 +51,8 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
       for (const p of data.pesoCheckin) mergedMap.set(p.x, { x: p.x, y: p.y }); // dá prioridade ao check-in no mesmo dia
       const merged = Array.from(mergedMap.values()).sort((a,b)=>a.x-b.x);
       return [
-        { name: "Check-in", color: "#16a34a", points: data.pesoCheckin, drawLine: false },
         { name: "Média Semanal", color: "#2563eb", points: merged, drawLine: true },
+        { name: "Check-in", color: "#16a34a", points: data.pesoCheckin, drawLine: false },
       ];
     }
     if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];

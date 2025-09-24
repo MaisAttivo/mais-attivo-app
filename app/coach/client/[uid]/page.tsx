@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
+import SwitchableCalendar from "@/components/SwitchableCalendar";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -147,6 +148,7 @@ export default function CoachClientProfilePage() {
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [trainingAt, setTrainingAt] = useState<Date | null>(null);
   const [dietAt, setDietAt] = useState<Date | null>(null);
 
@@ -728,6 +730,7 @@ export default function CoachClientProfilePage() {
               <Link href={novoCheckinHref} className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto">Novo check-in</Button>
               </Link>
+              <Button className="w-full sm:w-auto" variant="secondary" onClick={()=>setShowCalendar(true)}>Calendário</Button>
               <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
                 <Link href="/coach"><ArrowLeft className="h-4 w-4" />Voltar</Link>
               </Button>
@@ -1161,6 +1164,20 @@ export default function CoachClientProfilePage() {
                   <img src={preview.url} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {showCalendar && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-base font-medium">Calendário</div>
+                <Button size="sm" variant="secondary" onClick={()=>setShowCalendar(false)}>Fechar</Button>
+              </div>
+              <div className="rounded-2xl border p-4 bg-background max-w-md">
+                <SwitchableCalendar uid={uid} />
+              </div>
             </div>
           </div>
         )}

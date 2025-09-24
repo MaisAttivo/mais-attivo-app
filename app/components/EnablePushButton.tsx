@@ -68,6 +68,7 @@ export default function EnablePushButton() {
   const toggle = async () => {
     if (busy) return;
     setBusy(true);
+    try { if (typeof window !== "undefined" && "vibrate" in navigator) { (navigator as any).vibrate?.(10); } } catch {}
     const OneSignal = (window as any).OneSignal || [];
     OneSignal.push(async () => {
       try {
@@ -163,7 +164,8 @@ export default function EnablePushButton() {
       type="button"
       onClick={toggle}
       disabled={busy}
-      className={`inline-flex items-center gap-1 rounded-[20px] border-[3px] px-3 py-1.5 text-sm shadow transition-colors ${
+      aria-busy={busy}
+      className={`inline-flex items-center gap-1 rounded-[20px] border-[3px] px-3 py-1.5 text-sm shadow transition-colors active:scale-95 ${
         isOn
           ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]"
           : "border-slate-400 text-slate-700 bg-white hover:bg-slate-50"
@@ -172,7 +174,11 @@ export default function EnablePushButton() {
       aria-label={label}
       title={label}
     >
-      <span aria-hidden>{isOn ? "🔔" : "🔕"}</span>
+      {busy ? (
+        <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" aria-hidden />
+      ) : (
+        <span aria-hidden>{isOn ? "🔔" : "🔕"}</span>
+      )}
     </button>
   );
 }

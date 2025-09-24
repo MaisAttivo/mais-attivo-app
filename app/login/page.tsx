@@ -12,7 +12,7 @@ export default function LoginPage() {
   const { uid, role, onboardingDone, active, loading } = useSession();
 
   useEffect(() => {
-    if (loading) return;
+    if (submitting) return;
     if (uid) {
       if (active === false && role !== "coach") return; // deixa RootLayout mostrar aviso de conta inativa
       if (role === "coach") { router.replace("/coach"); return; }
@@ -24,15 +24,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (loading) return;
-    setLoading(true);
+    if (submitting) return;
+    setSubmitting(true);
     setMsg(null);
     setResetError(null);
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
           ? "Muitas tentativas. Tenta mais tarde."
           : "Falha no login. Verifica os dados.";
       setMsg(`❌ ${pretty}`);
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
@@ -147,10 +147,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting}
                 className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
               >
-                {loading ? "A entrar…" : "Entrar"}
+                {submitting ? "A entrar…" : "Entrar"}
               </button>
             </div>
           </form>

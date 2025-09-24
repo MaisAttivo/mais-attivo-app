@@ -1,8 +1,6 @@
 "use client";
 
-"use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
@@ -66,6 +64,9 @@ export default function OnboardingPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justErrored, setJustErrored] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
+  const submitRef = useRef<HTMLButtonElement | null>(null);
 
   const toNum = (v: number | "" | undefined) => (isNaN(Number(v)) ? 0 : Number(v));
   const yesNoToBool = (v: YesNoPT) => v === "Sim";
@@ -74,19 +75,31 @@ export default function OnboardingPage() {
     e.preventDefault();
     if (!uid) return;
 
+    const notifyError = (msg: string) => {
+      setError(msg);
+      setJustErrored(true);
+      if (typeof window !== "undefined" && "vibrate" in navigator) {
+        try { (navigator as any).vibrate?.(30); } catch {}
+      }
+      setTimeout(() => setJustErrored(false), 500);
+      setTimeout(() => {
+        errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 10);
+    };
+
     // validações essenciais
-    if (!fullName.trim()) return setError("Preenche o nome.");
-    if (!age || !heightCm || !weightKg) return setError("Preenche idade, altura e peso.");
-    if (!goal.trim()) return setError("Indica o objetivo.");
-    if (doesOtherActivity === "Sim" && !otherActivityDetails.trim()) return setError("Indica a atividade fora do ginásio.");
-    if (hasInjury === "Sim" && !injuryDetails.trim()) return setError("Indica onde/qual foi a lesão.");
-    if (mobilityIssues === "Sim" && !mobilityDetails.trim()) return setError("Indica o problema de mobilidade.");
-    if (hasPain === "Sim" && !painLocation.trim()) return setError("Indica onde dói.");
-    if (takesMedication === "Sim" && !medication.trim()) return setError("Indica a medicação.");
-    if (intestinalIssues === "Sim" && !intestinalDetails.trim()) return setError("Indica o problema intestinal.");
-    if (hasDiagnosedDisease === "Sim" && !diagnosedDisease.trim()) return setError("Indica a doença diagnosticada.");
-    if (hasFoodAllergy === "Sim" && !foodAllergy.trim()) return setError("Indica a alergia/intolerância.");
-    if (!mealRoutine.trim()) return setError("Descreve a tua rotina de refeições.");
+    if (!fullName.trim()) return notifyError("Preenche o nome.");
+    if (!age || !heightCm || !weightKg) return notifyError("Preenche idade, altura e peso.");
+    if (!goal.trim()) return notifyError("Indica o objetivo.");
+    if (doesOtherActivity === "Sim" && !otherActivityDetails.trim()) return notifyError("Indica a atividade fora do ginásio.");
+    if (hasInjury === "Sim" && !injuryDetails.trim()) return notifyError("Indica onde/qual foi a lesão.");
+    if (mobilityIssues === "Sim" && !mobilityDetails.trim()) return notifyError("Indica o problema de mobilidade.");
+    if (hasPain === "Sim" && !painLocation.trim()) return notifyError("Indica onde dói.");
+    if (takesMedication === "Sim" && !medication.trim()) return notifyError("Indica a medicação.");
+    if (intestinalIssues === "Sim" && !intestinalDetails.trim()) return notifyError("Indica o problema intestinal.");
+    if (hasDiagnosedDisease === "Sim" && !diagnosedDisease.trim()) return notifyError("Indica a doença diagnosticada.");
+    if (hasFoodAllergy === "Sim" && !foodAllergy.trim()) return notifyError("Indica a alergia/intolerância.");
+    if (!mealRoutine.trim()) return notifyError("Descreve a tua rotina de refeições.");
 
     setSaving(true);
     setError(null);
@@ -409,12 +422,18 @@ export default function OnboardingPage() {
           <textarea className="w-full border rounded p-2 min-h-[100px]" placeholder="Algo que devas acrescentar (horários, preferências, histórico, etc.)" value={otherNotes} onChange={(e)=>setOtherNotes(e.target.value)} />
         </section>
 
-        {error && <p className="text-red-600">{error}</p>}
+        {error && (
+          <p ref={errorRef} role="alert" aria-live="assertive" className="text-red-600">
+            {error}
+          </p>
+        )}
 
         <button
+          ref={submitRef}
           type="submit"
           disabled={saving}
-          className="w-full rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] transition"
+          aria-busy={saving}
+          className={`w-full rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white py-2 px-4 shadow hover:bg-[#FFF4D1] active:scale-95 transition-transform ${justErrored ? "animate-pulse" : ""}`}
         >
           {saving ? "A guardar..." : "Enviar questionário"}
         </button>

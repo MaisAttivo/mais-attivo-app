@@ -1,6 +1,6 @@
 // lib/firebase.ts
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -26,6 +26,12 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
+    try {
+      // Garantir sessão persiste após fechar o browser
+      // Nota: não bloquear UI se falhar (navegador sem storage)
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      setPersistence(authInstance, browserLocalPersistence);
+    } catch {}
     dbInstance = initializeFirestore(appInstance, { experimentalForceLongPolling: true });
 
     // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames

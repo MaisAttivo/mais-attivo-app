@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
+import SwitchableCalendar from "@/components/SwitchableCalendar";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -163,7 +164,7 @@ export default function CoachClientProfilePage() {
   const [imgConsent, setImgConsent] = useState<boolean>(false);
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding" | "notificacoes">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "calendario" | "onboarding" | "notificacoes">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
@@ -741,6 +742,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
+          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
           <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
@@ -831,6 +833,18 @@ export default function CoachClientProfilePage() {
               <SwitchableEvolution data={evoData} />
             </div>
             <div className="text-xs text-muted-foreground mt-2">Podes deslizar para ver outros gráficos.</div>
+          </CardContent>
+        </Card>
+
+        {/* Calendário */}
+        <Card className={"shadow-sm " + (visibleSection !== "calendario" ? "hidden" : "") }>
+          <CardHeader>
+            <CardTitle>Calendário</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-2xl border p-4 bg-background max-w-md">
+              <SwitchableCalendar uid={uid} />
+            </div>
           </CardContent>
         </Card>
 
@@ -1164,6 +1178,7 @@ export default function CoachClientProfilePage() {
             </div>
           </div>
         )}
+
 
         {/* Fotos (progresso) */}
         <Card className={"shadow-sm " + (visibleSection !== "fotos" ? "hidden" : "")}>

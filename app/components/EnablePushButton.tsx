@@ -9,12 +9,22 @@ export default function EnablePushButton() {
   const [optedIn, setOptedIn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [showBlockedHelp, setShowBlockedHelp] = useState(false);
+  const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const OneSignal = (window as any).OneSignal || [];
     OneSignal.push(async () => {
       setReady(true);
+      try {
+        const sup = typeof OneSignal.Notifications?.isPushSupported === "function"
+          ? await OneSignal.Notifications.isPushSupported()
+          : (typeof window !== "undefined" && "Notification" in window && !!navigator?.serviceWorker);
+        setSupported(!!sup);
+      } catch {
+        setSupported(null);
+      }
+
       try {
         let p: Perm = "default";
         if (typeof OneSignal.Notifications?.getPermissionStatus === "function") {
@@ -24,16 +34,8 @@ export default function EnablePushButton() {
         }
         setPerm(p);
       } catch {}
-      try {
-        const inVal =
-          (OneSignal.User?.PushSubscription?.optedIn as boolean | undefined) ??
-          (typeof OneSignal.User?.PushSubscription?.optedIn === "function"
-            ? await OneSignal.User.PushSubscription.optedIn()
-            : undefined);
-        if (typeof inVal === "boolean") setOptedIn(inVal);
-      } catch {
-        setOptedIn(null);
-      }
+
+      await refreshState();
 
       try {
         const dismissed = typeof sessionStorage !== "undefined" && sessionStorage.getItem("attivo_push_blocked_dismissed") === "1";
@@ -54,14 +56,24 @@ export default function EnablePushButton() {
         ? await OneSignal.Notifications.getPermissionStatus()
         : (typeof Notification !== "undefined" ? (Notification.permission as Perm) : "default");
       setPerm(p);
+
+      // Determine subscription/opt-in robustly
+      let sub: boolean | null = null;
       try {
-        const inVal =
-          (OneSignal.User?.PushSubscription?.optedIn as boolean | undefined) ??
-          (typeof OneSignal.User?.PushSubscription?.optedIn === "function"
-            ? await OneSignal.User.PushSubscription.optedIn()
-            : undefined);
-        if (typeof inVal === "boolean") setOptedIn(inVal);
+        if (typeof OneSignal.Notifications?.isSubscribed === "function") {
+          sub = await OneSignal.Notifications.isSubscribed();
+        }
       } catch {}
+      if (sub === null) {
+        try {
+          const maybe = OneSignal.User?.PushSubscription;
+          if (typeof maybe?.optedIn === "boolean") sub = maybe.optedIn as boolean;
+          else if (typeof maybe?.optedIn === "function") sub = await maybe.optedIn();
+          else if (typeof maybe?.getOptedIn === "function") sub = await maybe.getOptedIn();
+          else if (typeof maybe?.id === "string" && !!maybe.id) sub = true;
+        } catch {}
+      }
+      if (typeof sub === "boolean") setOptedIn(sub);
     } catch {}
   };
 
@@ -71,29 +83,53 @@ export default function EnablePushButton() {
     const OneSignal = (window as any).OneSignal || [];
     OneSignal.push(async () => {
       try {
-        if (perm === "denied") {
-          setBusy(false);
+        const currentPerm: Perm = typeof OneSignal.Notifications?.getPermissionStatus === "function"
+          ? await OneSignal.Notifications.getPermissionStatus()
+          : (typeof Notification !== "undefined" ? (Notification.permission as Perm) : "default");
+
+        if (currentPerm === "denied") {
+          setShowBlockedHelp(true);
           return;
         }
-        if (perm === "default" || optedIn === false) {
+
+        // Recompute current subscribed state
+        await refreshState();
+        const currentlyIn = optedIn === true;
+
+        // When permission not yet decided → request, then subscribe
+        if (currentPerm === "default") {
           try {
-            if (OneSignal.Slidedown?.promptPush) {
-              await OneSignal.Slidedown.promptPush();
-            } else if (OneSignal.Notifications?.requestPermission) {
-              await OneSignal.Notifications.requestPermission();
+            if (typeof OneSignal.Notifications?.requestPermission === "function") {
+              const res = await OneSignal.Notifications.requestPermission();
+              if (res !== "granted") return;
             }
           } catch {}
+        }
+
+        if (!currentlyIn) {
+          // Subscribe
+          let done = false;
           try {
-            if (OneSignal.User?.PushSubscription?.optIn) {
-              await OneSignal.User.PushSubscription.optIn();
+            if (typeof OneSignal.Notifications?.subscribe === "function") {
+              await OneSignal.Notifications.subscribe();
+              done = true;
             }
           } catch {}
+          if (!done) {
+            try { if (OneSignal.User?.PushSubscription?.optIn) await OneSignal.User.PushSubscription.optIn(); } catch {}
+          }
         } else {
+          // Unsubscribe
+          let done = false;
           try {
-            if (OneSignal.User?.PushSubscription?.optOut) {
-              await OneSignal.User.PushSubscription.optOut();
+            if (typeof OneSignal.Notifications?.unsubscribe === "function") {
+              await OneSignal.Notifications.unsubscribe();
+              done = true;
             }
           } catch {}
+          if (!done) {
+            try { if (OneSignal.User?.PushSubscription?.optOut) await OneSignal.User.PushSubscription.optOut(); } catch {}
+          }
         }
       } finally {
         await refreshState();
@@ -103,6 +139,20 @@ export default function EnablePushButton() {
   };
 
   if (!ready) return null;
+
+  if (supported === false) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="inline-flex items-center rounded-[20px] border-[3px] border-slate-400 bg-white px-3 py-1.5 text-xs text-slate-600 opacity-70 cursor-not-allowed shadow"
+        title="Notificações não suportadas neste dispositivo/navegador"
+        aria-label="Notificações não suportadas"
+      >
+        🚫
+      </button>
+    );
+  }
 
   if (perm === "denied") {
     return (
@@ -155,7 +205,7 @@ export default function EnablePushButton() {
     );
   }
 
-  const isOn = perm === "granted" && optedIn !== false;
+  const isOn = perm === "granted" && optedIn === true;
   const label = isOn ? "Desativar notificações" : "Ativar notificações";
 
   return (

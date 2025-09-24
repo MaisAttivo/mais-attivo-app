@@ -24,7 +24,21 @@ export async function ensureUserDoc(
   metaAgua?: number | null;
 }> {
   const ref = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
+  let snap: any;
+  try {
+    snap = await getDoc(ref);
+  } catch (e) {
+    // Network/Firestore unavailable — continue with defaults to avoid blocking login
+    return {
+      id: user.uid,
+      email: user.email || "",
+      name: user.displayName || "",
+      role: fallbackRole,
+      onboardingDone: false,
+      workoutFrequency: 0,
+      metaAgua: null,
+    };
+  }
   const nowDefaults = {
     email: user.email || "",
     name: user.displayName || "",

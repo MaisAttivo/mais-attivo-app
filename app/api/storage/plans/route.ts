@@ -9,23 +9,24 @@ export const dynamic = "force-dynamic";
 // Lazy/Singleton admin init
 function initAdmin() {
   if (admin.apps.length) return admin.app();
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT || "";
+  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
   const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
   const bucketName = rawBucket.replace(/^gs:\/\//, "");
   let credObj: any = null;
-  try {
-    credObj = JSON.parse(raw);
-  } catch {
-    try { credObj = JSON.parse(`{${raw}}`); } catch { credObj = null; }
+  if (raw) {
+    let text = raw;
+    if (!text.startsWith("{")) text = `{${text}}`;
+    try { credObj = JSON.parse(text); } catch { credObj = null; }
+    if (credObj && typeof credObj.private_key === 'string') {
+      credObj.private_key = credObj.private_key.replace(/\\n/g, "\n");
+    }
   }
-  if (!credObj) {
-    admin.initializeApp({ projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, storageBucket: bucketName || undefined });
-  } else {
-    admin.initializeApp({
-      credential: admin.credential.cert(credObj),
-      storageBucket: bucketName || undefined,
-    });
-  }
+  if (!credObj) throw new Error('missing_service_account');
+  admin.initializeApp({
+    credential: admin.credential.cert(credObj),
+    storageBucket: bucketName || undefined,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  });
   return admin.app();
 }
 

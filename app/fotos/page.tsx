@@ -32,13 +32,20 @@ function FotosContent() {
       const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
       const token = u ? await u.getIdToken() : "";
       const res = await fetch("/api/storage/photos", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        let msg = `Erro ${res.status}`;
+        try { const t = await res.text(); const j = JSON.parse(t); if (j?.message) msg = j.message; } catch {}
+        setErrorMsg(msg);
+        throw new Error(msg);
+      }
       const data = await res.json();
       setSets(Array.isArray(data.sets) ? data.sets : []);
       setItems(Array.isArray(data.items) ? data.items : []);
-    } catch {
+      setErrorMsg(null);
+    } catch (e: any) {
       setSets([]);
       setItems([]);
+      if (!errorMsg) setErrorMsg(e?.message || 'Falha a carregar fotos');
     } finally {
       setLoading(false);
     }

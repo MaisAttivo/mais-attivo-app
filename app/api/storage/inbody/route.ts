@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "too_large" }, { status: 413 });
     }
 
-    const uploadBucketName = (process.env.FIREBASE_UPLOAD_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const uploadBucketName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
     const bucket = uploadBucketName ? admin.storage().bucket(uploadBucketName) : app.storage().bucket();
     const db = app.firestore();
     const ts = Date.now();

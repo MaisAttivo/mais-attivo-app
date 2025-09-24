@@ -21,7 +21,11 @@ function initAdmin() {
   }
   const initOpts: any = {};
   if (projectId) initOpts.projectId = projectId;
-  if (credObj) initOpts.credential = admin.credential.cert(credObj);
+  if (credObj) {
+    initOpts.credential = admin.credential.cert(credObj);
+  } else {
+    throw new Error('missing_service_account');
+  }
   admin.initializeApp(initOpts);
   return admin.app();
 }

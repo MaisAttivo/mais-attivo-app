@@ -26,7 +26,7 @@ if (typeof window !== "undefined") {
   if (hasAllKeys) {
     appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     authInstance = getAuth(appInstance);
-    dbInstance = initializeFirestore(appInstance, { experimentalAutoDetectLongPolling: true });
+    dbInstance = initializeFirestore(appInstance, { experimentalForceLongPolling: true, useFetchStreams: false });
 
     // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames
     const bucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();

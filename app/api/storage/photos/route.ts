@@ -9,11 +9,7 @@ export const dynamic = "force-dynamic";
 function initAdmin() {
   if (admin.apps.length) return admin.app();
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
-  const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
   const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
-  let bucketName = rawBucket.replace(/^gs:\/\//, "");
-  if (!bucketName && projectId) bucketName = `${projectId}.appspot.com`;
-  if (bucketName.endsWith('.firebasestorage.app')) bucketName = bucketName.replace('.firebasestorage.app', '.appspot.com');
   let credObj: any = null;
   if (raw) {
     let text = raw;
@@ -25,10 +21,15 @@ function initAdmin() {
   }
   const initOpts: any = {};
   if (projectId) initOpts.projectId = projectId;
-  if (bucketName) initOpts.storageBucket = bucketName;
   if (credObj) initOpts.credential = admin.credential.cert(credObj);
   admin.initializeApp(initOpts);
   return admin.app();
+}
+
+function mapBucketName(name?: string) {
+  const n = (name || "").trim().replace(/^gs:\/\//, "");
+  if (!n) return "";
+  return n.endsWith('.firebasestorage.app') ? n.replace('.firebasestorage.app', '.appspot.com') : n;
 }
 
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {
@@ -78,10 +79,10 @@ export async function GET(req: NextRequest) {
         for (const u of arr) items.push({ url: u, name: s.id, createdAt: created });
       }
     } else {
-      // Fallback to storage listing for legacy uploads (try configured bucket and alternate)
-      const primary = app.storage().bucket();
-      let altName = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
-      if (altName.endsWith('.firebasestorage.app')) altName = altName.replace('.firebasestorage.app', '.appspot.com');
+      // Fallback to storage listing across configured buckets
+      const primaryName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+      const primary = primaryName ? admin.storage().bucket(primaryName) : app.storage().bucket();
+      const altName = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
       const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/photos/`,
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest) {
     const app = initAdmin();
     const auth = app.auth();
     const db = app.firestore();
-    const uploadBucketName = (process.env.FIREBASE_UPLOAD_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const uploadBucketName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
     const bucket = uploadBucketName ? admin.storage().bucket(uploadBucketName) : app.storage().bucket();
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";

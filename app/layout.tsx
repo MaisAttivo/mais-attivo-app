@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase";
 import "./globals.css";
 import ClientNav from "@/components/ui/ClientNav";
 import OneSignalInit from "./OneSignalInit";
+import EnablePushButton from "@/app/components/EnablePushButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

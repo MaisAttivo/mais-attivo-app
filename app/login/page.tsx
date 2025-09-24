@@ -1,13 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { ensureUserDoc } from "@/lib/ensureUserDoc";
+import { useSession } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { uid, role, onboardingDone, active, loading } = useSession();
+
+  useEffect(() => {
+    if (loading) return;
+    if (uid) {
+      if (active === false && role !== "coach") return; // deixa RootLayout mostrar aviso de conta inativa
+      if (role === "coach") { router.replace("/coach"); return; }
+      if (!onboardingDone) { router.replace("/onboarding"); return; }
+      router.replace("/dashboard");
+    }
+  }, [uid, role, onboardingDone, active, loading, router]);
 
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");

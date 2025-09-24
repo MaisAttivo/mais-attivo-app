@@ -148,7 +148,6 @@ export default function CoachClientProfilePage() {
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [dietError, setDietError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ url: string; kind: "pdf" | "image" } | null>(null);
-  const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [trainingAt, setTrainingAt] = useState<Date | null>(null);
   const [dietAt, setDietAt] = useState<Date | null>(null);
 
@@ -165,7 +164,7 @@ export default function CoachClientProfilePage() {
   const [imgConsent, setImgConsent] = useState<boolean>(false);
   const [imgConsentAt, setImgConsentAt] = useState<Date | null>(null);
 
-  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "onboarding" | "notificacoes">("daily");
+  const [visibleSection, setVisibleSection] = useState<"daily" | "weekly" | "planos" | "fotos" | "inbody" | "checkins" | "powerlifting" | "evolucao" | "calendario" | "onboarding" | "notificacoes">("daily");
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
@@ -730,7 +729,6 @@ export default function CoachClientProfilePage() {
               <Link href={novoCheckinHref} className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto">Novo check-in</Button>
               </Link>
-              <Button className="w-full sm:w-auto" variant="secondary" onClick={()=>setShowCalendar(true)}>Calendário</Button>
               <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
                 <Link href="/coach"><ArrowLeft className="h-4 w-4" />Voltar</Link>
               </Button>
@@ -744,6 +742,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
+          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
           <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
@@ -834,6 +833,18 @@ export default function CoachClientProfilePage() {
               <SwitchableEvolution data={evoData} />
             </div>
             <div className="text-xs text-muted-foreground mt-2">Podes deslizar para ver outros gráficos.</div>
+          </CardContent>
+        </Card>
+
+        {/* Calendário */}
+        <Card className={"shadow-sm " + (visibleSection !== "calendario" ? "hidden" : "") }>
+          <CardHeader>
+            <CardTitle>Calendário</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-2xl border p-4 bg-background max-w-md">
+              <SwitchableCalendar uid={uid} />
+            </div>
           </CardContent>
         </Card>
 
@@ -1168,19 +1179,6 @@ export default function CoachClientProfilePage() {
           </div>
         )}
 
-        {showCalendar && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
-            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-base font-medium">Calendário</div>
-                <Button size="sm" variant="secondary" onClick={()=>setShowCalendar(false)}>Fechar</Button>
-              </div>
-              <div className="rounded-2xl border p-4 bg-background max-w-md">
-                <SwitchableCalendar uid={uid} />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Fotos (progresso) */}
         <Card className={"shadow-sm " + (visibleSection !== "fotos" ? "hidden" : "")}>

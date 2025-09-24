@@ -80,7 +80,8 @@ export async function GET(req: NextRequest) {
     } else {
       // Fallback to storage listing for legacy uploads (try configured bucket and alternate)
       const primary = app.storage().bucket();
-      const altName = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
+      let altName = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
+      if (altName.endsWith('.firebasestorage.app')) altName = altName.replace('.firebasestorage.app', '.appspot.com');
       const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/photos/`,

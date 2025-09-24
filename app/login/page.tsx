@@ -148,7 +148,8 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition"
+                aria-busy={submitting}
+                className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] active:scale-95 active:ring-2 active:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition-transform transition-colors"
               >
                 {submitting ? "A entrar…" : "Entrar"}
               </button>

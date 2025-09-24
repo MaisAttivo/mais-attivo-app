@@ -5,14 +5,13 @@ import "firebase-admin/firestore";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { Storage } from "@google-cloud/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function initAdmin() {
-  if (admin.apps.length) return admin.app();
+function getCred() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
-  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   let credObj: any = null;
   if (raw) {
     let text = raw;
@@ -23,6 +22,13 @@ function initAdmin() {
     }
   }
   if (!credObj) throw new Error('missing_service_account');
+  return credObj;
+}
+
+function initAdmin() {
+  if (admin.apps.length) return admin.app();
+  const credObj = getCred();
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
   try {
     const p = path.join(os.tmpdir(), `gcp-key-${process.pid}.json`);
     if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
@@ -76,10 +82,12 @@ export async function GET(req: NextRequest) {
         return { url: x.url, name: x.name || d.id, contentType: x.contentType || "application/octet-stream", createdAt: x.createdAt ? (x.createdAt.toDate ? x.createdAt.toDate().toISOString() : x.createdAt) : null };
       }).filter(x => typeof x.url === 'string');
     } else {
+      const cred = getCred();
+      const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+      const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
       const primaryName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-      const primary = primaryName ? admin.storage().bucket(primaryName) : app.storage().bucket();
       const altName = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
-      const alt = altName ? admin.storage().bucket(altName) : null;
+      const buckets = [primaryName, altName].filter(Boolean).map((n)=> storage.bucket(n as string));
       const prefixes = [
         `users/${targetUid}/inbody/`,
         `inbody/${targetUid}/`,
@@ -87,7 +95,6 @@ export async function GET(req: NextRequest) {
         `users/${targetUid}/`
       ];
       let collected: any[] = [];
-      const buckets = [primary, ...(alt ? [alt] : [])];
       for (const b of buckets) {
         for (const p of prefixes) {
           const [files] = await b.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(()=>[[]]);
@@ -145,8 +152,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "too_large" }, { status: 413 });
     }
 
+    const cred = getCred();
+    const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+    const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
     const uploadBucketName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const bucket = uploadBucketName ? admin.storage().bucket(uploadBucketName) : app.storage().bucket();
+    const bucket = storage.bucket(uploadBucketName);
     const db = app.firestore();
     const ts = Date.now();
     const ext = ct === "image/png" ? "png" : ct === "application/pdf" ? "pdf" : "jpg";

@@ -102,6 +102,7 @@ function FotosContent() {
     setUploading(true);
     setProgressPct(0);
     try {
+      setErrorMsg(null);
       const { getAuth, onAuthStateChanged } = await import("firebase/auth");
       const a = getAuth();
       const u = a.currentUser || await new Promise<any>((resolve) => onAuthStateChanged(a, (usr) => resolve(usr), () => resolve(null), { onlyOnce: true } as any));
@@ -125,7 +126,10 @@ function FotosContent() {
               setProgressPct(95);
               resolve();
             } else {
-              reject(new Error(xhr.responseText || `status_${xhr.status}`));
+              let msg = `Erro ${xhr.status}`;
+              try { const j = JSON.parse(xhr.responseText); if (j?.message) msg = j.message; } catch {}
+              setErrorMsg(msg);
+              reject(new Error(msg));
             }
           };
           xhr.onerror = () => reject(new Error("network_error"));
@@ -135,6 +139,8 @@ function FotosContent() {
 
       setProgressPct(100);
       await fetchList();
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Falha no envio');
     } finally {
       setUploading(false);
       setProgressPct(null);
@@ -184,6 +190,9 @@ function FotosContent() {
                 </div>
                 <span className="text-xs text-slate-600 min-w-8 text-right">{progressPct}%</span>
               </div>
+            )}
+            {errorMsg && (
+              <div className="w-full max-w-md text-left text-xs text-red-600">{errorMsg}</div>
             )}
             <div className="text-xs text-muted-foreground">Formatos suportados: JPG, PNG. Máx. 4 por envio.</div>
           </div>

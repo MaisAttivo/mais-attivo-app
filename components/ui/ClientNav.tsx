@@ -44,6 +44,18 @@ export default function ClientNav() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  // Safety net: hide legacy items if some cached bundle still renders them
+  useEffect(() => {
+    const hide = () => {
+      document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
+        const t = (el as HTMLElement).innerText.trim();
+        if (t === 'Fotos' || t === 'InBody') (el as HTMLElement).style.display = 'none';
+      });
+    };
+    const id = setInterval(hide, 500);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

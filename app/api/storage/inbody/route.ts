@@ -67,9 +67,9 @@ export async function GET(req: NextRequest) {
         return { url: x.url, name: x.name || d.id, contentType: x.contentType || "application/octet-stream", createdAt: x.createdAt ? (x.createdAt.toDate ? x.createdAt.toDate().toISOString() : x.createdAt) : null };
       }).filter(x => typeof x.url === 'string');
     } else {
-      const primary = app.storage().bucket();
-      let altName = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
-      if (altName.endsWith('.firebasestorage.app')) altName = altName.replace('.firebasestorage.app', '.appspot.com');
+      const primaryName = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+      const primary = primaryName ? admin.storage().bucket(primaryName) : app.storage().bucket();
+      const altName = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
       const alt = altName ? admin.storage().bucket(altName) : null;
       const prefixes = [
         `users/${targetUid}/inbody/`,

@@ -21,6 +21,7 @@ function FotosContent() {
   const [progressPct, setProgressPct] = useState<number | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function fetchList() {

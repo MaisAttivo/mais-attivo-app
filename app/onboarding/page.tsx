@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc, getDocs, query, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 type YesNoPT = "Sim" | "Não";
@@ -22,6 +22,28 @@ export default function OnboardingPage() {
     });
     return () => unsub();
   }, [router]);
+
+  // Se o utilizador já tem onboarding/questionário, redirecionar para o dashboard
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!uid || !db) return;
+      try {
+        const uref = doc(db, "users", uid);
+        const usnap = await getDoc(uref);
+        let done = !!usnap.data()?.onboardingDone;
+        if (!done) {
+          const qs = await getDocs(query(collection(db, `users/${uid}/questionnaire`), limit(1)));
+          done = !qs.empty;
+        }
+        if (done && active) {
+          try { await updateDoc(uref, { onboardingDone: true, updatedAt: serverTimestamp() }); } catch {}
+          router.replace("/dashboard");
+        }
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [uid, router]);
 
   // --- DADOS PESSOAIS ---
   const [fullName, setFullName] = useState("");

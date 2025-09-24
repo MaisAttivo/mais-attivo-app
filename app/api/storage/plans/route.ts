@@ -5,6 +5,7 @@ import "firebase-admin/firestore";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { Storage } from "@google-cloud/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,14 +64,26 @@ export async function POST(req: NextRequest) {
     if (candidates.length === 0) return NextResponse.json({ error: 'no_bucket_configured' }, { status: 500 });
 
     async function saveToFirstAvailable(buf: Buffer, contentType: string, path: string): Promise<{ url: string; used: string }>{
+      const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
+      let credObj: any = null;
+      if (raw) {
+        let text = raw;
+        if (!text.startsWith("{")) text = `{${text}}`;
+        try { credObj = JSON.parse(text); } catch { credObj = null; }
+        if (credObj && typeof credObj.private_key === 'string') credObj.private_key = credObj.private_key.replace(/\\n/g, "\n");
+      }
+      if (!credObj) throw new Error('missing_service_account');
+      const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || credObj.project_id || "").trim();
+      const storage = new Storage({ projectId, credentials: { client_email: credObj.client_email, private_key: credObj.private_key } });
+
       let lastErr: any = null;
       for (const name of candidates) {
         try {
-          const b = app.storage().bucket(name || undefined);
+          const b = storage.bucket(name);
           const f = b.file(path);
           await f.save(buf, { contentType, resumable: false, public: false, metadata: { cacheControl: "public,max-age=60" } });
           const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-          return { url, used: name || "default" };
+          return { url, used: name };
         } catch (e: any) {
           lastErr = e;
           continue;

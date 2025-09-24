@@ -46,15 +46,10 @@ export async function POST(req: NextRequest) {
   try {
     const app = initAdmin();
     const auth = app.auth();
-    const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-    const envBucket = rawBucket.replace(/^gs:\/\//, "");
-    const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "").trim();
-    const candidates = [
-      envBucket,
-      projectId ? `${projectId}.appspot.com` : "",
-      projectId ? `${projectId}.firebasestorage.app` : "",
-      "",
-    ].filter(Boolean);
+    const envPrimary = (process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const envAlt = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const candidates = [envPrimary, envAlt].filter(Boolean);
+    if (candidates.length === 0) return NextResponse.json({ error: 'no_bucket_configured' }, { status: 500 });
 
     async function saveToFirstAvailable(buf: Buffer, contentType: string, path: string): Promise<{ url: string; used: string }>{
       let lastErr: any = null;

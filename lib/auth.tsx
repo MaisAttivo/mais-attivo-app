@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, limit, query } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 
 export function useSession() {
@@ -26,7 +26,15 @@ export function useSession() {
           const snap = await getDoc(doc(db, "users", u.uid));
           const data: any = snap.data() || {};
           setRole((data?.role as any) ?? "client");
-          setOnb(!!data?.onboardingDone);
+          let ob = !!data?.onboardingDone;
+          if (!ob) {
+            try {
+              const q = query(collection(db, `users/${u.uid}/questionnaire`), limit(1));
+              const qs = await getDocs(q);
+              if (!qs.empty) ob = true;
+            } catch {}
+          }
+          setOnb(ob);
           setActive(typeof data?.active === "boolean" ? data.active : true);
         } catch {
           // If Firestore unavailable, still allow UI with minimal session

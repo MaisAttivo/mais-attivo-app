@@ -46,8 +46,8 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
   const series: Series[] = useMemo(() => {
     if (mode.key === "peso") {
       return [
-        { name: "Peso (kg)", color: "#2563eb", points: data.pesoSemanal, drawLine: true },
         { name: "Check-in", color: "#16a34a", points: data.pesoCheckin, drawLine: false },
+        { name: "Peso médio semanal (kg)", color: "#2563eb", points: data.pesoSemanal, drawLine: true },
       ];
     }
     if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];

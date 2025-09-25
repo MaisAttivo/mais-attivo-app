@@ -93,6 +93,16 @@ export default function EnablePushButton() {
     return undefined;
   }
 
+  async function linkOneSignalUser(OS: any) {
+    try {
+      if (!uid) return;
+      if (typeof OS?.login === "function") await OS.login(uid);
+      else if (typeof OS?.setExternalUserId === "function") await OS.setExternalUserId(uid);
+      if (OS?.User?.addTag) await OS.User.addTag("uid", uid);
+      else if (typeof OS?.sendTag === "function") await OS.sendTag("uid", uid);
+    } catch {}
+  }
+
   const handleBellClick = async () => {
     const OS = (window as any).OneSignal;
     const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;

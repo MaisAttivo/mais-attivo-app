@@ -362,8 +362,20 @@ export default function DashboardPage() {
         <div className="w-10" />
       </div>
 
-      {(needsDaily || needsWeekly) && (
+      {(planNotice || needsDaily || needsWeekly) && (
         <div className="grid grid-cols-1 gap-3">
+          {planNotice && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div className="min-w-0">
+                <div className="text-sm">{planNotice.title}</div>
+                <div className="text-lg truncate">✅ {planNotice.message}</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/plans" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Ver planos</Link>
+                <button type="button" onClick={dismissPlanNotice} className="rounded-xl border border-[#706800] bg-white px-4 py-2 shadow-sm hover:bg-[#FFF4D1]">Fechar</button>
+              </div>
+            </div>
+          )}
           {needsDaily && (
             <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
               <div>

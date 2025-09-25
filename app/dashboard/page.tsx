@@ -467,6 +467,38 @@ export default function DashboardPage() {
           Terminar sessão
         </button>
       </div>
+
+      {showCheckinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCheckinModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-slate-300">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <h2 className="text-lg font-semibold">Marcar avaliação</h2>
+              <button type="button" aria-label="Fechar" className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100" onClick={() => setShowCheckinModal(false)}>✕</button>
+            </div>
+            <div className="p-4 space-y-3 text-slate-800">
+              <p>Está na altura do teu check-in{nextCheckin ? ` (${nextCheckin})` : ""}. Marca a tua avaliação.</p>
+              <div className="flex gap-2 justify-end pt-1">
+                <a
+                  href={waOverdueHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]"
+                >
+                  WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowCheckinModal(false)}
+                  className="rounded-xl border border-slate-400 bg-white px-4 py-2 shadow-sm hover:bg-slate-50"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

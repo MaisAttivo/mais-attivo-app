@@ -16,10 +16,13 @@ export default function OneSignalInit() {
       document.head.appendChild(s);
     }
 
+    const envAppId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+    console.log("ENV appId =", envAppId);
+
     (window as any).OneSignal = (window as any).OneSignal || [];
     (window as any).OneSignal.push(function () {
       (window as any).OneSignal.init({
-        appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
+        appId: envAppId || "9fa86255-e2fe-4c8f-9efc-6a2aa9bd3b51",
         allowLocalhostAsSecureOrigin: true,
         notifyButton: { enable: false },
         serviceWorkerPath: "/OneSignalSDKWorker.js",

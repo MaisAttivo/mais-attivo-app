@@ -116,6 +116,7 @@ export default function CoachClientProfilePage() {
   const [lastCheckinYMD, setLastCheckinYMD] = useState<string | null>(null);
   const [nextCheckinYMD, setNextCheckinYMD] = useState<string | null>(null);
   const [nextDue, setNextDue] = useState<boolean>(false);
+  const [phone, setPhone] = useState<string | null>(null);
 
   // Hydration target
   const [metaAgua, setMetaAgua] = useState<number | null>(null);
@@ -224,6 +225,7 @@ export default function CoachClientProfilePage() {
       const uSnap = await getDoc(doc(db, "users", uid));
       const u = (uSnap.data() as any) || {};
       setEmail(u.email ?? "—");
+      try { const p = (u.phone ?? u.phoneNumber ?? u.telefone ?? "").toString().trim(); setPhone(p || null); } catch { setPhone(null); }
       setActive(typeof u.active === "boolean" ? u.active : true);
       setPlEnabled(!!u.powerlifting);
       setImgConsent(!!u.imageUseConsent);
@@ -676,6 +678,17 @@ export default function CoachClientProfilePage() {
               <Badge variant={imgConsent ? "secondary" : "destructive"}>
                 Consent. fotos: {imgConsent ? "Sim" : "Não"}{imgConsentAt ? ` • ${ymd(imgConsentAt)}` : ""}
               </Badge>
+              {nextDue && phone && (
+                <a
+                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                  title="Enviar WhatsApp"
+                >
+                  <span>WhatsApp</span>
+                </a>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-stretch gap-2 w-full sm:w-auto sm:items-end">
@@ -1338,7 +1351,7 @@ export default function CoachClientProfilePage() {
 
                   {c.commentPublic && (
                     <div className="mt-2 text-sm">
-                      <span className="font-medium">Comentário público: </span>{c.commentPublic}
+                      <span className="font-medium">Comentário p��blico: </span>{c.commentPublic}
                     </div>
                   )}
 

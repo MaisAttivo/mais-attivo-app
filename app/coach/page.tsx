@@ -60,6 +60,7 @@ type Cliente = {
   id: string;
   nome: string;
   email?: string;
+  phone?: string;
   active?: boolean;
   ultimoDF?: DailyFeedback | null;
   metaAguaLitros: number;
@@ -262,6 +263,7 @@ function CoachDashboard() {
     contaInativa: false,
   });
 
+  const cleanPhone = (p?: string) => (p ? String(p).replace(/[^\d]/g, "") : "");
   async function fetchClientes() {
     setLoading(true);
     try {
@@ -291,6 +293,7 @@ function CoachDashboard() {
               const nd: Date | null = data.nextCheckinDate?.toDate?.() ?? null;
               if (nd) nextCheckinYMD = lisbonYMD(nd);
               else if (typeof data.nextCheckinText === "string") nextCheckinYMD = data.nextCheckinText;
+              (u as any).phone = (data.phone ?? data.phoneNumber ?? data.telefone ?? "").toString().trim() || undefined;
             }
           } catch {}
           if (!nextCheckinYMD) {
@@ -359,6 +362,7 @@ function CoachDashboard() {
             id: u.id,
             nome: nomeFinal,
             email: u.email,
+            phone: (u as any).phone,
             active: u.active,
             ultimoDF: m.last ?? null,
             metaAguaLitros: metaAgua,
@@ -587,6 +591,19 @@ function CoachDashboard() {
                     {typeof c.ultimoDF?.alimentacao100 === "boolean" && ` • Alimentação OK: ${c.ultimoDF?.alimentacao100 ? "Sim" : "Não"}`}
                     {(typeof c.ultimoDF?.peso === "number" || typeof c.ultimoDF?.weight === "number") &&
                       ` • Peso: ${(c.ultimoDF?.peso ?? c.ultimoDF?.weight)}kg`}
+                  </div>
+                )}
+
+                {(c.dueStatus && c.phone) && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); const url = `https://wa.me/${cleanPhone(c.phone)}?text=${encodeURIComponent(`Olá ${c.nome.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação? Próximo CI: ${c.nextCheckinYMD ?? '—'}.`)}`; window.open(url, "_blank", "noopener,noreferrer"); }}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                      title="Enviar WhatsApp"
+                    >
+                      <span>WhatsApp</span>
+                    </button>
                   </div>
                 )}
               </CardContent>

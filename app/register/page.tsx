@@ -12,6 +12,7 @@ export default function RegisterPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function RegisterPage() {
       await setDoc(userRef, {
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        phone: (phone || "").toString().trim() || null,
         role: "client",
         onboardingDone: false,
         active: true,
@@ -108,6 +110,14 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+            />
+            <input
+              className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
+              type="tel"
+              placeholder="Telemóvel (ex.: 351912345678)"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
             />
             <input
               className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"

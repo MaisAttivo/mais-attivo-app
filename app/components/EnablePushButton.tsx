@@ -13,7 +13,11 @@ export default function EnablePushButton() {
   async function resolveStatus(): Promise<"default" | "enabled" | "blocked"> {
     try {
       const OS = (window as any).OneSignal;
-      const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
+      const osPerm = await OS?.Notifications?.getPermissionStatus?.();
+      const browserPerm = (window as any).Notification?.permission as NotificationPermission | undefined;
+      const perm: "granted" | "denied" | "default" =
+        (browserPerm === "granted" || osPerm === "granted") ? "granted" :
+        (browserPerm === "denied" || osPerm === "denied") ? "denied" : "default";
       if (perm === "denied") return "blocked";
       if (perm !== "granted") return "default";
 
@@ -55,6 +59,21 @@ export default function EnablePushButton() {
     window.clearTimeout((showToast as any)._t);
     (showToast as any)._t = window.setTimeout(() => setToast(null), 2500);
   };
+
+  async function getEffectivePermission(OS: any): Promise<"granted" | "denied" | "default"> {
+    try {
+      const osPerm = await OS?.Notifications?.getPermissionStatus?.();
+      const browserPerm = (window as any).Notification?.permission as NotificationPermission | undefined;
+      if (browserPerm === "granted" || osPerm === "granted") return "granted";
+      if (browserPerm === "denied" || osPerm === "denied") return "denied";
+      return "default";
+    } catch {
+      const browserPerm = (window as any).Notification?.permission as NotificationPermission | undefined;
+      if (browserPerm === "granted") return "granted";
+      if (browserPerm === "denied") return "denied";
+      return "default";
+    }
+  }
 
   async function requestPermissionCompat(OS: any): Promise<NotificationPermission | undefined> {
     try {
@@ -135,18 +154,25 @@ export default function EnablePushButton() {
 
       // status === "default": ativar
       if (OS?.User?.Push?.setSubscription) {
-        // Se já houver permissão concedida, basta subscrever
-        const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
-        if (perm === "granted") {
+        const eff = await getEffectivePermission(OS);
+        if (eff === "granted") {
           await OS.User.Push.setSubscription(true);
         } else {
           showToast("info", "A pedir permissão para notificações…");
           await requestPermissionCompat(OS);
         }
       } else {
-        // SDK antigo
-        showToast("info", "A pedir permissão para notificações…");
-        await requestPermissionCompat(OS);
+        const eff = await getEffectivePermission(OS);
+        if (eff !== "granted") {
+          showToast("info", "A pedir permissão para notificações…");
+          await requestPermissionCompat(OS);
+        } else {
+          if (typeof OS?.setSubscription === "function") {
+            await OS.setSubscription(true);
+          } else if (OS?.Notifications?.optIn) {
+            await OS.Notifications.optIn();
+          }
+        }
       }
 
       const next = await resolveStatus();

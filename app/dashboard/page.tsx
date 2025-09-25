@@ -101,6 +101,9 @@ export default function DashboardPage() {
   const [aguaMedia7, setAguaMedia7] = useState<number | null>(null);
   const [passosMedia7, setPassosMedia7] = useState<number | null>(null);
 
+  // Aviso de planos atualizados pelo coach
+  const [planNotice, setPlanNotice] = useState<{ id: string; title: string; message: string } | null>(null);
+
   // Pesos médios semanais
   const [pesoMedioSemanaAtual, setPesoMedioSemanaAtual] = useState<number | null>(null);
   const [pesoMedioSemanaAnterior, setPesoMedioSemanaAnterior] = useState<number | null>(null);

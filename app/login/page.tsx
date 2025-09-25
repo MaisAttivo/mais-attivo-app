@@ -79,7 +79,7 @@ export default function LoginPage() {
             Usa o teu e-mail e palavra-passe para aceder.
           </p>
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form ref={formRef} onSubmit={handleLogin} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-800">
                 Email

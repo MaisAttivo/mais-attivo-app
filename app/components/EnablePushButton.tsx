@@ -220,7 +220,7 @@ export default function EnablePushButton() {
         className="enable-push-button relative h-10 w-10 rounded-full border border-[#ccc] cursor-pointer bg-white shadow-sm hover:bg-slate-50 flex items-center justify-center"
       >
         <Bell className="h-5 w-5 text-slate-700" />
-        {status === "blocked" && (
+        {status !== "enabled" && (
           <span
             aria-hidden
             className="pointer-events-none absolute left-1 right-1 top-1/2 -translate-y-1/2 block h-[2px] bg-rose-600 rotate-45 rounded"

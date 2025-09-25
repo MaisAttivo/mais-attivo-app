@@ -81,6 +81,7 @@ export default function DashboardPage() {
   const [lastCheckin, setLastCheckin] = useState<string | null>(null);
   const [nextCheckin, setNextCheckin] = useState<string | null>(null);
   const [objetivoPeso, setObjetivoPeso] = useState<"ganho" | "perda" | null>(null);
+  const [showCheckinModal, setShowCheckinModal] = useState(false);
 
   // Nome e metas
   const [displayName, setDisplayName] = useState<string>("O meu painel");
@@ -275,6 +276,10 @@ export default function DashboardPage() {
   // Próximo check-in: estados
   const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
   const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
+
+  useEffect(() => {
+    if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);
+  }, [isPastCheckin, isTodayCheckin]);
 
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(

@@ -314,6 +314,14 @@ export default function DashboardPage() {
   if (loading) return <div className="p-4">A carregar…</div>;
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
+  async function dismissPlanNotice() {
+    try {
+      if (!uid || !planNotice) return;
+      await updateDoc(doc(db, `users/${uid}/coachNotifications/${planNotice.id}`), { read: true, readAt: serverTimestamp() });
+    } catch {}
+    setPlanNotice(null);
+  }
+
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(
     `Olá Coach! Quero marcar a avaliação. O meu check-in está para ${nextCheckin ?? "—"}.`

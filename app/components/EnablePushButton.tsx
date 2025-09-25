@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 import { useSession } from "@/lib/auth";
 
 export default function EnablePushButton() {
+  const { uid } = useSession();
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<"default" | "enabled" | "blocked">("default");
   const [toast, setToast] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
@@ -115,7 +116,7 @@ export default function EnablePushButton() {
         } else if (OS?.Notifications?.optOut) {
           await OS.Notifications.optOut();
         } else {
-          showToast("info", "Para desativar completamente, usa as defini��ões do site no navegador");
+          showToast("info", "Para desativar completamente, usa as definições do site no navegador");
         }
         setStatus(await resolveStatus());
         if (status === "enabled") showToast("success", "Notificações desativadas");

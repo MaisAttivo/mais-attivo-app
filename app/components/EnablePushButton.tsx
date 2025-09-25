@@ -7,17 +7,44 @@ export default function EnablePushButton() {
   const [status, setStatus] = useState<"default" | "enabled" | "blocked">("default");
   const [toast, setToast] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
 
+  // Resolve estado real: permissões + subscrição (compatível com várias versões do SDK)
+  async function resolveStatus(): Promise<"default" | "enabled" | "blocked"> {
+    try {
+      const OS = (window as any).OneSignal;
+      const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
+      if (perm === "denied") return "blocked";
+      if (perm !== "granted") return "default";
+
+      // Com permissão concedida, verificar se está subscrito
+      try {
+        if (OS?.User?.Push?.getSubscription) {
+          const sub = await OS.User.Push.getSubscription();
+          const enabled = typeof sub === "boolean" ? sub : !!(sub?.optedIn ?? sub?.enabled ?? sub?.isOptedIn);
+          return enabled ? "enabled" : "default";
+        }
+        if (OS?.Notifications?.isPushEnabled) {
+          const en = await OS.Notifications.isPushEnabled();
+          return en ? "enabled" : "default";
+        }
+        if (typeof OS?.isPushNotificationsEnabled === "function") {
+          const en: boolean = await new Promise((res) => OS.isPushNotificationsEnabled(res));
+          return en ? "enabled" : "default";
+        }
+      } catch {}
+
+      // Sem forma de saber subscrição → assumir enabled quando há permissão
+      return "enabled";
+    } catch {
+      return "default";
+    }
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
     queue.push(async () => {
       setReady(true);
-      try {
-        const OS = (window as any).OneSignal;
-        const perm = await OS?.Notifications?.getPermissionStatus?.();
-        if (perm === "granted") setStatus("enabled");
-        if (perm === "denied") setStatus("blocked");
-      } catch {}
+      setStatus(await resolveStatus());
     });
   }, []);
 
@@ -28,42 +55,58 @@ export default function EnablePushButton() {
   };
 
   const handleBellClick = async () => {
+    const OS = (window as any).OneSignal;
+    const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+    if (!supported) {
+      showToast("error", "O teu navegador não suporta notificações push");
+      return;
+    }
+
     try {
-      const OS = (window as any).OneSignal;
-      const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
-      if (!supported) {
-        showToast("error", "O teu navegador não suporta notificações push");
+      if (status === "blocked") {
+        showToast("error", "Notificações bloqueadas nas definições do navegador");
         return;
       }
 
-      if (status === "default") {
-        // Tenta pedir permissão imediatamente dentro do gesto do utilizador
-        if (OS?.Notifications?.requestPermission) {
-          await OS.Notifications.requestPermission();
-        } else if (OS?.Slidedown?.promptPush) {
-          await OS.Slidedown.promptPush();
-        } else if ((window as any).Notification?.requestPermission) {
-          await (window as any).Notification.requestPermission();
+      if (status === "enabled") {
+        // Desativar (opt‑out) mantendo a permissão do navegador
+        if (OS?.User?.Push?.setSubscription) {
+          await OS.User.Push.setSubscription(false);
+        } else if (typeof OS?.setSubscription === "function") {
+          await OS.setSubscription(false);
+        } else if (OS?.Notifications?.optOut) {
+          await OS.Notifications.optOut();
+        } else {
+          showToast("info", "Para desativar completamente, usa as definições do site no navegador");
         }
+        setStatus(await resolveStatus());
+        if (status === "enabled") showToast("success", "Notificações desativadas");
+        return;
       }
-    } catch {}
 
-    try {
-      const OS = (window as any).OneSignal;
-      const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
-      const next = perm === "granted" ? "enabled" : perm === "denied" ? "blocked" : "default";
-      if (next !== status) {
-        setStatus(next);
-        if (next === "enabled") showToast("success", "Notificações ativadas");
-        else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
-        else showToast("info", "Pedido de notificações enviado");
+      // status === "default": ativar
+      if (OS?.User?.Push?.setSubscription) {
+        // Se já houver permissão concedida, basta subscrever
+        const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
+        if (perm === "granted") await OS.User.Push.setSubscription(true);
+        else if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
+        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
+        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
       } else {
-        if (next === "enabled") showToast("info", "Notificações já ativas");
-        else if (next === "blocked") showToast("error", "Notificações bloqueadas (altera nas definições do site)");
-        else showToast("info", "Se não aparecer o pedido, verifica as permissões do site");
+        // SDK antigo
+        if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
+        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
+        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
       }
+
+      const next = await resolveStatus();
+      setStatus(next);
+      if (next === "enabled") showToast("success", "Notificações ativadas");
+      else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
+      else showToast("info", "Pedido de notificações enviado");
     } catch {
-      showToast("error", "Não foi possível verificar o estado das notificações");
+      showToast("error", "Não foi possível alterar o estado das notificações");
+      setStatus(await resolveStatus());
     }
   };
 

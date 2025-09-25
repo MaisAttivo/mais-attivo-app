@@ -280,12 +280,6 @@ export default function DashboardPage() {
   if (loading) return <div className="p-4">A carregar…</div>;
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
-  // Próximo check-in: estados
-
-  useEffect(() => {
-    if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);
-  }, [isPastCheckin, isTodayCheckin]);
-
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(
     `Olá Coach! Quero marcar a avaliação. O meu check-in está para ${nextCheckin ?? "—"}.`

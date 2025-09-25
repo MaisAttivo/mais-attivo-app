@@ -106,6 +106,13 @@ export default function DashboardPage() {
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
+  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
+  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
+
+  useEffect(() => {
+    if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);
+  }, [isPastCheckin, isTodayCheckin]);
+
   const todayId = useMemo(() => ymdUTC(new Date()), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
   const isoEnd = useMemo(() => endOfISOWeekUTC(new Date()), []);
@@ -274,8 +281,6 @@ export default function DashboardPage() {
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
 
   // Próximo check-in: estados
-  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
-  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
 
   useEffect(() => {
     if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);

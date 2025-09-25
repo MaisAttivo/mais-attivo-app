@@ -280,6 +280,34 @@ export default function DashboardPage() {
         if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
         if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
       }
+
+      // Notificação de planos atualizados (não lida)
+      try {
+        let q = query(
+          collection(db, `users/${uid}/coachNotifications`),
+          where("read", "==", false),
+          where("kind", "==", "planos_atualizados"),
+          orderBy("createdAt", "desc"),
+          limit(1)
+        );
+        let qs = await getDocs(q);
+        if (qs.empty) {
+          try {
+            q = query(collection(db, `users/${uid}/coachNotifications`), where("read", "==", false), orderBy("createdAt", "desc"), limit(5));
+            qs = await getDocs(q);
+          } catch {}
+        }
+        const doc0 = qs.docs.find((d) => (d.get("kind") === "planos_atualizados")) || null;
+        if (doc0) {
+          const title = String(doc0.get("title") || "Planos atualizados");
+          const message = String(doc0.get("message") || "Recebeste novos planos (treino/alimentação).");
+          setPlanNotice({ id: doc0.id, title, message });
+        } else {
+          setPlanNotice(null);
+        }
+      } catch {
+        setPlanNotice(null);
+      }
     })().catch((e) => console.error("Dashboard load error:", e));
   }, [uid, todayId, isoStart, isoEnd]);
 

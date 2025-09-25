@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

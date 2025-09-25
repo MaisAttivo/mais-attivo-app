@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +80,7 @@ export default function LoginPage() {
             Usa o teu e-mail e palavra-passe para aceder.
           </p>
 
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form ref={formRef} onSubmit={handleLogin} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-800">
                 Email
@@ -149,6 +150,14 @@ export default function LoginPage() {
                 type="submit"
                 disabled={submitting}
                 aria-busy={submitting}
+                onClick={(e) => {
+                  if (submitting) { e.preventDefault(); return; }
+                  const form = formRef.current;
+                  if (form && !form.checkValidity()) {
+                    e.preventDefault();
+                    form.reportValidity();
+                  }
+                }}
                 className="rounded-xl bg-[#D4AF37] px-4 py-2.5 font-semibold text-white shadow hover:bg-[#BE9B2F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37] active:scale-95 active:ring-2 active:ring-[#D4AF37] disabled:opacity-60 disabled:cursor-not-allowed transition-transform transition-colors"
               >
                 {submitting ? "A entrar…" : "Entrar"}

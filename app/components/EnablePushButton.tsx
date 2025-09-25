@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import { useSession } from "@/lib/auth";
 
 export default function EnablePushButton() {
+  const { uid } = useSession();
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<"default" | "enabled" | "blocked">("default");
   const [toast, setToast] = useState<{ type: "success" | "error" | "info"; msg: string } | null>(null);
@@ -54,6 +56,53 @@ export default function EnablePushButton() {
     (showToast as any)._t = window.setTimeout(() => setToast(null), 2500);
   };
 
+  async function requestPermissionCompat(OS: any): Promise<NotificationPermission | undefined> {
+    try {
+      if (OS?.Notifications?.requestPermission) {
+        const rp = OS.Notifications.requestPermission as any;
+        return await new Promise<NotificationPermission | undefined>((resolve) => {
+          try {
+            const maybe = rp((p: NotificationPermission) => resolve(p));
+            if (maybe && typeof maybe.then === "function") {
+              (maybe as Promise<NotificationPermission>).then(resolve).catch(() => resolve(undefined));
+            }
+          } catch {
+            resolve(undefined);
+          }
+        });
+      }
+    } catch {}
+
+    if ((window as any).Notification?.requestPermission) {
+      try {
+        const rp = (window as any).Notification.requestPermission as any;
+        return await new Promise<NotificationPermission | undefined>((resolve) => {
+          try {
+            const maybe = rp((p: NotificationPermission) => resolve(p));
+            if (maybe && typeof maybe.then === "function") {
+              (maybe as Promise<NotificationPermission>).then(resolve).catch(() => resolve(undefined));
+            }
+          } catch {
+            resolve(undefined);
+          }
+        });
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
+  async function linkOneSignalUser(OS: any) {
+    try {
+      if (!uid) return;
+      if (typeof OS?.login === "function") await OS.login(uid);
+      else if (typeof OS?.setExternalUserId === "function") await OS.setExternalUserId(uid);
+      if (OS?.User?.addTag) await OS.User.addTag("uid", uid);
+      else if (typeof OS?.sendTag === "function") await OS.sendTag("uid", uid);
+    } catch {}
+  }
+
   const handleBellClick = async () => {
     const OS = (window as any).OneSignal;
     const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
@@ -88,27 +137,50 @@ export default function EnablePushButton() {
       if (OS?.User?.Push?.setSubscription) {
         // Se já houver permissão concedida, basta subscrever
         const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
-        if (perm === "granted") await OS.User.Push.setSubscription(true);
-        else if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
-        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
-        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
+        if (perm === "granted") {
+          await OS.User.Push.setSubscription(true);
+        } else {
+          showToast("info", "A pedir permissão para notificações…");
+          await requestPermissionCompat(OS);
+        }
       } else {
         // SDK antigo
-        if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
-        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
-        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
+        showToast("info", "A pedir permissão para notificações…");
+        await requestPermissionCompat(OS);
       }
 
       const next = await resolveStatus();
       setStatus(next);
-      if (next === "enabled") showToast("success", "Notificações ativadas");
-      else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
-      else showToast("info", "Pedido de notificações enviado");
+      if (next === "enabled") {
+        await linkOneSignalUser(OS);
+        showToast("success", "Notificações ativadas");
+      } else if (next === "blocked") {
+        showToast("error", "Notificações bloqueadas nas definições do navegador");
+      } else {
+        showToast("info", "Pedido de notificações enviado");
+      }
     } catch {
       showToast("error", "Não foi possível alterar o estado das notificações");
       setStatus(await resolveStatus());
     }
   };
+
+  useEffect(() => {
+    const onFocus = () => { resolveStatus().then(setStatus).catch(() => {}); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
+    queue.push(async () => {
+      const OS = (window as any).OneSignal;
+      if (status === "enabled" && uid) {
+        await linkOneSignalUser(OS);
+      }
+    });
+  }, [uid, status, ready]);
 
   if (!ready) return null;
 

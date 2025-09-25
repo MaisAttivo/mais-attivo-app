@@ -160,7 +160,7 @@ export default function EnablePushButton() {
         showToast("info", "Pedido de notificações enviado");
       }
     } catch {
-      showToast("error", "Não foi poss��vel alterar o estado das notificações");
+      showToast("error", "Não foi possível alterar o estado das notificações");
       setStatus(await resolveStatus());
     }
   };
@@ -170,6 +170,17 @@ export default function EnablePushButton() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
+    queue.push(async () => {
+      const OS = (window as any).OneSignal;
+      if (status === "enabled" && uid) {
+        await linkOneSignalUser(OS);
+      }
+    });
+  }, [uid, status, ready]);
 
   if (!ready) return null;
 

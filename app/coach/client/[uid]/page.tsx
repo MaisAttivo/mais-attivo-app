@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
 import SwitchableCalendar from "@/components/SwitchableCalendar";
+import { notifyUser } from "@/lib/push";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -655,12 +656,7 @@ export default function CoachClientProfilePage() {
     };
     const payload = map[kind] || { title: "Mensagem do Coach", message: kind };
     try {
-      await addDoc(collection(db, "notificationsQueue"), {
-        targetUid: uid,
-        kind,
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
+      await notifyUser({ title: payload.title, message: payload.message, uid, url: "/dashboard" });
       await addDoc(collection(db, "users", uid, "coachNotifications"), {
         kind,
         ...payload,
@@ -1193,7 +1189,7 @@ export default function CoachClientProfilePage() {
                 <Button size="sm" variant="secondary" onClick={()=>setPreview(null)}><X className="h-4 w-4" />Fechar</Button>
               </div>
               {preview.kind === "pdf" ? (
-                <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualização PDF">
+                <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualizaç��o PDF">
                   <iframe className="w-full h-full" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(preview.url)} title="Pré-visualização PDF (alternativa)"></iframe>
                   <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={preview.url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
                 </object>
@@ -1414,7 +1410,7 @@ function K({
 }) {
   const arrow = (() => {
     if (delta == null) return null;
-    if (delta > 0) return "↑";
+    if (delta > 0) return "���";
     if (delta < 0) return "↓";
     return "→";
   })();

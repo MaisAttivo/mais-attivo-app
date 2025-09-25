@@ -15,6 +15,7 @@ export default function OneSignalInit() {
 
     (window as any).OneSignal = (window as any).OneSignal || [];
     (window as any).OneSignal.push(function () {
+      console.log('NEXT_PUBLIC_ONESIGNAL_APP_ID =', process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID);
       (window as any).OneSignal.init({
         appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true, // útil em dev local

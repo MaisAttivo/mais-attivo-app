@@ -619,6 +619,20 @@ export default function CoachClientProfilePage() {
       if (kind === "training") { payload.trainingUrl = url; payload.trainingUpdatedAt = serverTimestamp(); }
       else { payload.dietUrl = url; payload.dietUpdatedAt = serverTimestamp(); }
       await setDoc(doc(db, "users", uid, "plans", "latest"), payload, { merge: true });
+      try {
+        const title = "Planos atualizados";
+        const message = kind === "training" ? "Novo plano de treino disponível" : "Nova sugestão alimentar disponível";
+        await addDoc(collection(db, "users", uid, "coachNotifications"), {
+          kind: "planos_atualizados",
+          type: kind,
+          title,
+          message,
+          createdAt: serverTimestamp(),
+          read: false,
+        });
+      } catch (e) {
+        console.warn("Falha ao registar notificação de planos:", e);
+      }
       if (kind === "training") { setTrainingUrl(url); setTrainingAt(new Date()); } else { setDietUrl(url); setDietAt(new Date()); }
     } catch (e: any) {
       const msg = e?.message || "Falha no upload.";

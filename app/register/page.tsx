@@ -112,7 +112,7 @@ export default function RegisterPage() {
               required
             />
             <div className="flex">
-              <span className="inline-flex items-center rounded-l border border-slate-400 bg-slate-50 px-3 select-none">+351</span>
+              <span className="inline-flex items-center rounded-l border border-slate-400 bg-white px-3 select-none">+351</span>
               <input
                 className="flex-1 border border-l-0 border-slate-400 bg-white shadow-sm rounded-r px-3 py-2"
                 type="tel"

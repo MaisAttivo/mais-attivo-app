@@ -54,6 +54,43 @@ export default function EnablePushButton() {
     (showToast as any)._t = window.setTimeout(() => setToast(null), 2500);
   };
 
+  async function requestPermissionCompat(OS: any): Promise<NotificationPermission | undefined> {
+    try {
+      if (OS?.Notifications?.requestPermission) {
+        const rp = OS.Notifications.requestPermission as any;
+        return await new Promise<NotificationPermission | undefined>((resolve) => {
+          try {
+            const maybe = rp((p: NotificationPermission) => resolve(p));
+            if (maybe && typeof maybe.then === "function") {
+              (maybe as Promise<NotificationPermission>).then(resolve).catch(() => resolve(undefined));
+            }
+          } catch {
+            resolve(undefined);
+          }
+        });
+      }
+    } catch {}
+
+    if ((window as any).Notification?.requestPermission) {
+      try {
+        const rp = (window as any).Notification.requestPermission as any;
+        return await new Promise<NotificationPermission | undefined>((resolve) => {
+          try {
+            const maybe = rp((p: NotificationPermission) => resolve(p));
+            if (maybe && typeof maybe.then === "function") {
+              (maybe as Promise<NotificationPermission>).then(resolve).catch(() => resolve(undefined));
+            }
+          } catch {
+            resolve(undefined);
+          }
+        });
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
   const handleBellClick = async () => {
     const OS = (window as any).OneSignal;
     const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
@@ -88,15 +125,16 @@ export default function EnablePushButton() {
       if (OS?.User?.Push?.setSubscription) {
         // Se já houver permissão concedida, basta subscrever
         const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
-        if (perm === "granted") await OS.User.Push.setSubscription(true);
-        else if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
-        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
-        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
+        if (perm === "granted") {
+          await OS.User.Push.setSubscription(true);
+        } else {
+          showToast("info", "A pedir permissão para notificações…");
+          await requestPermissionCompat(OS);
+        }
       } else {
         // SDK antigo
-        if (OS?.Notifications?.requestPermission) await OS.Notifications.requestPermission();
-        else if (OS?.Slidedown?.promptPush) await OS.Slidedown.promptPush();
-        else if ((window as any).Notification?.requestPermission) await (window as any).Notification.requestPermission();
+        showToast("info", "A pedir permissão para notificações…");
+        await requestPermissionCompat(OS);
       }
 
       const next = await resolveStatus();
@@ -109,6 +147,12 @@ export default function EnablePushButton() {
       setStatus(await resolveStatus());
     }
   };
+
+  useEffect(() => {
+    const onFocus = () => { resolveStatus().then(setStatus).catch(() => {}); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   if (!ready) return null;
 

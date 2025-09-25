@@ -34,6 +34,7 @@ import {
 import { cn, daysBetweenLisbon, formatLisbonDate, lisbonTodayYMD, lisbonYMD } from "@/lib/utils";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { useRouter } from "next/navigation";
+import { notifyUser } from "@/lib/push";
 
 /* ========= Tipos ========= */
 type DailyFeedback = {
@@ -252,6 +253,7 @@ function CoachDashboard() {
   const [loading, setLoading] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [search, setSearch] = useState("");
+  const [sendingPush, setSendingPush] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Record<FilterKey, boolean>>({
     semFiltro: true,
     inativos4d: false,
@@ -459,6 +461,24 @@ function CoachDashboard() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={fetchClientes} disabled={loading}>
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Atualizar
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              if (!uid) return;
+              try {
+                setSendingPush(true);
+                await notifyUser({ title: "Teste", message: "Push de teste", uid, url: "/coach" });
+                alert("Notificação enviada.");
+              } catch (e: any) {
+                alert(`Falha: ${e?.message || "erro desconhecido"}`);
+              } finally {
+                setSendingPush(false);
+              }
+            }}
+            disabled={sendingPush}
+          >
+            {sendingPush ? "A enviar…" : "Push de teste"}
           </Button>
         </div>
       </div>

@@ -19,6 +19,9 @@ import {
   orderBy,
   limit,
   query,
+  where,
+  updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 /** ===== Helpers de datas (Portugal/Lisboa) ===== */
@@ -97,6 +100,9 @@ export default function DashboardPage() {
   const [streakAlimentacao, setStreakAlimentacao] = useState<number>(0);
   const [aguaMedia7, setAguaMedia7] = useState<number | null>(null);
   const [passosMedia7, setPassosMedia7] = useState<number | null>(null);
+
+  // Aviso de planos atualizados pelo coach
+  const [planNotice, setPlanNotice] = useState<{ id: string; title: string; message: string } | null>(null);
 
   // Pesos médios semanais
   const [pesoMedioSemanaAtual, setPesoMedioSemanaAtual] = useState<number | null>(null);
@@ -274,11 +280,47 @@ export default function DashboardPage() {
         if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
         if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
       }
+
+      // Notificação de planos atualizados (não lida)
+      try {
+        let q = query(
+          collection(db, `users/${uid}/coachNotifications`),
+          where("read", "==", false),
+          where("kind", "==", "planos_atualizados"),
+          orderBy("createdAt", "desc"),
+          limit(1)
+        );
+        let qs = await getDocs(q);
+        if (qs.empty) {
+          try {
+            q = query(collection(db, `users/${uid}/coachNotifications`), where("read", "==", false), orderBy("createdAt", "desc"), limit(5));
+            qs = await getDocs(q);
+          } catch {}
+        }
+        const doc0 = qs.docs.find((d) => (d.get("kind") === "planos_atualizados")) || null;
+        if (doc0) {
+          const title = String(doc0.get("title") || "Planos atualizados");
+          const message = String(doc0.get("message") || "Recebeste novos planos (treino/alimentação).");
+          setPlanNotice({ id: doc0.id, title, message });
+        } else {
+          setPlanNotice(null);
+        }
+      } catch {
+        setPlanNotice(null);
+      }
     })().catch((e) => console.error("Dashboard load error:", e));
   }, [uid, todayId, isoStart, isoEnd]);
 
   if (loading) return <div className="p-4">A carregar…</div>;
   if (!uid) return <div className="p-4">Inicia sessão para ver o teu painel.</div>;
+
+  async function dismissPlanNotice() {
+    try {
+      if (!uid || !planNotice) return;
+      await updateDoc(doc(db, `users/${uid}/coachNotifications/${planNotice.id}`), { read: true, readAt: serverTimestamp() });
+    } catch {}
+    setPlanNotice(null);
+  }
 
   // WhatsApp (mensagem para marcar avaliação quando já passou ou é hoje)
   const waOverdueHref = `https://wa.me/${COACH_WHATSAPP}?text=${encodeURIComponent(
@@ -320,8 +362,20 @@ export default function DashboardPage() {
         <div className="w-10" />
       </div>
 
-      {(needsDaily || needsWeekly) && (
+      {(planNotice || needsDaily || needsWeekly) && (
         <div className="grid grid-cols-1 gap-3">
+          {planNotice && (
+            <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
+              <div className="min-w-0">
+                <div className="text-sm">{planNotice.title}</div>
+                <div className="text-lg truncate">✅ {planNotice.message}</div>
+              </div>
+              <div className="flex gap-2">
+                <Link href="/plans" className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]">Ver planos</Link>
+                <button type="button" onClick={dismissPlanNotice} className="rounded-xl border border-[#706800] bg-white px-4 py-2 shadow-sm hover:bg-[#FFF4D1]">Fechar</button>
+              </div>
+            </div>
+          )}
           {needsDaily && (
             <div className="rounded-2xl bg-[#FFF4D1] shadow-lg ring-2 ring-[#706800] p-5 flex flex-wrap gap-3 items-center justify-between text-[#706800]">
               <div>

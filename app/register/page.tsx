@@ -12,7 +12,7 @@ export default function RegisterPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export default function RegisterPage() {
       await setDoc(userRef, {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        phone: (phone || "").toString().trim() || null,
+        phone: phoneLocal ? `+351${phoneLocal}` : null,
         role: "client",
         onboardingDone: false,
         active: true,
@@ -111,14 +111,25 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <input
-              className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
-              type="tel"
-              placeholder="Telemóvel (ex.: 351912345678)"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputMode="tel"
-            />
+            <div className="flex">
+              <span className="inline-flex items-center rounded-l border border-slate-400 bg-white px-3 select-none">+351</span>
+              <input
+                className="flex-1 border border-l-0 border-slate-400 bg-white shadow-sm rounded-r px-3 py-2"
+                type="tel"
+                placeholder="9XXXXXXXX"
+                value={phoneLocal}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const digits = raw.replace(/\D/g, "");
+                  let local = digits;
+                  if (local.startsWith("00351")) local = local.slice(5);
+                  else if (local.startsWith("351")) local = local.slice(3);
+                  if (local.startsWith("0")) local = local.replace(/^0+/, "");
+                  setPhoneLocal(local.slice(0, 9));
+                }}
+                inputMode="tel"
+              />
+            </div>
             <input
               className="border border-slate-400 bg-white shadow-sm rounded px-3 py-2"
               type="password"

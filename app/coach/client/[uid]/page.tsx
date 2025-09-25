@@ -648,11 +648,11 @@ export default function CoachClientProfilePage() {
   async function queuePush(kind: string) {
     const map: Record<string, { title: string; message: string }> = {
       pagamento_atrasado: { title: "Pagamento pendente", message: "Há um pagamento por regularizar. Obrigado!" },
-      marcar_checkin: { title: "Marcar Check-in", message: "Marca o teu próximo Check-in, por favor." },
-      faltas_diarios: { title: "Registos diários", message: "Não te esqueças de preencher o diário de hoje!" },
-      faltas_semanal: { title: "Registo semanal", message: "Está a faltar o teu feedback semanal." },
-      enviar_fotos: { title: "Fotos de atualização", message: "Envia as tuas fotos de atualização desta semana." },
-      beber_agua: { title: "Hidratação", message: "Bebe água! Vamos cumprir a meta diária." },
+      marcar_checkin: { title: "Marcar Check‑in", message: "Está na hora! Marca o teu próximo Check‑in!" },
+      faltas_diarios: { title: "Registos diários", message: "Não tens preenchido os feedbacks diários! Não te esqueças de preencher o diário de hoje!" },
+      faltas_semanal: { title: "Registo semanal", message: "Não chegaste a preencher o teu feedback semanal! Manda mensagem com feedback, por favor." },
+      enviar_fotos: { title: "Fotos de atualização", message: "Assim que possível, envia as tuas fotos de atualização!" },
+      beber_agua: { title: "Hidratação", message: "Tens andado a falhar com a água! Vamos atingir a meta de água diária!" },
     };
     const payload = map[kind] || { title: "Mensagem do Coach", message: kind };
     try {

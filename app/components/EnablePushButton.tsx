@@ -151,11 +151,16 @@ export default function EnablePushButton() {
 
       const next = await resolveStatus();
       setStatus(next);
-      if (next === "enabled") showToast("success", "Notificações ativadas");
-      else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
-      else showToast("info", "Pedido de notificações enviado");
+      if (next === "enabled") {
+        await linkOneSignalUser(OS);
+        showToast("success", "Notificações ativadas");
+      } else if (next === "blocked") {
+        showToast("error", "Notificações bloqueadas nas definições do navegador");
+      } else {
+        showToast("info", "Pedido de notificações enviado");
+      }
     } catch {
-      showToast("error", "Não foi possível alterar o estado das notificações");
+      showToast("error", "Não foi poss��vel alterar o estado das notificações");
       setStatus(await resolveStatus());
     }
   };

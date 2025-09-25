@@ -28,37 +28,43 @@ export default function EnablePushButton() {
   };
 
   const handleBellClick = async () => {
-    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
-    queue.push(async () => {
-      try {
-        const OS = (window as any).OneSignal;
-        if (status === "default") {
-          if (OS?.Slidedown?.promptPush) {
-            await OS.Slidedown.promptPush();
-          } else if (OS?.Notifications?.requestPermission) {
-            await OS.Notifications.requestPermission();
-          }
-        }
-      } catch {}
-
-      try {
-        const OS = (window as any).OneSignal;
-        const perm = await OS?.Notifications?.getPermissionStatus?.();
-        const next = perm === "granted" ? "enabled" : perm === "denied" ? "blocked" : "default";
-        if (next !== status) {
-          setStatus(next);
-          if (next === "enabled") showToast("success", "Notificações ativadas");
-          else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
-          else showToast("info", "Pedido de notificações enviado");
-        } else {
-          if (next === "enabled") showToast("info", "Notificações já ativas");
-          else if (next === "blocked") showToast("error", "Notificações bloqueadas (altera nas definições do site)");
-          else showToast("info", "Tenta novamente permitir notificações");
-        }
-      } catch {
-        showToast("error", "Não foi possível verificar o estado das notificações");
+    try {
+      const OS = (window as any).OneSignal;
+      const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+      if (!supported) {
+        showToast("error", "O teu navegador não suporta notificações push");
+        return;
       }
-    });
+
+      if (status === "default") {
+        // Tenta pedir permissão imediatamente dentro do gesto do utilizador
+        if (OS?.Notifications?.requestPermission) {
+          await OS.Notifications.requestPermission();
+        } else if (OS?.Slidedown?.promptPush) {
+          await OS.Slidedown.promptPush();
+        } else if ((window as any).Notification?.requestPermission) {
+          await (window as any).Notification.requestPermission();
+        }
+      }
+    } catch {}
+
+    try {
+      const OS = (window as any).OneSignal;
+      const perm = (await OS?.Notifications?.getPermissionStatus?.()) ?? (window as any).Notification?.permission;
+      const next = perm === "granted" ? "enabled" : perm === "denied" ? "blocked" : "default";
+      if (next !== status) {
+        setStatus(next);
+        if (next === "enabled") showToast("success", "Notificações ativadas");
+        else if (next === "blocked") showToast("error", "Notificações bloqueadas nas definições do navegador");
+        else showToast("info", "Pedido de notificações enviado");
+      } else {
+        if (next === "enabled") showToast("info", "Notificações já ativas");
+        else if (next === "blocked") showToast("error", "Notificações bloqueadas (altera nas definições do site)");
+        else showToast("info", "Se não aparecer o pedido, verifica as permissões do site");
+      }
+    } catch {
+      showToast("error", "Não foi possível verificar o estado das notificações");
+    }
   };
 
   if (!ready) return null;

@@ -1,28 +1,19 @@
 // lib/concurrency.ts
-export async function mapLimit<T, R>(
+export async function mapLimit<T>(
   items: readonly T[],
   limit: number,
-  worker: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const ret: R[] = [];
-  let i = 0;
-  let running = 0;
-  let resolve!: (v: R[]) => void;
-  let reject!: (e: any) => void;
-
-  const done = new Promise<R[]>((res, rej) => (resolve = res, reject = rej));
-
-  const next = () => {
-    if (i >= items.length && running === 0) return resolve(ret);
-    while (running < limit && i < items.length) {
-      const idx = i++;
-      running++;
-      worker(items[idx], idx)
-        .then((r) => { ret[idx] = r as any; running--; next(); })
-        .catch((e) => { reject(e); });
-    }
-  };
-
-  next();
-  return done;
+  worker: (item: T, index: number) => Promise<void>
+) {
+  let i = 0, run = 0;
+  return new Promise<void>((resolve, reject) => {
+    const next = () => {
+      if (i >= items.length && run === 0) return resolve();
+      while (run < limit && i < items.length) {
+        const idx = i++;
+        run++;
+        worker(items[idx], idx).then(() => { run--; next(); }).catch(reject);
+      }
+    };
+    next();
+  });
 }

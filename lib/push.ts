@@ -7,7 +7,8 @@ export type NotifyOptions = {
 
 export async function notifyUser(opts: NotifyOptions) {
   if (!opts || !opts.title || !opts.message) throw new Error("Título e mensagem são obrigatórios");
-  const res = await fetch("/api/notify", {
+  // Rota proxy server-side; não expõe o token no frontend
+  const res = await fetch("/api/coach/notify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(opts),

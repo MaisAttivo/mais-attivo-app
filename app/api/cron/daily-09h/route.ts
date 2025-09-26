@@ -5,6 +5,8 @@ import { serverNotify as send } from "@/lib/serverNotify";
 type Daily = { id: string; didWorkout?: boolean; waterLiters?: number; alimentacao100?: boolean; };
 
 export async function GET() {
+  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", hour12: false }).format(new Date());
+  if (hourPT !== "09") return NextResponse.json({ skipped: true, hourPT });
   const users = await adminDb.collection("users").get();
 
   for (const u of users.docs) {

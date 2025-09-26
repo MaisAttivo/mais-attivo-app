@@ -1,8 +1,9 @@
+// lib/serverNotify.ts
 export const runtime = "nodejs";
 
 /**
- * Envia push via a tua rota protegida /api/notify (no MESMO deployment).
- * Requer NOTIFY_BEARER definido nas envs do servidor (Vercel).
+ * Envia push via /api/notify no MESMO deployment.
+ * Usa VERCEL_URL quando disponível; suporta bypass token para Deployment Protection.
  */
 export async function serverNotify(
   uid: string,
@@ -15,44 +16,41 @@ export async function serverNotify(
   const bearer = (process.env.NOTIFY_BEARER || "").trim();
   if (!bearer) throw new Error("NOTIFY_BEARER is not configured");
 
-  // 1) Usa SEMPRE o host do deployment atual quando existir (evita DEPLOYMENT_NOT_FOUND)
-  const vercelHost = (process.env.VERCEL_URL || "").trim(); // ex: my-app-abc123.vercel.app
+  // 1) prefer VERCEL_URL (o host do deployment atual)
+  const vercelHost = (process.env.VERCEL_URL || "").trim();
   let origin = vercelHost ? `https://${vercelHost}` : "";
 
-  // 2) Se não houver VERCEL_URL (ex.: local dev), tenta NEXT_PUBLIC_BASE_URL
+  // 2) fallback para NEXT_PUBLIC_BASE_URL
   if (!origin) {
     const baseEnv = (process.env.NEXT_PUBLIC_BASE_URL || "").trim();
-    if (baseEnv) {
-      origin = baseEnv.startsWith("http") ? baseEnv : `https://${baseEnv}`;
-    }
+    if (baseEnv) origin = baseEnv.startsWith("http") ? baseEnv : `https://${baseEnv}`;
   }
 
-  // 3) Fallback final: domínio de produção
-  if (!origin) origin = "https://mais-ativo-app.vercel.app";
-
-  // remove barra final para evitar //api/notify
+  // 3) fallback final: domínio de produção
+  if (!origin) origin = "https://mais-attivo-app.vercel.app";
   origin = origin.replace(/\/+$/, "");
 
   const endpoint = `${origin}/api/notify`;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${bearer}`,
+  };
+
+  // Se existir bypass token do Vercel, inclui-o no header
+  const bypass = (process.env.VERCEL_PROTECTION_BYPASS || "").trim();
+  if (bypass) headers["x-vercel-protection-bypass"] = bypass;
+
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${bearer}`,
-    },
-    // cache no-store para não haver surprises em edge caches
+    headers,
     cache: "no-store",
     body: JSON.stringify({ uid, title, message, url }),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    // Erro informativo com origem e status para debug rápido
-    throw new Error(
-      text ||
-        `notify failed: ${res.status} ${res.statusText} (origin: ${origin})`
-    );
+    throw new Error(text || `notify failed: ${res.status} ${res.statusText} (origin: ${origin})`);
   }
 
   try {

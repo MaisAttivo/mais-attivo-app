@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { serverNotify as send } from "@/lib/serverNotify";
 
 type Daily = { id: string; didWorkout?: boolean; waterLiters?: number; alimentacao100?: boolean; };
-
-async function send(uid: string, title: string, message: string, url?: string) {
-  await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notify`, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ uid, title, message, url })
-  });
-}
 
 export async function GET() {
   const users = await adminDb.collection("users").get();

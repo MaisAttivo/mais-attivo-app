@@ -111,10 +111,8 @@ exports.plansOnWrite = functions.firestore
     const { userId } = context.params;
     const after = change.after.exists ? change.after.data() : null;
     if (!after) return;
-    let title = "Planos atualizados";
-    let message = "Foram anexados novos planos.";
-    if (after.trainingUpdatedAt) { message = "Novo plano de treino disponível"; }
-    if (after.dietUpdatedAt && !after.trainingUpdatedAt) { message = "Nova sugestão alimentar disponível"; }
+    let title = "Planos Atualizados";
+    let message = "Planos Atualizados! Qualquer dúvida não hesites em contactar!";
     await sendPush({ uid: userId, title, message, url: "/plans" });
     await db.collection("users").doc(userId).collection("coachNotifications").add({
       kind: "planos_atualizados",
@@ -138,14 +136,14 @@ exports.remindersDaily21 = functions.pubsub
       try {
         const qs = await db.collection(`users/${d.id}/dailyFeedback`).where("date", ">=", admin.firestore.Timestamp.fromDate(new Date(new Date().setHours(0,0,0,0)))).get();
         if (qs.empty) {
-          await sendPush({ uid: d.id, title: "Registos diários", message: "Não tens preenchido os feedbacks diários! Não te esqueças de preencher o diário de hoje!", url: "/daily" });
+          await sendPush({ uid: d.id, title: "Registos diários", message: "Não te esqueças de preencher o teu feedback diário de hoje!", url: "/daily" });
         }
       } catch {}
     }
   });
 
 exports.sundayWeekly20 = functions.pubsub
-  .schedule("0 20 * * 0")
+  .schedule("0 21 * * 0")
   .timeZone("Europe/Lisbon")
   .onRun(async () => {
     const usersSnap = await db.collection("users").get();
@@ -157,7 +155,26 @@ exports.sundayWeekly20 = functions.pubsub
         const qs = await db.collection(`users/${d.id}/weekly`).orderBy("weekEndDate","desc").limit(1).get();
         const last = !qs.empty ? qs.docs[0].data().weekEndDate?.toDate?.() : null;
         if (!last || last.getTime() < weekAgo.getTime()) {
-          await sendPush({ uid: d.id, title: "Registo semanal", message: "Não chegaste a preencher o teu feedback semanal! Manda mensagem com feedback, por favor.", url: "/weekly" });
+          await sendPush({ uid: d.id, title: "Registo semanal", message: "Ainda vais a tempo de preencher o teu feedback semanal de hoje!", url: "/weekly" });
+        }
+      } catch {}
+    }
+  });
+
+exports.mondayWeekly20 = functions.pubsub
+  .schedule("0 20 * * 1")
+  .timeZone("Europe/Lisbon")
+  .onRun(async () => {
+    const usersSnap = await db.collection("users").get();
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+    for (const d of usersSnap.docs) {
+      const data = d.data();
+      if (data.role === "coach" || data.active === false) continue;
+      try {
+        const qs = await db.collection(`users/${d.id}/weekly`).orderBy("weekEndDate","desc").limit(1).get();
+        const last = !qs.empty ? qs.docs[0].data().weekEndDate?.toDate?.() : null;
+        if (!last || last.getTime() < weekAgo.getTime()) {
+          await sendPush({ uid: d.id, title: "Registo semanal", message: "Não chegaste a enviar o teu feedback semanal. Envia mensagem ao coach com o teu feedback, por favor.", url: "/weekly" });
         }
       } catch {}
     }
@@ -189,7 +206,7 @@ exports.healthChecksDaily09 = functions.pubsub
         const qs = await db.collection(`users/${d.id}/dailyFeedback`).orderBy("date","desc").limit(1).get();
         const last = !qs.empty ? qs.docs[0].data().date?.toDate?.() : null;
         if (!last || daysBetweenUTC(last, now) >= 4) {
-          await sendPush({ uid: d.id, title: "Registos diários", message: "Não tens preenchido os feedbacks diários! Não te esqueças de preencher o diário de hoje!", url: "/daily" });
+          await sendPush({ uid: d.id, title: "Registos diários", message: "Não te esqueças de preencher o teu feedback diário de hoje!", url: "/daily" });
         }
       } catch {}
       // não treina há 5 dias
@@ -207,7 +224,7 @@ exports.healthChecksDaily09 = functions.pubsub
         if (!qs.empty && qs.size >= 3) {
           let okCount=0; qs.forEach(doc=>{ const x=doc.data(); if (x.alimentacao100 === true) okCount++; });
           if (okCount === 0) {
-            await sendPush({ uid: d.id, title: "Alimentação", message: "Não tens cumprido a alimentação a 100% há 3 dias.", url: "/daily" });
+            await sendPush({ uid: d.id, title: "Alimentação", message: "Não andas a cumprir bem a alimentação ultimamente, vamos voltar ao bom ritmo!", url: "/daily" });
           }
         }
       } catch {}
@@ -219,7 +236,7 @@ exports.healthChecksDaily09 = functions.pubsub
           const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(0,0,0,0);
           const nx = new Date(next); nx.setHours(0,0,0,0);
           if (nx.getTime() === tomorrow.getTime()) {
-            await sendPush({ uid: d.id, title: "Marcar Check‑in", message: "Está na hora! Marca o teu próximo Check‑in!", url: "/checkin" });
+            await sendPush({ uid: d.id, title: "Marcar Check‑in", message: "Atenção que amanhã passam 3 semanas do último check-in. Está na hora de marcar o próximo!", url: "/checkin" });
           }
         }
       } catch {}

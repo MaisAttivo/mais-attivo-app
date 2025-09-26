@@ -7,8 +7,8 @@ export async function POST(req: Request) {
     const APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "").trim();
     const REST_RAW = process.env.ONESIGNAL_REST_API_KEY || "";
     const REST = REST_RAW.trim();
-    // mude aqui para EU se precisares, ou define a env NEXT_PUBLIC_ONESIGNAL_ORIGIN
-    const ORIGIN = (process.env.NEXT_PUBLIC_ONESIGNAL_ORIGIN || "https://api.onesignal.com").trim();
+    // Usa ONESIGNAL_API_ORIGIN (server-side). Define para https://api.eu.onesignal.com quando a tua app estiver na região EU
+    const ORIGIN = (process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com").trim();
 
     if (!APP_ID || !REST) {
       return NextResponse.json({ error: "Missing OneSignal keys" }, { status: 500 });

@@ -22,7 +22,8 @@ async function sendPush({ uid, title, message, url, coaches = false }) {
   } else {
     payload.included_segments = ["Subscribed Users"]; // fallback
   }
-  await fetch("https://api.onesignal.com/notifications", {
+  const origin = process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com";
+  await fetch(`${origin}/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Basic ${key}` },
     body: JSON.stringify(payload),

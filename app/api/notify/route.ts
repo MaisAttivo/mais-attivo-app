@@ -19,6 +19,13 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+    
+    // --- proteção por Bearer token (backend/cron/botões do coach) ---
+    const auth = req.headers.get("authorization") || "";
+    const must = `Bearer ${(process.env.NOTIFY_BEARER || "").trim()}`;
+    if (!must || auth !== must) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const base: any = {
       app_id: APP_ID,

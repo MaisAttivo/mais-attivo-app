@@ -1,0 +1,32 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-21h",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/daily-09h",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/vespera-ci-09h",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-dom21",
+      "schedule": "0 21 * * 0"
+    },
+    {
+      "path": "/api/cron/weekly-seg20",
+      "schedule": "0 20 * * 1"
+    },
+    {
+      "path": "/api/cron/coach-08-checkins",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/coach-08-inatividade",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

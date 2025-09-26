@@ -6,6 +6,7 @@ export async function POST(req: Request) {
 
     const APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
     const REST = process.env.ONESIGNAL_REST_API_KEY;
+    const ORIGIN = process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com";
 
     if (!APP_ID || !REST) {
       return NextResponse.json({ error: "Missing OneSignal keys" }, { status: 500 });
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
         include_aliases: { external_id: [uid] }
       };
 
-      let res = await fetch("https://api.onesignal.com/notifications", {
+      let res = await fetch(`${ORIGIN}/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
           ...base,
           filters: [{ field: "tag", key: "uid", relation: "=", value: uid }],
         };
-        const res2 = await fetch("https://api.onesignal.com/notifications", {
+        const res2 = await fetch(`${ORIGIN}/notifications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json; charset=utf-8",
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       // Enviar para todos os subscritos
       const payload = { ...base, included_segments: ["Subscribed Users"] };
 
-      const res = await fetch("https://api.onesignal.com/notifications", {
+      const res = await fetch(`${ORIGIN}/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",

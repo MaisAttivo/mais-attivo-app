@@ -8,6 +8,7 @@ const db = admin.firestore();
 async function sendPush({ uid, title, message, url, coaches = false }) {
   const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
   const key = process.env.ONESIGNAL_REST_API_KEY;
+  const origin = process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com";
   if (!appId || !key) return;
   const payload = {
     app_id: appId,
@@ -22,7 +23,7 @@ async function sendPush({ uid, title, message, url, coaches = false }) {
   } else {
     payload.included_segments = ["Subscribed Users"]; // fallback
   }
-  await fetch("https://api.onesignal.com/notifications", {
+  await fetch(`${origin}/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8", Authorization: `Basic ${key}` },
     body: JSON.stringify(payload),

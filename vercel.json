@@ -2,31 +2,38 @@
   "crons": [
     {
       "path": "/api/cron/daily-21h",
-      "schedule": "0 21 * * *"
+      "schedule": "0 21 * * *",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/daily-09h",
-      "schedule": "0 9 * * *"
+      "schedule": "0 9 * * *",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/vespera-ci-09h",
-      "schedule": "0 9 * * *"
+      "schedule": "0 9 * * *",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/weekly-dom21",
-      "schedule": "0 21 * * 0"
+      "schedule": "0 21 * * 0",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/weekly-seg20",
-      "schedule": "0 20 * * 1"
+      "schedule": "0 20 * * 1",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/coach-08-checkins",
-      "schedule": "0 8 * * *"
+      "schedule": "0 8 * * *",
+      "timezone": "Europe/Lisbon"
     },
     {
       "path": "/api/cron/coach-08-inatividade",
-      "schedule": "0 8 * * *"
+      "schedule": "0 8 * * *",
+      "timezone": "Europe/Lisbon"
     }
   ]
 }

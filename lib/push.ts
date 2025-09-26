@@ -16,3 +16,26 @@ export async function notifyUser(opts: NotifyOptions) {
   if (!res.ok) throw new Error(data?.error || "Falhou enviar notificação");
   return data;
 }
+
+// atalhos prontos
+export async function pushPagamento(uid: string) {
+  return notifyUser({ uid, title: "Pagamento pendente", message: "Há um pagamento por regularizar. Obrigado!" });
+}
+export async function pushMarcarCheckin(uid: string) {
+  return notifyUser({ uid, title: "Marcar Check-in", message: "Está na hora! Marca o teu próximo Check-in!", url: "/checkins" });
+}
+export async function pushRegistosDiarios(uid: string) {
+  return notifyUser({ uid, title: "Registos diários", message: "Não tens preenchido os feedbacks diários! Não te esqueças do diário de hoje!", url: "/daily" });
+}
+export async function pushRegistoSemanal(uid: string) {
+  return notifyUser({ uid, title: "Registo semanal", message: "Não chegaste a preencher o teu feedback semanal! Manda mensagem com feedback, por favor.", url: "/weekly" });
+}
+export async function pushFotos(uid: string) {
+  return notifyUser({ uid, title: "Fotos", message: "Assim que possível, envia as tuas fotos de atualização!", url: "/photos" });
+}
+export async function pushHidratacao(uid: string) {
+  return notifyUser({ uid, title: "Hidratação", message: "Tens andado a falhar com a água! Vamos atingir a meta de água diária!", url: "/daily" });
+}
+export async function pushPlanosAnexados(uid: string) {
+  return notifyUser({ uid, title: "Planos Atualizados!", message: "Planos Atualizados! Qualquer dúvida não hesites em contactar!", url: "/plans" });
+}

@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
 import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
 import SwitchableCalendar from "@/components/SwitchableCalendar";
-import { notifyUser } from "@/lib/push";
+import { pushPagamento, pushMarcarCheckin, pushRegistosDiarios, pushRegistoSemanal, pushFotos, pushHidratacao, pushPlanosAnexados } from "@/lib/push";
 
 /* ===== Helpers ===== */
 const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
@@ -634,6 +634,7 @@ export default function CoachClientProfilePage() {
       } catch (e) {
         console.warn("Falha ao registar notificação de planos:", e);
       }
+      try { await pushPlanosAnexados(uid); } catch (e) { console.warn("Falha push planos:", e); }
       if (kind === "training") { setTrainingUrl(url); setTrainingAt(new Date()); } else { setDietUrl(url); setDietAt(new Date()); }
     } catch (e: any) {
       const msg = e?.message || "Falha no upload.";
@@ -645,28 +646,6 @@ export default function CoachClientProfilePage() {
     }
   }
 
-  async function queuePush(kind: string) {
-    const map: Record<string, { title: string; message: string }> = {
-      pagamento_atrasado: { title: "Pagamento pendente", message: "Há um pagamento por regularizar. Obrigado!" },
-      marcar_checkin: { title: "Marcar Check‑in", message: "Está na hora! Marca o teu próximo Check‑in!" },
-      faltas_diarios: { title: "Registos diários", message: "Não tens preenchido os feedbacks diários! Não te esqueças de preencher o diário de hoje!" },
-      faltas_semanal: { title: "Registo semanal", message: "Não chegaste a preencher o teu feedback semanal! Manda mensagem com feedback, por favor." },
-      enviar_fotos: { title: "Fotos de atualização", message: "Assim que possível, envia as tuas fotos de atualização!" },
-      beber_agua: { title: "Hidratação", message: "Tens andado a falhar com a água! Vamos atingir a meta de água diária!" },
-    };
-    const payload = map[kind] || { title: "Mensagem do Coach", message: kind };
-    try {
-      await notifyUser({ title: payload.title, message: payload.message, uid, url: "/dashboard" });
-      await addDoc(collection(db, "users", uid, "coachNotifications"), {
-        kind,
-        ...payload,
-        createdAt: serverTimestamp(),
-        read: false,
-      });
-    } catch (e) {
-      console.error("queue push failed", e);
-    }
-  }
 
   return (
     <CoachGuard>
@@ -947,7 +926,23 @@ export default function CoachClientProfilePage() {
                 { key: "enviar_fotos", label: "Pedir fotos de atualização" },
                 { key: "beber_agua", label: "Bebe mais água!" },
               ].map((b) => (
-                <Button key={b.key} size="sm" variant="outline" onClick={() => queuePush(b.key)}>{b.label}</Button>
+                <Button
+                  key={b.key}
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      if (b.key === "pagamento_atrasado") await pushPagamento(uid);
+                      else if (b.key === "marcar_checkin") await pushMarcarCheckin(uid);
+                      else if (b.key === "faltas_diarios") await pushRegistosDiarios(uid);
+                      else if (b.key === "faltas_semanal") await pushRegistoSemanal(uid);
+                      else if (b.key === "enviar_fotos") await pushFotos(uid);
+                      else if (b.key === "beber_agua") await pushHidratacao(uid);
+                    } catch (e) { console.error(e); }
+                  }}
+                >
+                  {b.label}
+                </Button>
               ))}
             </div>
             <div className="text-xs text-muted-foreground mt-1">Cria registos em users/{uid}/coachNotifications e notificationsQueue para envio via OneSignal.</div>

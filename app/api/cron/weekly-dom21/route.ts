@@ -17,6 +17,10 @@ function weekId(d = new Date()) {
 }
 
 export async function GET() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", weekday: "short", hour: "2-digit", hour12: false }).formatToParts(new Date());
+  const hour = parts.find(p => p.type === "hour")?.value;
+  const wk = parts.find(p => p.type === "weekday")?.value;
+  if (!(hour === "21" && wk === "Sun")) return NextResponse.json({ skipped: true, hour, weekday: wk });
   const wid = weekId(new Date());
   const users = await adminDb.collection("users").get();
   for (const u of users.docs) {

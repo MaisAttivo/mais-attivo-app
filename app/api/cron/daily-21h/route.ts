@@ -8,6 +8,8 @@ const today = () => new Intl.DateTimeFormat("en-CA", {
 }).format(new Date());
 
 export async function GET() {
+  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: PT, hour: "2-digit", hour12: false }).format(new Date());
+  if (hourPT !== "21") return NextResponse.json({ skipped: true, hourPT });
   const YMD = today();
   const users = await adminDb.collection("users").get();
   for (const u of users.docs) {

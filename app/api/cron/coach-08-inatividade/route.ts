@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { serverNotify as send } from "@/lib/serverNotify";
 
 export async function GET() {
+  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", hour12: false }).format(new Date());
+  if (hourPT !== "08") return NextResponse.json({ skipped: true, hourPT });
   const users = await adminDb.collection("users").get();
   const countByCoach: Record<string, number> = {};
 

@@ -5,6 +5,8 @@ import { serverNotify as send } from "@/lib/serverNotify";
 type Daily = { id: string; didWorkout?: boolean; waterLiters?: number; alimentacao100?: boolean; };
 
 export async function GET() {
+  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", hour12: false }).format(new Date());
+  if (hourPT !== "09") return NextResponse.json({ skipped: true, hourPT });
   const users = await adminDb.collection("users").get();
 
   for (const u of users.docs) {
@@ -30,14 +32,22 @@ export async function GET() {
         "Tens andado a falhar com a água! Vamos atingir a meta de água diária!", "/daily");
     }
 
-    // Inatividade 4 dias (nenhum registo diário)
-    // (Se entendes “nada preenchido”, usa: ausência de docs. Aqui consideramos ausência de DID WORKOUT e diário vazio pode ser tratado noutras regras)
-    // Se preferires “sem QUALQUER daily”, precisas comparar datas. Simplificação: se d.length>0 e o mais recente não é de ontem/hoje por 4 dias consecutivos…
-    // Mantemos mensagem pedida:
-    const semDaily4 = d.length > 0 ? false : true; // adapta se quiseres regra mais estrita
-    if (semDaily4) {
+    // Inatividade 4 dias (sem QUALQUER daily nos últimos 4 dias, em Europe/Lisbon)
+    const todayYMD = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date());
+    function diffYMD(a: string, b: string) {
+      const [ay, am, ad] = a.split("-").map(Number);
+      const [by, bm, bd] = b.split("-").map(Number);
+      const aUTC = Date.UTC(ay, am - 1, ad);
+      const bUTC = Date.UTC(by, bm - 1, bd);
+      return Math.floor((bUTC - aUTC) / 86400000);
+    }
+    const latestId = d[0]?.id || null;
+    const daysSinceLast = latestId ? diffYMD(latestId, todayYMD) : 999;
+    if (daysSinceLast >= 4) {
       await send(uid, "Registos diários",
-        "Não te esqueças de preencher o teu feedback diário de hoje!", "/daily");
+        "Estás há 4 dias sem preencher o feedback diário. Vamos retomar hoje!", "/daily");
     }
 
     // Sem treino ≥5 dias

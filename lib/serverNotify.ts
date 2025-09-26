@@ -10,9 +10,10 @@ export async function serverNotify(uid: string, title: string, message: string, 
   const bearer = (process.env.NOTIFY_BEARER || "").trim();
   if (!bearer) throw new Error("NOTIFY_BEARER is not configured");
 
-  // Prefer configured base URL; otherwise reconstruct from common headers when available
-  const origin = (process.env.NEXT_PUBLIC_BASE_URL || "").trim() ||
-    "https://mais-ativo-app.vercel.app"; // fallback to production host if env not provided
+  // Compute origin for server environment (Vercel cron/functions)
+  const baseFromEnv = (process.env.NEXT_PUBLIC_BASE_URL || "").trim();
+  const vercelHost = (process.env.VERCEL_URL || "").trim();
+  const origin = baseFromEnv || (vercelHost ? `https://${vercelHost}` : "https://mais-ativo-app.vercel.app");
 
   const res = await fetch(`${origin.replace(/\/$/, "")}/api/notify`, {
     method: "POST",

@@ -4,11 +4,20 @@ export async function POST(req: Request) {
   try {
     const { title, message, uid, url } = await req.json();
 
-    const APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "").trim();
-    const REST_RAW = process.env.ONESIGNAL_REST_API_KEY || "";
     const REST = REST_RAW.trim();
-    // Usa ONESIGNAL_API_ORIGIN (server-side). Define para https://api.eu.onesignal.com quando a tua app estiver na região EU
-    const ORIGIN = (process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com").trim();
+    const APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+    const REST   = process.env.ONESIGNAL_REST_API_KEY;
+    const ORIGIN = process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com";
+
+    let res = await fetch(`${ORIGIN}/notifications`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": `Basic ${REST}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
 
     if (!APP_ID || !REST) {
       return NextResponse.json({ error: "Missing OneSignal keys" }, { status: 500 });

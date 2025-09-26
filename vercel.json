@@ -1,11 +1,11 @@
 {
   "crons": [
-    { "path": "/api/cron/daily-21h",         "schedule": "0 * * * *" },
-    { "path": "/api/cron/daily-09h",         "schedule": "0 * * * *" },
-    { "path": "/api/cron/vespera-ci-09h",    "schedule": "0 * * * *" },
-    { "path": "/api/cron/weekly-dom21",      "schedule": "0 * * * *" },
-    { "path": "/api/cron/weekly-seg20",      "schedule": "0 * * * *" },
-    { "path": "/api/cron/coach-08-checkins", "schedule": "0 * * * *" },
-    { "path": "/api/cron/coach-08-inatividade","schedule": "0 * * * *" }
+    { "path": "/api/cron/daily-21h",           "schedule": "0 20 * * *" },  // 21:00 Lisboa ≈ 20:00 UTC (horário de verão)
+    { "path": "/api/cron/daily-09h",           "schedule": "0 8 * * *"  },  // 09:00 Lisboa ≈ 08:00 UTC (verão)
+    { "path": "/api/cron/vespera-ci-09h",      "schedule": "0 8 * * *"  },  // 09:00 Lisboa ≈ 08:00 UTC
+    { "path": "/api/cron/weekly-dom21",        "schedule": "0 20 * * 0" },  // Dom 21:00 Lisboa ≈ 20:00 UTC
+    { "path": "/api/cron/weekly-seg20",        "schedule": "0 19 * * 1" },  // Seg 20:00 Lisboa ≈ 19:00 UTC
+    { "path": "/api/cron/coach-08-checkins",   "schedule": "0 7 * * *"  },  // 08:00 Lisboa ≈ 07:00 UTC
+    { "path": "/api/cron/coach-08-inatividade","schedule": "0 7 * * *"  }   // 08:00 Lisboa ≈ 07:00 UTC
   ]
 }

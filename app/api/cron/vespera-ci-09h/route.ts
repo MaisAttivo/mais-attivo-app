@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { serverNotify as send } from "@/lib/serverNotify";
 
 const PT = "Europe/Lisbon";
 const ymd = (d: Date) => new Intl.DateTimeFormat("en-CA", {
   timeZone: PT, year:"numeric", month:"2-digit", day:"2-digit"
 }).format(d);
-
-async function send(uid: string, title: string, message: string, url?: string) {
-  await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notify`, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ uid, title, message, url })
-  });
-}
 
 export async function GET() {
   const now = new Date();

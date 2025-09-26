@@ -4,31 +4,21 @@ export async function POST(req: Request) {
   try {
     const { title, message, uid, url } = await req.json();
 
-    const REST = REST_RAW.trim();
     const APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-    const REST   = process.env.ONESIGNAL_REST_API_KEY;
+    const REST = process.env.ONESIGNAL_REST_API_KEY;
     const ORIGIN = process.env.ONESIGNAL_API_ORIGIN || "https://api.onesignal.com";
 
-    let res = await fetch(`${ORIGIN}/notifications`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Authorization": `Basic ${REST}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-
     if (!APP_ID || !REST) {
-      return NextResponse.json({ error: "Missing OneSignal keys" }, { status: 500 });
+      return NextResponse.json({ error: "Missing OneSignal configuration" }, { status: 500 });
     }
 
-    const base: any = {
+    const base: Record<string, any> = {
       app_id: APP_ID,
       target_channel: "push",
       headings: { en: title ?? "Mais+Ativo", pt: title ?? "Mais+Ativo" },
       contents: { en: message ?? "", pt: message ?? "" },
     };
+
     if (url) {
       base.url = url;
       base.web_push = { url };
@@ -41,34 +31,37 @@ export async function POST(req: Request) {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
-          "Authorization": `Basic ${REST}`,
+          Authorization: `Basic ${REST}`,
         },
         body: JSON.stringify(body),
       });
+
       const text = await res.text();
       if (!res.ok) {
         return NextResponse.json(
-          { error: "OneSignal rejected request", status: res.status, details: text, origin: ORIGIN, hasRest: !!REST, restLen: REST.length },
+          { error: "OneSignal rejected request", status: res.status, details: text, origin: ORIGIN },
           { status: 400 }
         );
       }
-      try { return NextResponse.json(JSON.parse(text), { status: 200 }); }
-      catch { return NextResponse.json({ ok: true, raw: text }, { status: 200 }); }
+
+      try {
+        return NextResponse.json(JSON.parse(text), { status: 200 });
+      } catch {
+        return NextResponse.json({ ok: true, raw: text }, { status: 200 });
+      }
     }
 
     if (uid) {
-      // modo moderno (external_id)
       const modern = { ...base, include_aliases: { external_id: [uid] } };
       const resp = await post(modern);
       if (resp.status !== 400) return resp;
 
-      // fallback legacy (tag uid)
       const legacy = { ...base, filters: [{ field: "tag", key: "uid", relation: "=", value: uid }] };
       return post(legacy);
-    } else {
-      const broadcast = { ...base, included_segments: ["Subscribed Users"] };
-      return post(broadcast);
     }
+
+    const broadcast = { ...base, included_segments: ["Subscribed Users"] };
+    return post(broadcast);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }

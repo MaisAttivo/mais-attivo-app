@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { serverNotify as send } from "@/lib/serverNotify";
 
 function startOfISOWeek(d = new Date()) {
   const day = (d.getUTCDay()+6)%7;
@@ -13,12 +14,6 @@ function weekId(d = new Date()) {
   const diff = Math.floor((+s - +jan1)/86400000);
   const w = Math.ceil((diff + (jan1.getUTCDay()||7))/7);
   return `${year}-W${String(w).padStart(2,"0")}`;
-}
-async function send(uid: string, title: string, message: string, url?: string) {
-  await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notify`, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ uid, title, message, url })
-  });
 }
 
 export async function GET() {

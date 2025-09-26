@@ -194,15 +194,15 @@ function LiftCard(props: {
   const { title, prs, best, w, r, onW, onR, saving, onSave } = props;
   return (
     <section className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold">{title}</h2>
         {best ? (
-          <div className="text-sm text-slate-700">
+          <div className="text-sm text-slate-700 mt-2 sm:mt-0">
             Melhor (1RM): <span className="font-semibold">{best.weight} kg × {best.reps}</span>
             <span className="ml-2 text-xs text-slate-500">(~{epley1RM(best.weight, best.reps)} kg)</span>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">Sem 1RM registado</div>
+          <div className="text-sm text-slate-500 mt-2 sm:mt-0">Sem 1RM registado</div>
         )}
       </div>
 

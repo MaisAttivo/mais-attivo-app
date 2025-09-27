@@ -23,12 +23,19 @@ function usePhotoSets() {
       if (!res.ok) throw new Error("Falha ao carregar");
       const data = await res.json();
       const arr: any[] = Array.isArray(data.sets) ? data.sets : [];
-      const mapped: PhotoSet[] = arr.map((s) => ({
-        id: String(s.id),
-        createdAt: s.createdAt ? new Date(s.createdAt.toDate ? s.createdAt.toDate() : s.createdAt) : null,
-        urls: Array.isArray(s.urls) ? s.urls.filter((x: any) => typeof x === "string") : [],
-        coverUrl: typeof s.coverUrl === "string" ? s.coverUrl : (Array.isArray(s.urls) && typeof s.urls[0] === "string" ? s.urls[0] : null),
-      }));
+      const mapped: PhotoSet[] = arr.map((s) => {
+        let created: Date | null = null;
+        const c = s.createdAt;
+        if (c) {
+          if (typeof (c as any).toDate === "function") created = new Date((c as any).toDate());
+          else if (typeof c === "string" || typeof c === "number") created = new Date(c as any);
+          else if (typeof (c as any).seconds === "number") created = new Date((c as any).seconds * 1000);
+          else if (typeof (c as any)._seconds === "number") created = new Date((c as any)._seconds * 1000);
+        }
+        const urls = Array.isArray(s.urls) ? s.urls.filter((x: any) => typeof x === "string") : [];
+        const coverUrl = typeof s.coverUrl === "string" ? s.coverUrl : (urls[0] || null);
+        return { id: String(s.id), createdAt: created, urls, coverUrl } as PhotoSet;
+      });
       setSets(mapped);
     } catch (e: any) {
       setError(e?.message || "Erro");

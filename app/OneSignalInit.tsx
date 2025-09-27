@@ -1,88 +1,102 @@
 "use client";
+
 import { useEffect } from "react";
 import { useSession } from "@/lib/auth";
+
+const OS_SDK_URL = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
 
 export default function OneSignalInit() {
   const { uid } = useSession();
 
-  // Load SDK and init once
+  // Carrega o SDK e faz init (uma vez)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (!(window as any).OneSignal) {
+    const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+    if (!appId) {
+      console.warn("OneSignal: NEXT_PUBLIC_ONESIGNAL_APP_ID em falta");
+      return;
+    }
+
+    const w = window as any;
+    w.OneSignal = w.OneSignal || [];
+    const Q = w.OneSignal as any[];
+
+    // agenda o init para quando o SDK estiver pronto
+    Q.push(function initOS() {
+      try {
+        w.OneSignal.init({
+          appId,
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: { enable: false },
+
+          // usa o teu SW único (PWA + OneSignal)
+          serviceWorkerPath: "/sw.js",
+          serviceWorkerUpdaterPath: "/sw.js",
+          serviceWorkerParam: { scope: "/" },
+        });
+      } catch (e) {
+        console.error("OneSignal init error:", e);
+      }
+    });
+
+    // injeta o script se ainda não existir
+    if (!document.querySelector(`script[src="${OS_SDK_URL}"]`)) {
       const s = document.createElement("script");
-      s.src = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
+      s.src = OS_SDK_URL;
       s.async = true;
       document.head.appendChild(s);
     }
-
-    const envAppId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-    console.log("ENV appId =", envAppId);
-
-    (window as any).OneSignal = (window as any).OneSignal || [];
-    (window as any).OneSignal.push(function () {
-      (window as any).OneSignal.init({
-        appId: envAppId || "9fa86255-e2fe-4c8f-9efc-6a2aa9bd3b51",
-        allowLocalhostAsSecureOrigin: true,
-        notifyButton: { enable: false },
-        serviceWorkerPath: "/OneSignalSDKWorker.js",
-        serviceWorkerUpdaterPath: "/OneSignalSDKUpdaterWorker.js",
-        serviceWorkerParam: { scope: "/" },
-      });
-    });
   }, []);
 
-  // Link/unlink the current Firebase user to OneSignal device
+  // Liga/desliga o utilizador atual ao device (external_id + tag uid)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
-    queue.push(async () => {
+    const w = window as any;
+    w.OneSignal = w.OneSignal || [];
+    w.OneSignal.push(async () => {
+      const OS = w.OneSignal;
       try {
-        const OS = (window as any).OneSignal;
         if (uid) {
-          if (typeof OS?.login === "function") {
-            await OS.login(uid);
-          } else if (typeof OS?.setExternalUserId === "function") {
-            await OS.setExternalUserId(uid);
-          }
-          if (OS?.User?.addTag) {
-            await OS.User.addTag("uid", uid);
-          } else if (typeof OS?.sendTag === "function") {
-            await OS.sendTag("uid", uid);
-          }
+          if (typeof OS?.login === "function") await OS.login(uid);
+          else if (typeof OS?.setExternalUserId === "function") await OS.setExternalUserId(uid);
+
+          if (OS?.User?.addTag) await OS.User.addTag("uid", uid);
+          else if (typeof OS?.sendTag === "function") await OS.sendTag("uid", uid);
         } else {
-          if (typeof OS?.logout === "function") {
-            await OS.logout();
-          } else if (typeof OS?.removeExternalUserId === "function") {
-            await OS.removeExternalUserId();
-          }
-          if (OS?.User?.removeTag) {
-            await OS.User.removeTag("uid");
-          }
+          if (typeof OS?.logout === "function") await OS.logout();
+          else if (typeof OS?.removeExternalUserId === "function") await OS.removeExternalUserId();
+
+          if (OS?.User?.removeTag) await OS.User.removeTag("uid");
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
     });
   }, [uid]);
 
-  // On permission/subscription changes, ensure the user is linked
+  // Se a permissão/inscrição mudar, volta a garantir o link ao utilizador
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const queue = ((window as any).OneSignal = (window as any).OneSignal || []);
-    queue.push(() => {
-      const OS = (window as any).OneSignal;
-      try {
-        const relink = async () => {
-          try {
-            if (!uid) return;
-            if (typeof OS?.login === "function") await OS.login(uid);
-            else if (typeof OS?.setExternalUserId === "function") await OS.setExternalUserId(uid);
-            if (OS?.User?.addTag) await OS.User.addTag("uid", uid);
-            else if (typeof OS?.sendTag === "function") await OS.sendTag("uid", uid);
-          } catch {}
-        };
-        OS?.Notifications?.addEventListener?.("permissionChange", relink);
-        OS?.Notifications?.addEventListener?.("subscribe", relink);
-      } catch {}
+    const w = window as any;
+    w.OneSignal = w.OneSignal || [];
+    w.OneSignal.push(() => {
+      const OS = w.OneSignal;
+      const relink = async () => {
+        try {
+          if (!uid) return;
+          if (typeof OS?.login === "function") await OS.login(uid);
+          else if (typeof OS?.setExternalUserId === "function") await OS.setExternalUserId(uid);
+
+          if (OS?.User?.addTag) await OS.User.addTag("uid", uid);
+          else if (typeof OS?.sendTag === "function") await OS.sendTag("uid", uid);
+        } catch {
+          /* no-op */
+        }
+      };
+
+      OS?.Notifications?.addEventListener?.("permissionChange", relink);
+      OS?.Notifications?.addEventListener?.("subscribe", relink);
     });
   }, [uid]);
 

@@ -1,35 +1,51 @@
+// app/api/cron/weekly-seg20/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { serverNotify as send } from "@/lib/serverNotify";
+import { getAdminDB } from "@/lib/adminDB";
+import { startOfISOWeekYMD } from "@/lib/ymd";
+import { forEachUsersPaged } from "@/lib/forEachUsersPaged";
+import { serverNotify } from "@/lib/serverNotify";
 
-function startOfISOWeek(d = new Date()) {
-  const day = (d.getUTCDay()+6)%7;
-  const s = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()-day));
-  s.setUTCHours(0,0,0,0); return s;
-}
-function weekId(d = new Date()) {
-  const s = startOfISOWeek(d);
-  const year = s.getUTCFullYear();
-  const jan1 = new Date(Date.UTC(year,0,1));
-  const diff = Math.floor((+s - +jan1)/86400000);
-  const w = Math.ceil((diff + (jan1.getUTCDay()||7))/7);
-  return `${year}-W${String(w).padStart(2,"0")}`;
-}
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const dry = url.searchParams.get("dry") === "1";
+    const uidTest = url.searchParams.get("uid");
+    const weekStart = startOfISOWeekYMD(new Date());
+    const db = getAdminDB();
 
-export async function GET() {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", weekday: "short", hour: "2-digit", hour12: false }).formatToParts(new Date());
-  const hour = parts.find(p => p.type === "hour")?.value;
-  const wk = parts.find(p => p.type === "weekday")?.value;
-  if (!(hour === "20" && wk === "Mon")) return NextResponse.json({ skipped: true, hour, weekday: wk });
-  const wid = weekId(new Date());
-  const users = await adminDb.collection("users").get();
-  for (const u of users.docs) {
-    const uid = u.id;
-    const w = await adminDb.doc(`users/${uid}/weeklyFeedback/${wid}`).get();
-    if (!w.exists) {
-      await send(uid, "Feedback semanal",
-        "Não chegaste a enviar o teu feedback semanal. Envia mensagem ao coach com o teu feedback, por favor.", "/weekly");
+    const should = (u:any) => u?.lastWeeklyYMD !== weekStart && u?.weeklyThisWeek !== true;
+
+    const hit = async (uid: string) => {
+      if (!dry)
+        await serverNotify(
+          uid,
+          "Feedback semanal em falta",
+          "Não chegaste a enviar o teu feedback semanal. Envia mensagem ao coach com o teu feedback, por favor.",
+          "https://mais-attivo-app.vercel.app"
+        );
+    };
+
+    if (uidTest) {
+      const d = await db.doc(`users/${uidTest}`).get();
+      const will = should(d.data());
+      if (will) await hit(uidTest);
+      return NextResponse.json({ ok: true, test: true, uid: uidTest, willSend: will, dry });
     }
+
+    let checked = 0, sent = 0;
+    await forEachUsersPaged(db, {
+      pageSize: 200,
+      fields: ["lastWeeklyYMD", "weeklyThisWeek"],
+      handler: async (doc) => {
+        checked++;
+        if (should(doc.data())) { await hit(doc.id); sent++; }
+      },
+    });
+
+    return NextResponse.json({ ok: true, weekStart, checked, sent, dry });
+  } catch (e:any) {
+    return NextResponse.json({ ok:false, error:String(e?.message||e) }, { status:500 });
   }
-  return NextResponse.json({ ok: true });
 }

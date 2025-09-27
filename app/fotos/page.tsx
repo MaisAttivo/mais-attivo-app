@@ -46,7 +46,7 @@ function usePhotoSets() {
         const coverUrl = typeof s.coverUrl === "string" ? s.coverUrl : (urls[0] || null);
         return { id: String(s.id), createdAt: created, urls, coverUrl } as PhotoSet;
       });
-      setSets(mapped);
+      setSets(mapped.filter((s) => Array.isArray(s.urls) && s.urls.length > 0));
     } catch (e: any) {
       setError(e?.message || "Erro");
       setSets([]);

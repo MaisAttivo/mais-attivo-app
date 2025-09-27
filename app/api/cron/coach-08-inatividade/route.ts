@@ -1,32 +1,38 @@
+// app/api/cron/coach-08-inatividade/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { serverNotify as send } from "@/lib/serverNotify";
+import { getAdminDB } from "@/lib/adminDB";
+import { ymdLisbon, diffDays } from "@/lib/ymd";
+import { forEachUsersPaged } from "@/lib/forEachUsersPaged";
+import { serverNotify } from "@/lib/serverNotify";
 
 export async function GET() {
-  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", hour12: false }).format(new Date());
-  if (hourPT !== "08") return NextResponse.json({ skipped: true, hourPT });
-  const users = await adminDb.collection("users").get();
-  const countByCoach: Record<string, number> = {};
+  try {
+    const db = getAdminDB();
+    const today = ymdLisbon();
+    const coachUid = process.env.COACH_UID;
+    if (!coachUid) return NextResponse.json({ ok:false, error:"COACH_UID missing" }, { status:500 });
 
-  for (const u of users.docs) {
-    const coachUid = u.get("coachUid");
-    if (!coachUid) continue;
-    const uid = u.id;
-
-    const snap = await adminDb.collection(`users/${uid}/dailyFeedback`)
-      .orderBy("__name__", "desc").limit(5).get();
-    if (snap.size < 5) continue;
-    const noWorkout5 = snap.docs.every(x => {
-      const v = x.data() as any;
-      return (v.didWorkout ?? v.treinou) !== true;
+    let count = 0;
+    await forEachUsersPaged(db, {
+      pageSize: 400,
+      fields: ["lastDailyYMD"],
+      handler: async (doc) => {
+        let lastDaily = doc.get("lastDailyYMD");
+        if (!lastDaily) {
+          const s = await db.collection(`users/${doc.id}/dailyFeedback`).orderBy("date","desc").limit(1).get();
+          lastDaily = s.empty ? null : s.docs[0].id;
+        }
+        if (!lastDaily || diffDays(today, lastDaily) >= 5) count++;
+      },
     });
-    if (noWorkout5) countByCoach[coachUid] = (countByCoach[coachUid] ?? 0) + 1;
-  }
 
-  for (const coachUid of Object.keys(countByCoach)) {
-    const n = countByCoach[coachUid];
-    await send(coachUid, "Inatividade 5+ dias",
-      `${n} cliente(s) sem registos há ≥5 dias.`, "/coach");
+    if (count > 0) {
+      await serverNotify(coachUid, "Inatividade 5+ dias", `${count} cliente(s) sem registos há ≥5 dias.`);
+    }
+    return NextResponse.json({ ok:true, today, count });
+  } catch (e:any) {
+    return NextResponse.json({ ok:false, error:String(e?.message||e) }, { status:500 });
   }
-  return NextResponse.json({ ok: true });
 }

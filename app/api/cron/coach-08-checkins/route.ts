@@ -1,33 +1,34 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { serverNotify as send } from "@/lib/serverNotify";
+// app/api/cron/coach-08-checkins/route.ts
+export const runtime = "nodejs";
 
-const PT = "Europe/Lisbon";
-const ymd = (d: Date) => new Intl.DateTimeFormat("en-CA", {
-  timeZone: PT, year:"numeric", month:"2-digit", day:"2-digit"
-}).format(d);
+import { NextResponse } from "next/server";
+import { getAdminDB } from "@/lib/adminDB";
+import { ymdLisbon } from "@/lib/ymd";
+import { forEachUsersPaged } from "@/lib/forEachUsersPaged";
+import { serverNotify } from "@/lib/serverNotify";
 
 export async function GET() {
-  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: PT, hour: "2-digit", hour12: false }).format(new Date());
-  if (hourPT !== "08") return NextResponse.json({ skipped: true, hourPT });
-  const today = ymd(new Date());
-  const users = await adminDb.collection("users").get();
+  try {
+    const db = getAdminDB();
+    const today = ymdLisbon();
+    const coachUid = process.env.COACH_UID; // define isto no Vercel
 
-  const countByCoach: Record<string, number> = {};
+    if (!coachUid) return NextResponse.json({ ok:false, error:"COACH_UID missing" }, { status:500 });
 
-  for (const u of users.docs) {
-    const coachUid = u.get("coachUid");
-    if (!coachUid) continue;
-    const uid = u.id;
-    const qs = await adminDb.collection(`users/${uid}/checkins`)
-      .where("dateText","==", today).limit(1).get();
-    if (!qs.empty) countByCoach[coachUid] = (countByCoach[coachUid] ?? 0) + 1;
+    let count = 0;
+    await forEachUsersPaged(db, {
+      pageSize: 400, // dá para mais rápido
+      fields: ["nextCheckinYMD"],
+      handler: async (doc) => {
+        if (doc.get("nextCheckinYMD") === today) count++;
+      },
+    });
+
+    if (count > 0) {
+      await serverNotify(coachUid, "Check-ins de hoje", `${count} cliente(s) com CI para marcar hoje.`);
+    }
+    return NextResponse.json({ ok:true, today, count });
+  } catch (e:any) {
+    return NextResponse.json({ ok:false, error:String(e?.message||e) }, { status:500 });
   }
-
-  for (const coachUid of Object.keys(countByCoach)) {
-    const n = countByCoach[coachUid];
-    await send(coachUid, "Check-ins de hoje",
-      `${n} cliente(s) com CI para marcar hoje.`, "/coach/checkins");
-  }
-  return NextResponse.json({ ok: true });
 }

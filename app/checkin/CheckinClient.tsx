@@ -86,13 +86,6 @@ export default function CheckinClient() {
         return;
       }
       setUid(u.uid);
-      const token = await u.getIdTokenResult(true);
-      const allowedByClaims =
-        token.claims?.coach === true || token.claims?.role === "coach" || token.claims?.role === "admin";
-      if (allowedByClaims) {
-        setIsCoach(true);
-        return;
-      }
       try {
         const snap = await getDoc(doc(db, "users", u.uid));
         const role = snap.exists() ? (snap.get("role") as string | undefined) : undefined;

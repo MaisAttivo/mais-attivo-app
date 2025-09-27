@@ -254,7 +254,7 @@ export default function FotosPage() {
             <CardTitle>Atualização Fotos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Uploader onUploaded={reload} disabled={hasThisWeek} weekId={thisWeekId} />
+            <Uploader onUploaded={reload} />
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>

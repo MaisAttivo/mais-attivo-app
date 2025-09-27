@@ -87,10 +87,22 @@ export default function CheckinClient() {
       }
       setUid(u.uid);
       const token = await u.getIdTokenResult(true);
-      const coachClaim =
-        token.claims?.coach === true || token.claims?.role === "coach";
-      setIsCoach(coachClaim);
-      if (!coachClaim) setMsg("Acesso reservado a coach.");
+      const allowedByClaims =
+        token.claims?.coach === true || token.claims?.role === "coach" || token.claims?.role === "admin";
+      if (allowedByClaims) {
+        setIsCoach(true);
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        const role = snap.exists() ? (snap.get("role") as string | undefined) : undefined;
+        const ok = role === "coach" || role === "admin";
+        setIsCoach(ok);
+        if (!ok) setMsg("Sem acesso (coach apenas).");
+      } catch {
+        setIsCoach(false);
+        setMsg("Sem acesso (coach apenas).");
+      }
     });
     return () => unsub();
   }, [router]);

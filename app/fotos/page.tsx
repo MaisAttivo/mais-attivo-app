@@ -54,7 +54,9 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [coverIdx, setCoverIdx] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   function onPick() { inputRef.current?.click(); }
@@ -66,28 +68,66 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
     setFiles(imgs);
     const urls = imgs.map((f) => URL.createObjectURL(f));
     setPreviews(urls);
+    setCoverIdx(urls.length > 0 ? 0 : null);
   }
 
   async function handleUpload() {
     if (files.length === 0) { setErr("Seleciona até 4 imagens"); return; }
     setUploading(true);
+    setProgress(0);
     setErr(null);
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append("files", f));
       const token = await auth?.currentUser?.getIdToken();
-      const res = await fetch("/api/storage/photos", { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error === "max_4" ? "Máximo 4 imagens" : j?.message || "Falha ao enviar");
+
+      const resJson: any = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/storage/photos");
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.floor((e.loaded / e.total) * 100);
+            setProgress(pct);
+          }
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            try {
+              const json = JSON.parse(xhr.responseText || "{}");
+              if (xhr.status >= 200 && xhr.status < 300) resolve(json);
+              else reject(new Error(json?.error === "max_4" ? "Máximo 4 imagens" : json?.message || "Falha ao enviar"));
+            } catch (e) {
+              if (xhr.status >= 200 && xhr.status < 300) resolve({});
+              else reject(new Error("Falha ao enviar"));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error("Falha de rede"));
+        xhr.send(fd);
+      });
+
+      if (typeof coverIdx === "number" && Array.isArray(resJson?.urls) && resJson?.weekId) {
+        const chosenUrl = resJson.urls[coverIdx] || resJson.urls[0];
+        try {
+          const t = await auth?.currentUser?.getIdToken();
+          await fetch("/api/storage/photos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+            body: JSON.stringify({ weekId: String(resJson.weekId), coverUrl: String(chosenUrl) }),
+          });
+        } catch {}
       }
+
       setFiles([]);
       setPreviews([]);
+      setCoverIdx(null);
       onUploaded();
     } catch (e: any) {
       setErr(e?.message || "Erro ao enviar");
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   }
 
@@ -102,10 +142,34 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
         </Button>
         {err && <div className="text-xs text-red-600">{err}</div>}
       </div>
+
+      {typeof progress === "number" && (
+        <div className="w-full max-w-sm mt-3">
+          <div className="h-2 rounded bg-slate-200 overflow-hidden">
+            <div className="h-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="text-[11px] text-slate-600 mt-1">{progress}%</div>
+        </div>
+      )}
+
       {previews.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {previews.map((src, i) => (
-            <img key={i} src={src} alt={`Pré-visualização ${i + 1}`} className="h-24 w-24 object-cover rounded-lg" />
+            <div key={i} className="relative">
+              <button type="button" className="block w-full" onClick={() => setCoverIdx(i)} disabled={uploading}>
+                <div className="relative h-24 w-full bg-muted rounded-lg overflow-hidden">
+                  <img src={src} alt={`Pré-visualização ${i + 1}`} className="absolute inset-0 h-full w-full object-cover" />
+                </div>
+              </button>
+              {coverIdx === i && (
+                <div className="absolute top-1 left-1 rounded-full bg-blue-600 text-white text-[10px] px-2 py-0.5 shadow">
+                  Capa
+                </div>
+              )}
+              <div className="mt-1 flex justify-center">
+                <Button size="sm" variant="outline" onClick={() => setCoverIdx(i)} disabled={uploading}>Escolher como capa</Button>
+              </div>
+            </div>
           ))}
         </div>
       )}

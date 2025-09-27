@@ -1,67 +1,121 @@
+// app/api/cron/daily-09h/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { serverNotify as send } from "@/lib/serverNotify";
+import { getAdminDB } from "@/lib/adminDB";
+import { ymdLisbon, diffDays } from "@/lib/ymd";
+import { forEachUsersPaged } from "@/lib/forEachUsersPaged";
+import { mapLimit } from "@/lib/concurrency";
+import { serverNotify } from "@/lib/serverNotify";
 
-type Daily = { id: string; didWorkout?: boolean; waterLiters?: number; alimentacao100?: boolean; };
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const dry = url.searchParams.get("dry") === "1";
+    const uidTest = url.searchParams.get("uid");
+    const today = ymdLisbon();
+    const db = getAdminDB();
 
-export async function GET() {
-  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Lisbon", hour: "2-digit", hour12: false }).format(new Date());
-  if (hourPT !== "09") return NextResponse.json({ skipped: true, hourPT });
-  const users = await adminDb.collection("users").get();
+    const evaluateUser = async (uid: string, u: any) => {
+      const acts: { key: string; title: string; message: string; url?: string }[] = [];
 
-  for (const u of users.docs) {
-    const uid = u.id;
-    const metaAgua = Number(u.get("metaAgua") ?? 3);
+      // Água (usa derivados; fallback: lê últimos 3 dailies)
+      let waterAvg3d = u?.waterAvg3d;
+      let waterGoal = u?.waterGoal ?? 3.0;
+      if (waterAvg3d == null) {
+        const snap = await db.collection(`users/${uid}/dailyFeedback`).orderBy("date", "desc").limit(3).get();
+        if (!snap.empty) {
+          const vals: number[] = [];
+          for (const d of snap.docs) {
+            const w = d.get("waterLiters");
+            if (typeof w === "number") vals.push(w);
+            if (typeof d.get("metaAgua") === "number") waterGoal = d.get("metaAgua");
+          }
+          if (vals.length) waterAvg3d = +(vals.reduce((a,b)=>a+b, 0)/vals.length).toFixed(2);
+        }
+      }
+      if (waterAvg3d != null && waterAvg3d < waterGoal) {
+        acts.push({
+          key: "agua",
+          title: "Hidratação",
+          message: "Tens andado a falhar com a água! Vamos atingir a meta de água diária!",
+        });
+      }
 
-    const snap = await adminDb.collection(`users/${uid}/dailyFeedback`)
-      .orderBy("__name__", "desc").limit(7).get();
-    const d: Daily[] = snap.docs.map(x => {
-      const v = x.data() as any;
-      return {
-        id: x.id,
-        didWorkout: v.didWorkout ?? v.treinou ?? false,
-        waterLiters: Number(v.waterLiters ?? v.aguaLitros ?? 0),
-        alimentacao100: !!(v.alimentacao100 ?? v.alimentacaoOk),
-      };
+      // Inatividade (sem daily) >= 4 dias
+      let lastDaily = u?.lastDailyYMD;
+      if (!lastDaily) {
+        const snap = await db.collection(`users/${uid}/dailyFeedback`).orderBy("date", "desc").limit(1).get();
+        lastDaily = snap.empty ? null : snap.docs[0].id;
+      }
+      if (!lastDaily || diffDays(today, lastDaily) >= 4) {
+        acts.push({
+          key: "inatividade",
+          title: "Não te esqueças do diário!",
+          message: "Não te esqueças de preencher o teu feedback diário de hoje!",
+          url: "https://mais-attivo-app.vercel.app/daily",
+        });
+      }
+
+      // Sem treino >= 5 dias
+      let lastWorkout = u?.lastWorkoutYMD;
+      if (!lastWorkout) {
+        const snap = await db.collection(`users/${uid}/dailyFeedback`).where("didWorkout", "==", true).orderBy("date", "desc").limit(1).get();
+        lastWorkout = snap.empty ? null : snap.docs[0].id;
+      }
+      if (!lastWorkout || diffDays(today, lastWorkout) >= 5) {
+        acts.push({
+          key: "treino",
+          title: "Volta aos treinos 💪",
+          message: "Está na hora de voltar aos treinos!",
+        });
+      }
+
+      // Alimentação 3 dias sem 100%
+      let lastMeal100 = u?.lastMeal100YMD;
+      if (!lastMeal100) {
+        const snap = await db.collection(`users/${uid}/dailyFeedback`).where("alimentacao100", "==", true).orderBy("date", "desc").limit(1).get();
+        lastMeal100 = snap.empty ? null : snap.docs[0].id;
+      }
+      if (!lastMeal100 || diffDays(today, lastMeal100) >= 3) {
+        acts.push({
+          key: "alimentacao",
+          title: "Alimentação",
+          message: "Não andas a cumprir bem a alimentação ultimamente, vamos voltar ao bom ritmo!",
+        });
+      }
+
+      return acts;
+    };
+
+    if (uidTest) {
+      const doc = await db.doc(`users/${uidTest}`).get();
+      if (!doc.exists) return NextResponse.json({ ok: false, error: "user not found" }, { status: 404 });
+      const acts = await evaluateUser(uidTest, doc.data());
+      if (!dry) for (const a of acts) await serverNotify(uidTest, a.title, a.message, a.url);
+      return NextResponse.json({ ok: true, test: true, uid: uidTest, actions: acts, sent: !dry });
+    }
+
+    let checked = 0, sent = 0;
+    await forEachUsersPaged(db, {
+      pageSize: 200,
+      fields: ["lastDailyYMD","lastWorkoutYMD","lastMeal100YMD","meal100Streak","waterAvg3d","waterGoal"],
+      handler: async (doc) => {
+        checked++;
+        const uid = doc.id;
+        const acts = await evaluateUser(uid, doc.data());
+
+        // envia com limite de concorrência
+        await mapLimit(acts, 8, async (a) => {
+          if (!dry) {
+            try { await serverNotify(uid, a.title, a.message, a.url); sent++; } catch {}
+          }
+        });
+      },
     });
 
-    // Água < meta durante 3 dias seguidos
-    const ult3 = d.slice(0,3);
-    if (ult3.length === 3 && ult3.every(x => (x.waterLiters ?? 0) < metaAgua)) {
-      await send(uid, "Hidratação",
-        "Tens andado a falhar com a água! Vamos atingir a meta de água diária!", "/daily");
-    }
-
-    // Inatividade 4 dias (sem QUALQUER daily nos últimos 4 dias, em Europe/Lisbon)
-    const todayYMD = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Lisbon", year: "numeric", month: "2-digit", day: "2-digit"
-    }).format(new Date());
-    function diffYMD(a: string, b: string) {
-      const [ay, am, ad] = a.split("-").map(Number);
-      const [by, bm, bd] = b.split("-").map(Number);
-      const aUTC = Date.UTC(ay, am - 1, ad);
-      const bUTC = Date.UTC(by, bm - 1, bd);
-      return Math.floor((bUTC - aUTC) / 86400000);
-    }
-    const latestId = d[0]?.id || null;
-    const daysSinceLast = latestId ? diffYMD(latestId, todayYMD) : 999;
-    if (daysSinceLast >= 4) {
-      await send(uid, "Registos diários",
-        "Estás há 4 dias sem preencher o feedback diário. Vamos retomar hoje!", "/daily");
-    }
-
-    // Sem treino ≥5 dias
-    if (d.length >= 5 && d.slice(0,5).every(x => x.didWorkout !== true)) {
-      await send(uid, "Voltar aos treinos",
-        "Está na hora de voltar aos treinos!", "/daily");
-    }
-
-    // Alimentação 3 dias seguidos sem 100%
-    if (d.length >= 3 && d.slice(0,3).every(x => x.alimentacao100 !== true)) {
-      await send(uid, "Alimentação",
-        "Não andas a cumprir bem a alimentação ultimamente, vamos voltar ao bom ritmo!", "/daily");
-    }
+    return NextResponse.json({ ok: true, today, checked, sent, dry });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }

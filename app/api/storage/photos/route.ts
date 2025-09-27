@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
     const ref = db.collection("users").doc(targetUid).collection("photoSets");
     const snap = await ref.orderBy("createdAt","asc").limit(120).get();
     let sets = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    sets = sets.filter((s: any) => Array.isArray(s.urls) && s.urls.length > 0);
 
     let items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
     if (sets.length > 0) {

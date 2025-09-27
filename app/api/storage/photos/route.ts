@@ -205,14 +205,20 @@ export async function POST(req: NextRequest) {
     const weekId = String(form.get("weekId") || isoWeekId(new Date()));
     const uploadedUrls: string[] = [];
 
-    // Weekly limit: only one upload per week per user
+    // Weekly limit: only one upload per week per user (tolerate manual deletions in storage)
     const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);
     const existing = await setRef.get();
     if (existing.exists) {
       const data: any = existing.data() || {};
       const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
       if (prev.length > 0) {
-        return NextResponse.json({ error: 'weekly_limit' }, { status: 409 });
+        const prefix = `users/${targetUid}/photos/${weekId}-`;
+        const count = await countFilesForPrefix(prefix).catch(() => 0);
+        if (count > 0) {
+          return NextResponse.json({ error: 'weekly_limit' }, { status: 409 });
+        } else {
+          await setRef.set({ urls: [], coverUrl: null, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        }
       }
     }
 

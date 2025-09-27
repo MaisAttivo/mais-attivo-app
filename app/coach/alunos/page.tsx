@@ -122,9 +122,9 @@ function AlunosList() {
       <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
         <h1 className="text-2xl md:text-3xl font-bold">Alunos</h1>
         <div className="flex items-center gap-2">
-          <Button variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>Todos</Button>
-          <Button variant={statusFilter === "active" ? "default" : "outline"} onClick={() => setStatusFilter("active")}>Ativos</Button>
-          <Button variant={statusFilter === "inactive" ? "default" : "outline"} onClick={() => setStatusFilter("inactive")}>Inativos</Button>
+          <Button className="shadow-sm" variant={statusFilter === "all" ? "default" : "secondary"} onClick={() => setStatusFilter("all")}>Todos</Button>
+          <Button className="shadow-sm" variant={statusFilter === "active" ? "default" : "secondary"} onClick={() => setStatusFilter("active")}>Ativos</Button>
+          <Button className="shadow-sm" variant={statusFilter === "inactive" ? "default" : "secondary"} onClick={() => setStatusFilter("inactive")}>Inativos</Button>
         </div>
       </div>
 

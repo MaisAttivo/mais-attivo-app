@@ -110,6 +110,13 @@ function AlunosList() {
     return alunos;
   }, [alunos, statusFilter]);
 
+  const stats = useMemo(() => {
+    const total = alunos.length;
+    const active = alunos.filter((a) => a.ativo !== false).length;
+    const due = alunos.filter((a) => a.dueStatus === "today" || a.dueStatus === "overdue").length;
+    return { total, active, due };
+  }, [alunos]);
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
@@ -118,6 +125,21 @@ function AlunosList() {
           <Button variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>Todos</Button>
           <Button variant={statusFilter === "active" ? "default" : "outline"} onClick={() => setStatusFilter("active")}>Ativos</Button>
           <Button variant={statusFilter === "inactive" ? "default" : "outline"} onClick={() => setStatusFilter("inactive")}>Inativos</Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="rounded-2xl border p-3">
+          <div className="text-xs text-muted-foreground">Nº Alunos Ativos</div>
+          <div className="text-base font-semibold">{stats.active}</div>
+        </div>
+        <div className="rounded-2xl border p-3">
+          <div className="text-xs text-muted-foreground">Nº Alunos desde o Início</div>
+          <div className="text-base font-semibold">{stats.total}</div>
+        </div>
+        <div className="rounded-2xl border p-3">
+          <div className="text-xs text-muted-foreground">Nº Alunos para check‑in</div>
+          <div className="text-base font-semibold">{stats.due}</div>
         </div>
       </div>
 

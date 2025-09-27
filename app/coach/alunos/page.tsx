@@ -101,7 +101,7 @@ function AlunosList() {
         ) : (
           <div className="divide-y">
             {filtered.map((a) => (
-              <div key={a.id} className="grid grid-cols-4 gap-0 items-center">
+              <Link key={a.id} href={`/coach/client/${a.id}`} className="grid grid-cols-4 gap-0 items-center">
                 <div className="px-3 py-2">
                   <input type="checkbox" checked={a.ativo} readOnly className="h-4 w-4 align-middle" />
                 </div>
@@ -110,7 +110,7 @@ function AlunosList() {
                 <div className="px-3 py-2">
                   {a.criadoEm ? a.criadoEm.toLocaleDateString("pt-PT") : "—"}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

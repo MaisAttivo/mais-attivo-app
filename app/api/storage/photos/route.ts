@@ -73,6 +73,24 @@ async function saveToAnyBucketDirect(pathName: string, buf: Buffer, contentType:
   throw lastErr || new Error('no_bucket_available');
 }
 
+async function countFilesForPrefix(prefix: string): Promise<number> {
+  const cred = getCred();
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+  const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
+  const primary = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const alt = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
+  const candidates = [primary, alt].filter(Boolean);
+  let total = 0;
+  for (const name of candidates) {
+    try {
+      const b = storage.bucket(name);
+      const [files] = await b.getFiles({ prefix, autoPaginate: false, maxResults: 10 });
+      total += (files || []).length;
+    } catch {}
+  }
+  return total;
+}
+
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {
   try {
     if (userId === targetUid) return true;

@@ -9,6 +9,16 @@ import { formatLisbonDate } from "@/lib/utils";
 
 type PhotoSet = { id: string; createdAt: Date | null; urls: string[]; coverUrl: string | null };
 
+function isoWeekId(d: Date): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const w = String(weekNo).padStart(2, "0");
+  return `${date.getUTCFullYear()}-W${w}`;
+}
+
 function usePhotoSets() {
   const [loading, setLoading] = useState(true);
   const [sets, setSets] = useState<PhotoSet[]>([]);
@@ -50,7 +60,7 @@ function usePhotoSets() {
   return { loading, sets, setSets, error, reload };
 }
 
-function Uploader({ onUploaded }: { onUploaded: () => void }) {
+function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; disabled?: boolean; weekId?: string }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
@@ -58,6 +68,7 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const disabledNow = !!disabled;
 
   function onPick() { inputRef.current?.click(); }
 
@@ -72,6 +83,7 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
   }
 
   async function handleUpload() {
+    if (disabledNow) { setErr("Já enviaste fotos esta semana"); return; }
     if (files.length === 0) { setErr("Seleciona até 4 imagens"); return; }
     setUploading(true);
     setProgress(0);
@@ -96,6 +108,7 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
             try {
               const json = JSON.parse(xhr.responseText || "{}");
               if (xhr.status >= 200 && xhr.status < 300) resolve(json);
+              else if (json?.error === "weekly_limit") reject(new Error("Já enviaste fotos esta semana"));
               else reject(new Error(json?.error === "max_4" ? "Máximo 4 imagens" : json?.message || "Falha ao enviar"));
             } catch (e) {
               if (xhr.status >= 200 && xhr.status < 300) resolve({});
@@ -136,12 +149,16 @@ function Uploader({ onUploaded }: { onUploaded: () => void }) {
       <div className="text-sm font-medium mb-2">Anexa aqui a tua foto</div>
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleChange} />
       <div className="flex flex-wrap gap-2 items-center">
-        <Button size="sm" onClick={onPick} disabled={uploading}>Escolher imagens</Button>
-        <Button size="sm" variant="secondary" onClick={handleUpload} disabled={uploading || files.length === 0}>
+        <Button size="sm" onClick={onPick} disabled={uploading || disabledNow}>Escolher imagens</Button>
+        <Button size="sm" variant="secondary" onClick={handleUpload} disabled={uploading || files.length === 0 || disabledNow}>
           {uploading ? "A enviar…" : "Enviar"}
         </Button>
         {err && <div className="text-xs text-red-600">{err}</div>}
       </div>
+
+      {disabledNow && (
+        <div className="mt-2 text-xs text-muted-foreground">Já enviaste fotos esta semana{weekId ? ` (${weekId})` : ""}.</div>
+      )}
 
       {typeof progress === "number" && (
         <div className="w-full max-w-sm mt-3">
@@ -208,6 +225,8 @@ export default function FotosPage() {
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
+  const thisWeekId = useMemo(() => isoWeekId(new Date()), []);
+  const hasThisWeek = useMemo(() => sets.some((s) => s.id === thisWeekId), [sets, thisWeekId]);
 
   async function setCover(weekId: string, coverUrl: string) {
     try {
@@ -235,8 +254,11 @@ export default function FotosPage() {
             <CardTitle>Atualização Fotos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Uploader onUploaded={reload} />
+            <Uploader onUploaded={reload} disabled={hasThisWeek} weekId={thisWeekId} />
 
+            {loading ? (
+              <div className="text-sm text-muted-foreground">A carregar…</div>
+            ) : sets.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Início</div>
@@ -277,15 +299,12 @@ export default function FotosPage() {
                 )}
               </div>
             </div>
+            ) : null}
 
+            {sets.length > 0 && (
             <div className="space-y-3">
               <div className="text-sm font-medium">Histórico de Updates</div>
-              {loading ? (
-                <div className="text-sm text-muted-foreground">A carregar…</div>
-              ) : sets.length === 0 ? (
-                <div className="text-sm text-muted-foreground">Sem envios.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                   {sets.map((s) => (
                     <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
                       <div>
@@ -298,8 +317,8 @@ export default function FotosPage() {
                     </div>
                   ))}
                 </div>
-              )}
             </div>
+            )}
           </CardContent>
         </Card>
 

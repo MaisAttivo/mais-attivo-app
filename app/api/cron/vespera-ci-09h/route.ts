@@ -1,29 +1,51 @@
+// app/api/cron/vespera-ci-09h/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
-import { serverNotify as send } from "@/lib/serverNotify";
+import { getAdminDB } from "@/lib/adminDB";
+import { ymdLisbon, addDaysYMD } from "@/lib/ymd";
+import { forEachUsersPaged } from "@/lib/forEachUsersPaged";
+import { serverNotify } from "@/lib/serverNotify";
 
-const PT = "Europe/Lisbon";
-const ymd = (d: Date) => new Intl.DateTimeFormat("en-CA", {
-  timeZone: PT, year:"numeric", month:"2-digit", day:"2-digit"
-}).format(d);
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const dry = url.searchParams.get("dry") === "1";
+    const uidTest = url.searchParams.get("uid");
+    const today = ymdLisbon();
+    const tomorrow = addDaysYMD(today, 1);
+    const db = getAdminDB();
 
-export async function GET() {
-  const hourPT = new Intl.DateTimeFormat("en-GB", { timeZone: PT, hour: "2-digit", hour12: false }).format(new Date());
-  if (hourPT !== "09") return NextResponse.json({ skipped: true, hourPT });
-  const now = new Date();
-  const t = new Date(now); t.setDate(t.getDate()+1);
-  const tomorrow = ymd(t);
+    const notify = async (uid: string) => {
+      if (!dry) {
+        await serverNotify(
+          uid,
+          "Amanhã é dia de Check-in",
+          "Atenção que amanhã passam 3 semanas do último check-in. Está na hora de marcar o próximo!",
+          "https://mais-attivo-app.vercel.app"
+        );
+      }
+    };
 
-  const users = await adminDb.collection("users").get();
-  for (const u of users.docs) {
-    const uid = u.id;
-    const qs = await adminDb.collection(`users/${uid}/checkins`)
-      .where("dateText","==", tomorrow).limit(1).get();
-    if (!qs.empty) {
-      await send(uid, "Check-in amanhã",
-        "Atenção que amanhã passam 3 semanas do último check-in. Está na hora de marcar o próximo!",
-        "/checkins");
+    if (uidTest) {
+      const d = await db.doc(`users/${uidTest}`).get();
+      if (!d.exists) return NextResponse.json({ ok: false, error: "user not found" }, { status: 404 });
+      if (d.get("nextCheckinYMD") === tomorrow) await notify(uidTest);
+      return NextResponse.json({ ok: true, test: true, uid: uidTest, willSend: d.get("nextCheckinYMD") === tomorrow, dry });
     }
+
+    let checked = 0, sent = 0;
+    await forEachUsersPaged(db, {
+      pageSize: 200,
+      fields: ["nextCheckinYMD"],
+      handler: async (doc) => {
+        checked++;
+        if (doc.get("nextCheckinYMD") === tomorrow) { await notify(doc.id); sent++; }
+      },
+    });
+
+    return NextResponse.json({ ok: true, today, tomorrow, checked, sent, dry });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
 }

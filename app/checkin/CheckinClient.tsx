@@ -86,11 +86,16 @@ export default function CheckinClient() {
         return;
       }
       setUid(u.uid);
-      const token = await u.getIdTokenResult(true);
-      const coachClaim =
-        token.claims?.coach === true || token.claims?.role === "coach";
-      setIsCoach(coachClaim);
-      if (!coachClaim) setMsg("Acesso reservado a coach.");
+      try {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        const role = snap.exists() ? (snap.get("role") as string | undefined) : undefined;
+        const ok = role === "coach" || role === "admin";
+        setIsCoach(ok);
+        if (!ok) setMsg("Sem acesso (coach apenas).");
+      } catch {
+        setIsCoach(false);
+        setMsg("Sem acesso (coach apenas).");
+      }
     });
     return () => unsub();
   }, [router]);

@@ -186,6 +186,17 @@ export async function POST(req: NextRequest) {
     const weekId = String(form.get("weekId") || isoWeekId(new Date()));
     const uploadedUrls: string[] = [];
 
+    // Weekly limit: only one upload per week per user
+    const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);
+    const existing = await setRef.get();
+    if (existing.exists) {
+      const data: any = existing.data() || {};
+      const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
+      if (prev.length > 0) {
+        return NextResponse.json({ error: 'weekly_limit' }, { status: 409 });
+      }
+    }
+
     for (const anyFile of files) {
       const file = anyFile as unknown as File;
       if (typeof (file as any).arrayBuffer !== 'function') continue;
@@ -203,16 +214,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);
-    const doc = await setRef.get();
+    // Create or update this week's set (first upload wins; subsequent uploads blocked above)
     let urls: string[] = uploadedUrls.slice(0,4);
     let coverUrl: string | null = uploadedUrls[0] || null;
-    if (doc.exists) {
-      const data: any = doc.data() || {};
-      const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
-      urls = [...prev, ...uploadedUrls].slice(0,4);
-      coverUrl = (data.coverUrl && urls.includes(data.coverUrl)) ? data.coverUrl : (coverUrl || urls[0] || null);
-    }
 
     await setRef.set({
       urls,

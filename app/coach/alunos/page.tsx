@@ -130,12 +130,12 @@ function AlunosList() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <div className="rounded-2xl border p-4 bg-emerald-50 ring-1 ring-emerald-200 text-emerald-700 flex items-center justify-between">
+        <div className="rounded-2xl border p-4 bg-background shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs">Nº Alunos Ativos</div>
+            <div className="text-xs text-muted-foreground">Nº Alunos Ativos</div>
             <div className="text-2xl font-bold">{stats.active}</div>
           </div>
-          <CheckCircle2 className="h-6 w-6 opacity-80" />
+          <CheckCircle2 className="h-6 w-6 opacity-70" />
         </div>
         <div className="rounded-2xl border p-4 bg-background shadow-sm flex items-center justify-between">
           <div>
@@ -144,12 +144,12 @@ function AlunosList() {
           </div>
           <Users className="h-6 w-6 opacity-70" />
         </div>
-        <div className="rounded-2xl border p-4 bg-[#FFE3B3] ring-2 ring-[#B97100] text-[#B97100] flex items-center justify-between">
+        <div className="rounded-2xl border p-4 bg-background shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs">Nº Alunos para check‑in</div>
+            <div className="text-xs text-muted-foreground">Nº Alunos para check‑in</div>
             <div className="text-2xl font-bold">{stats.due}</div>
           </div>
-          <CalendarClock className="h-6 w-6" />
+          <CalendarClock className="h-6 w-6 opacity-70" />
         </div>
       </div>
 

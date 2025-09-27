@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs, orderBy, query, Timestamp } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, Timestamp, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CoachGuard from "@/components/ui/CoachGuard";
 import { Button } from "@/components/ui/button";
+import { cn, lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
 
 type Aluno = {
   id: string;
@@ -13,6 +14,7 @@ type Aluno = {
   nome: string;
   numero: string | null;
   criadoEm: Date | null;
+  dueStatus?: "today" | "overdue" | null;
 };
 
 function toDate(ts?: Timestamp | null): Date | null {
@@ -44,19 +46,52 @@ function AlunosList() {
       setLoading(true);
       try {
         const snap = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
-        const items: Aluno[] = [];
+        const base: Array<{ id: string; u: any }> = [];
         snap.forEach((d) => {
           const u: any = d.data() || {};
           const role = (u?.role || "").toString();
           if (role === "coach") return; // apenas alunos
-          items.push({
-            id: d.id,
-            ativo: typeof u?.active === "boolean" ? Boolean(u.active) : true,
-            nome: displayNameFrom(u, d.id),
-            numero: extractPhone(u),
-            criadoEm: toDate(u?.createdAt ?? null),
-          });
+          base.push({ id: d.id, u });
         });
+
+        const items: Aluno[] = await Promise.all(
+          base.map(async ({ id, u }) => {
+            let nextCheckinYMD: string | null = null;
+            try {
+              const nd: Date | null = u?.nextCheckinDate?.toDate?.() ?? null;
+              if (nd) nextCheckinYMD = lisbonYMD(nd);
+              else if (typeof u?.nextCheckinText === "string") nextCheckinYMD = u.nextCheckinText;
+            } catch {}
+            if (!nextCheckinYMD) {
+              try {
+                const qs = await getDocs(query(collection(db, `users/${id}/checkins`), orderBy("date", "desc"), limit(1)));
+                if (!qs.empty) {
+                  const d: any = qs.docs[0].data();
+                  const nd: Date | null = d.nextDate?.toDate?.() ?? null;
+                  if (nd) nextCheckinYMD = lisbonYMD(nd);
+                }
+              } catch {}
+            }
+            const today = lisbonTodayYMD();
+            const dueStatus: "today" | "overdue" | null = nextCheckinYMD
+              ? nextCheckinYMD < today
+                ? "overdue"
+                : nextCheckinYMD === today
+                ? "today"
+                : null
+              : null;
+
+            return {
+              id,
+              ativo: typeof u?.active === "boolean" ? Boolean(u.active) : true,
+              nome: displayNameFrom(u, id),
+              numero: extractPhone(u),
+              criadoEm: toDate(u?.createdAt ?? null),
+              dueStatus,
+            } as Aluno;
+          })
+        );
+
         if (mounted) setAlunos(items);
       } catch (e) {
         if (mounted) setAlunos([]);
@@ -101,7 +136,14 @@ function AlunosList() {
         ) : (
           <div className="divide-y">
             {filtered.map((a) => (
-              <Link key={a.id} href={`/coach/client/${a.id}`} className="grid grid-cols-4 gap-0 items-center">
+              <Link
+                key={a.id}
+                href={`/coach/client/${a.id}`}
+                className={cn(
+                  "grid grid-cols-4 gap-0 items-center",
+                  (a.dueStatus === "overdue" || a.dueStatus === "today") && "bg-[#FFE3B3] ring-2 ring-[#B97100] text-[#B97100]"
+                )}
+              >
                 <div className="px-3 py-2">
                   <input type="checkbox" checked={a.ativo} readOnly className="h-4 w-4 align-middle" />
                 </div>

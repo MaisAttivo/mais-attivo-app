@@ -57,6 +57,7 @@ async function saveToAnyBucketDirect(pathName: string, buf: Buffer, contentType:
   const candidates = [primary, alt].filter(Boolean);
   if (candidates.length === 0) throw new Error('no_bucket_configured');
 
+  const attempts: Array<{ bucket: string; code: any; message: string }> = [];
   let lastErr: any = null;
   for (const name of candidates) {
     try {
@@ -67,10 +68,14 @@ async function saveToAnyBucketDirect(pathName: string, buf: Buffer, contentType:
       return { url, bucket: name };
     } catch (e: any) {
       lastErr = e;
+      attempts.push({ bucket: name, code: (e && (e.code || e?.errors?.[0]?.reason || e?.response?.status)) ?? null, message: e?.message || String(e) });
       continue;
     }
   }
-  throw lastErr || new Error('no_bucket_available');
+  const err = lastErr || new Error('no_bucket_available');
+  (err as any).attempts = attempts;
+  (err as any).name = (err as any).name || 'UploadError';
+  throw err;
 }
 
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {
@@ -100,6 +105,7 @@ export async function GET(req: NextRequest) {
     const auth = app.auth();
     const db = app.firestore();
     const url = new URL(req.url);
+    const wantDebug = url.searchParams.get("debug") === "1" || ((req.headers.get("x-debug") || "") === "1");
     const authz = req.headers.get("authorization") || req.headers.get("Authorization") || "";
     const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
     if (!idToken) return NextResponse.json({ error: "missing_token" }, { status: 401 });
@@ -113,12 +119,14 @@ export async function GET(req: NextRequest) {
     let sets = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
 
     let items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
+    let debugInfo: any = null;
     if (sets.length > 0) {
       for (const s of sets) {
         const arr: string[] = Array.isArray(s.urls) ? s.urls : [];
         const created = s.createdAt ? (s.createdAt.toDate ? s.createdAt.toDate().toISOString() : s.createdAt) : null;
         for (const u of arr) items.push({ url: u, name: s.id, createdAt: created });
       }
+      debugInfo = { mode: "firestore", count: items.length };
     } else {
       // Fallback to storage listing across configured buckets using explicit credentials
       const cred = getCred();
@@ -155,9 +163,10 @@ export async function GET(req: NextRequest) {
         return { url, name: f.name.split('/').pop() || f.name, createdAt };
       }));
       items.sort((a,b)=> (new Date(a.createdAt||0).getTime()) - (new Date(b.createdAt||0).getTime()));
+      debugInfo = { mode: "storage", usedBuckets: buckets.map((b: any) => b.name), prefixes, collected: collected.length, unique: unique.size, filtered: all.length };
     }
 
-    return NextResponse.json({ sets, items });
+    return NextResponse.json(wantDebug ? { sets, items, debug: debugInfo } : { sets, items });
   } catch (e: any) {
     return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });
   }
@@ -199,6 +208,12 @@ export async function POST(req: NextRequest) {
         const { url } = await saveToAnyBucketDirect(path, buf, ct);
         uploadedUrls.push(url);
       } catch (err: any) {
+        const wantDebug = (new URL(req.url).searchParams.get("debug") === "1") || (((req.headers.get("x-debug") || "") === "1"));
+        if (wantDebug) {
+          const attempts = (err && (err as any).attempts) ? (err as any).attempts : null;
+          const code = (err as any)?.code || null;
+          return NextResponse.json({ error: 'upload_failed', message: err?.message || String(err), code, attempts }, { status: 500 });
+        }
         return NextResponse.json({ error: 'upload_failed', message: err?.message || String(err) }, { status: 500 });
       }
     }

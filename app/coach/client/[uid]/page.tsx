@@ -1233,15 +1233,7 @@ export default function CoachClientProfilePage() {
         </Card>
 
         {preview && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
-            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
-              <div className="absolute top-3 right-3 flex gap-2">
-                <Button size="sm" variant="outline" asChild><a href={preview.url} download>Download</a></Button>
-                <Button size="sm" variant="secondary" onClick={()=>setPreview(null)}><X className="h-4 w-4" />Fechar</Button>
-              </div>
-              <ZoomViewer url={preview.url} kind={preview.kind} onClose={()=>setPreview(null)} />
-            </div>
-          </div>
+          <ZoomViewer url={preview.url} kind={preview.kind} onClose={()=>setPreview(null)} />
         )}
 
 

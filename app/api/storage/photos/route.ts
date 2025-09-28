@@ -96,22 +96,11 @@ export async function POST(req: NextRequest) {
 
     const weekId = String(form.get("weekId") || isoWeekId(new Date()));
 
-    // Limite semanal (uma submissão/semana)
+    // Limite semanal: agora permitimos múltiplos uploads na mesma semana até 4 fotos no total.
     const setRef = adminDb.collection("users").doc(targetUid).collection("photoSets").doc(weekId);
     const existing = await setRef.get();
-    if (existing.exists) {
-      const data: any = existing.data() || {};
-      const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
-      if (prev.length > 0) {
-        // confirma se já existem ficheiros com este prefixo no bucket
-        const prefix = `users/${targetUid}/photos/${weekId}-`;
-        const [f] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: 1 }).catch(() => [ [] ]);
-        if (f && f.length > 0) {
-          return NextResponse.json({ error: "weekly_limit" }, { status: 409 });
-        } else {
-          await setRef.set({ urls: [], coverUrl: null, updatedAt: Date.now() }, { merge: true });
-        }
-      }
+    if (!existing.exists) {
+      await setRef.set({ urls: [], coverUrl: null, createdAt: new Date(), updatedAt: new Date() }, { merge: true });
     }
 
     // Collect existing URLs to support multiple sequential uploads within the same week

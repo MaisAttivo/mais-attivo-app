@@ -162,18 +162,33 @@ export default function CoachClientProfilePage() {
   const [photoConsentActive, setPhotoConsentActive] = useState<boolean | null>(null);
   const [photoConsentAt, setPhotoConsentAt] = useState<Date | null>(null);
 
-  function downloadUrl(url: string, filename: string) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ try{ document.body.removeChild(a); }catch{} }, 0);
+  async function downloadUrl(url: string, filename: string) {
+    try {
+      const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+      const blob = await res.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = obj;
+      a.download = filename;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); URL.revokeObjectURL(obj); }catch{} }, 0);
+    } catch {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); }catch{} }, 0);
+    }
   }
-  function downloadAll(urls: string[], base: string) {
-    const ts = new Date();
-    urls.forEach((u, i) => downloadUrl(u, `${base}-${String(i+1).padStart(2,'0')}.jpg`));
+  async function downloadAll(urls: string[], base: string) {
+    for (let i = 0; i < urls.length; i++) {
+      await downloadUrl(urls[i], `${base}-${String(i+1).padStart(2,'0')}.jpg`);
+      await new Promise(r=>setTimeout(r, 150));
+    }
   }
 
 
@@ -707,7 +722,7 @@ export default function CoachClientProfilePage() {
               </Badge>
               {nextDue && phone && (
                 <a
-                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
+                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Ol�� ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"

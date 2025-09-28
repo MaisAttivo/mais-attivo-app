@@ -722,7 +722,7 @@ export default function CoachClientProfilePage() {
               </Badge>
               {nextDue && phone && (
                 <a
-                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Ol�� ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
+                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1304,7 +1304,7 @@ export default function CoachClientProfilePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="secondary" onClick={()=>setOpenSet({ id: s.id, urls: s.urls })}>Ver</Button>
-                      <Button size="sm" variant="outline" onClick={()=>downloadAll(s.urls, `fotos-${s.id}`)}>Download</Button>
+                      <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(s.urls, `fotos-${s.id}`); }}>Download</Button>
                     </div>
                   </div>
                 ))}

@@ -466,13 +466,19 @@ export default function CoachClientProfilePage() {
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (res.ok) {
           const data = await res.json();
-          const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
-          arrFinal = items.map((it) => ({
-            id: it.name || String(Math.random()),
-            createdAt: it.createdAt ? new Date(it.createdAt) : null,
-            mainUrl: it.url,
-            urls: [it.url],
-          })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          const sets: Array<{ id: string; createdAt?: any; urls?: string[]; coverUrl?: string | null }> = Array.isArray(data.sets) ? data.sets : [];
+          if (sets.length > 0) {
+            arrFinal = sets.map((s)=>{
+              const created = s.createdAt ? (s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt)) : null;
+              const urls = Array.isArray(s.urls) ? s.urls.filter((u)=> typeof u === 'string') : [];
+              const main = typeof s.coverUrl === 'string' ? s.coverUrl : (urls[0] || "");
+              return { id: String(s.id), createdAt: created, mainUrl: main, urls };
+            }).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          } else {
+            const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+            arrFinal = items.map((it) => ({ id: it.name || String(Math.random()), createdAt: it.createdAt ? new Date(it.createdAt) : null, mainUrl: it.url, urls: [it.url] }))
+              .sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          }
         }
         setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
@@ -755,7 +761,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
-          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calend��rio</Button>
+          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
@@ -1255,14 +1261,13 @@ export default function CoachClientProfilePage() {
                   </div>
                 </div>
                 {photoSets.map((s)=> (
-                  <div key={s.id} className="rounded-2xl border p-4 bg-background">
-                    <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {s.urls.map((u, i)=> (
-                        <button key={i} onClick={()=>setOpenSet({ id: s.id, urls: s.urls })} className="shrink-0">
-                          <img src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
-                        </button>
-                      ))}
+                  <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{s.createdAt?.toLocaleString() ?? s.id}</div>
+                      <div className="text-xs text-muted-foreground">{s.urls.length} imagem(s)</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={()=>setOpenSet({ id: s.id, urls: s.urls })}>Ver</Button>
                     </div>
                   </div>
                 ))}

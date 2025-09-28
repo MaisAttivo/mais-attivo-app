@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { adminDb, bucket } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
@@ -98,6 +98,25 @@ export async function POST(req: NextRequest) {
     if (buf.length > 30 * 1024 * 1024) {
       return NextResponse.json({ error: "too_large" }, { status: 413 });
     }
+
+    // Limite: 1 anexo por semana (7 dias)
+    try {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const colRef = adminDb.collection("users").doc(targetUid).collection("inbody");
+      const q = await colRef.where("createdAt", ">=", Timestamp.fromDate(since)).limit(1).get();
+      if (!q.empty) {
+        return NextResponse.json({ error: "weekly_limit" }, { status: 409 });
+      }
+      // Fallback: verificar no bucket por ficheiros recentes
+      const [files] = await bucket.getFiles({ prefix: `users/${targetUid}/inbody/`, autoPaginate: false, maxResults: 20 }).catch(() => [ [] ]);
+      if (files && files.length) {
+        const recent = files.some((f: any) => {
+          const t = (f.metadata as any)?.timeCreated ? new Date((f.metadata as any).timeCreated) : null;
+          return t ? (Date.now() - t.getTime()) < 7 * 24 * 60 * 60 * 1000 : false;
+        });
+        if (recent) return NextResponse.json({ error: "weekly_limit" }, { status: 409 });
+      }
+    } catch {}
 
     const ts = Date.now();
     const ext = ct === "image/png" ? "png" : ct === "application/pdf" ? "pdf" : "jpg";

@@ -165,12 +165,12 @@ function Uploader({ disabled, onUploaded }: { disabled?: boolean; onUploaded: ()
 
 export default function InbodyPage() {
   const { items, loading, reload } = useInbody();
-  const thisWeekId = useMemo(() => isoWeekId(new Date()), []);
   const alreadyThisWeek = useMemo(() => {
     if (!items.length) return false;
     const created = items[0]?.createdAt || null;
-    return created ? isoWeekId(created) === thisWeekId : false;
-  }, [items, thisWeekId]);
+    if (!created) return false;
+    return (Date.now() - created.getTime()) < 7 * 24 * 60 * 60 * 1000;
+  }, [items]);
 
   return (
     <ClientGuard>

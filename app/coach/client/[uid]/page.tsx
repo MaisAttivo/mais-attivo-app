@@ -746,6 +746,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
           <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
           <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
@@ -871,7 +872,7 @@ export default function CoachClientProfilePage() {
                   "Detalhes atividade": onboarding.otherActivityDetails,
                   "Treinos/semana": onboarding.workoutFrequency,
                   "Lesão": onboarding.hasInjury === true ? "Sim" : onboarding.hasInjury === false ? "Não" : onboarding.hasInjury,
-                  "Local lesão": onboarding.injuryDetails,
+                  "Local les��o": onboarding.injuryDetails,
                   "Mobilidade": onboarding.mobilityIssues === true ? "Sim" : onboarding.mobilityIssues === false ? "Não" : onboarding.mobilityIssues,
                   "Detalhes mobilidade": onboarding.mobilityDetails,
                   "Dores": onboarding.hasPain === true ? "Sim" : onboarding.hasPain === false ? "Não" : onboarding.hasPain,

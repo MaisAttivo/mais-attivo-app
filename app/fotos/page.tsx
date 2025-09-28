@@ -301,9 +301,9 @@ export default function FotosPage() {
           <CardContent className="space-y-4">
             <div className="rounded-2xl border p-4 bg-background">
               <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm" title="Autorizo o uso das minhas fotos para acompanhamento e comunicação/marketing, com o rosto sempre ocultado.">
                   <input type="checkbox" checked={!!consentActive} onChange={toggleConsent} className="h-4 w-4" />
-                  <span>Permissão para uso de fotos</span>
+                  <span>Permissão para utilização de fotos para acompanhamento e marketing (rosto sempre tapado)</span>
                 </label>
                 <div className="text-xs text-muted-foreground">
                   {consentAt ? `Atualizado em ${consentAt.toLocaleString()}` : "Nunca definido"}

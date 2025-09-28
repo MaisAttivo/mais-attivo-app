@@ -1,23 +1,32 @@
+// lib/firebaseAdmin.ts
 import "server-only";
 
-import { applicationDefault, getApps, initializeApp, type App } from "firebase-admin/app";
+import { getApps, initializeApp, type App, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-// Initialize Admin SDK with explicit storage bucket
+const SERVICE_ACCOUNT_JSON = process.env.FIREBASE_ADMIN_SA_JSON;
+const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || "mais-attivo-ofc.appspot.com";
+
+if (!SERVICE_ACCOUNT_JSON) {
+  throw new Error(
+    "FIREBASE_ADMIN_SA_JSON ausente. Define-a na Vercel com o JSON da service account."
+  );
+}
+
 export const adminApp: App =
   getApps()[0] ||
   initializeApp({
-    credential: applicationDefault(),
-    storageBucket: "mais-attivo-ofc.appspot.com",
+    credential: cert(JSON.parse(SERVICE_ACCOUNT_JSON)),
+    storageBucket: STORAGE_BUCKET,
   });
 
 export const adminDb = getFirestore(adminApp);
 adminDb.settings({ ignoreUndefinedProperties: true });
 
-// Export the bucket explicitly pointing to the correct bucket
-export const bucket = getStorage(adminApp).bucket("mais-attivo-ofc.appspot.com");
+// Usa SEMPRE o bucket correto
+export const bucket = getStorage(adminApp).bucket(STORAGE_BUCKET);
 
-// Temporary validation log
+// (Opcional) log temporário – remove depois de validar nos logs da Vercel
 // eslint-disable-next-line no-console
 console.log("[AdminStorage CHECK]", bucket.name);

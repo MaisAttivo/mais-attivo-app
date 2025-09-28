@@ -6,7 +6,7 @@ import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatLisbonDate } from "@/lib/utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -224,7 +224,6 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
 export default function FotosPage() {
   const { uid } = useSession();
   const router = useRouter();
-  const search = useSearchParams();
   const { loading, sets, setSets, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
@@ -235,10 +234,10 @@ export default function FotosPage() {
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
 
   useEffect(() => {
-    if (!search) return;
-    const hasWelcome = !!search.get("welcome");
-    if (!hasWelcome) return;
     try {
+      const qs = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const hasWelcome = !!qs?.get("welcome");
+      if (!hasWelcome) return;
       const key = `welcome_shown_${uid || "anon"}`;
       const seen = typeof window !== "undefined" ? window.localStorage.getItem(key) : "1";
       if (!seen) {
@@ -246,7 +245,7 @@ export default function FotosPage() {
         window.localStorage.setItem(key, "1");
       }
     } catch {}
-  }, [search, uid]);
+  }, [uid]);
 
   useEffect(() => {
     let mounted = true;

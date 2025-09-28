@@ -159,6 +159,37 @@ export default function CoachClientProfilePage() {
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
   const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
+  const [photoConsentActive, setPhotoConsentActive] = useState<boolean | null>(null);
+  const [photoConsentAt, setPhotoConsentAt] = useState<Date | null>(null);
+
+  async function downloadUrl(url: string, filename: string) {
+    try {
+      const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+      const blob = await res.blob();
+      const obj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = obj;
+      a.download = filename;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); URL.revokeObjectURL(obj); }catch{} }, 0);
+    } catch {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try{ document.body.removeChild(a); }catch{} }, 0);
+    }
+  }
+  async function downloadAll(urls: string[], base: string) {
+    for (let i = 0; i < urls.length; i++) {
+      await downloadUrl(urls[i], `${base}-${String(i+1).padStart(2,'0')}.jpg`);
+      await new Promise(r=>setTimeout(r, 150));
+    }
+  }
 
 
   // Powerlifting flag
@@ -464,13 +495,26 @@ export default function CoachClientProfilePage() {
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (res.ok) {
           const data = await res.json();
-          const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
-          arrFinal = items.map((it) => ({
-            id: it.name || String(Math.random()),
-            createdAt: it.createdAt ? new Date(it.createdAt) : null,
-            mainUrl: it.url,
-            urls: [it.url],
-          })).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          const sets: Array<{ id: string; createdAt?: any; urls?: string[]; coverUrl?: string | null }> = Array.isArray(data.sets) ? data.sets : [];
+          if (sets.length > 0) {
+            arrFinal = sets.map((s)=>{
+              let created: Date | null = null;
+              const c: any = (s as any).createdAt;
+              if (c) {
+                if (typeof c.toDate === 'function') created = c.toDate();
+                else if (typeof c === 'string' || typeof c === 'number') created = new Date(c as any);
+                else if (typeof c.seconds === 'number') created = new Date(c.seconds * 1000);
+                else if (typeof c._seconds === 'number') created = new Date(c._seconds * 1000);
+              }
+              const urls = Array.isArray(s.urls) ? s.urls.filter((u)=> typeof u === 'string') : [];
+              const main = typeof (s as any).coverUrl === 'string' ? (s as any).coverUrl : (urls[0] || "");
+              return { id: String(s.id), createdAt: created, mainUrl: main, urls };
+            }).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          } else {
+            const items: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+            arrFinal = items.map((it) => ({ id: it.name || String(Math.random()), createdAt: it.createdAt ? new Date(it.createdAt) : null, mainUrl: it.url, urls: [it.url] }))
+              .sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
+          }
         }
         setPhotoSets(arrFinal);
       } catch { setPhotoSets([]); } finally { setPhotosLoading(false); }
@@ -493,6 +537,15 @@ export default function CoachClientProfilePage() {
       } finally {
         setInbodyLoading(false);
       }
+
+      // Ler consentimento de fotos do utilizador
+      try {
+        const s = await getDoc(doc(db, "users", uid));
+        const d: any = s.data() || {};
+        setPhotoConsentActive(typeof d.photoConsentActive === 'boolean' ? d.photoConsentActive : null);
+        const ts = d.photoConsentUpdatedAt?.toDate ? d.photoConsentUpdatedAt.toDate() : (d.photoConsentUpdatedAt ? new Date(d.photoConsentUpdatedAt) : null);
+        setPhotoConsentAt(ts || null);
+      } catch {}
 
       await loadPlAll(uid);
 
@@ -746,6 +799,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
           <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
+          <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
           <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
@@ -1204,6 +1258,18 @@ export default function CoachClientProfilePage() {
             <CardTitle>Fotos</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="rounded-2xl border p-4 bg-background mb-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">Permissão para uso de fotos</div>
+                <div className="text-sm font-medium">
+                  {photoConsentActive === null ? "—" : photoConsentActive ? "Ativo" : "Inativo"}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {photoConsentAt ? `Atualizado em ${photoConsentAt.toLocaleString()}` : "Sem registo"}
+              </div>
+            </div>
+
             {photosLoading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
             ) : photoSets.length === 0 ? (
@@ -1231,14 +1297,14 @@ export default function CoachClientProfilePage() {
                   </div>
                 </div>
                 {photoSets.map((s)=> (
-                  <div key={s.id} className="rounded-2xl border p-4 bg-background">
-                    <div className="text-sm font-medium mb-2">{s.createdAt?.toLocaleString() ?? s.id}</div>
-                    <div className="flex flex-wrap gap-2">
-                      {s.urls.map((u, i)=> (
-                        <button key={i} onClick={()=>setOpenSet({ id: s.id, urls: s.urls })} className="shrink-0">
-                          <img src={u} alt="Foto" className="h-24 w-24 object-cover rounded-lg" />
-                        </button>
-                      ))}
+                  <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{s.createdAt?.toLocaleString() ?? s.id}</div>
+                      <div className="text-xs text-muted-foreground">{s.urls.length} imagem(s)</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" onClick={()=>setOpenSet({ id: s.id, urls: s.urls })}>Ver</Button>
+                      <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(s.urls, `fotos-${s.id}`); }}>Download</Button>
                     </div>
                   </div>
                 ))}
@@ -1250,12 +1316,18 @@ export default function CoachClientProfilePage() {
         {openSet && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
             <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
-              <div className="sticky top-2 right-2 flex justify-end">
+              <div className="sticky top-2 right-2 flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(openSet.urls, `fotos-${openSet.id}`); }}>Download todas</Button>
                 <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {openSet.urls.map((u, i)=> (
-                  <img key={i} src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                  <div key={i} className="relative">
+                    <img src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                    <div className="mt-2 flex justify-center">
+                      <Button size="sm" variant="outline" onClick={()=>downloadUrl(u, `fotos-${openSet.id}-${String(i+1).padStart(2,'0')}.jpg`)}>Download</Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

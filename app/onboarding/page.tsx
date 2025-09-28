@@ -181,7 +181,7 @@ export default function OnboardingPage() {
         updatedAt: serverTimestamp(),
       });
 
-      router.push("/dashboard");
+      router.push("/fotos?welcome=1");
     } catch (err) {
       console.error(err);
       setError("Não foi possível guardar o questionário.");

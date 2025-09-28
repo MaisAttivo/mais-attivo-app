@@ -50,7 +50,8 @@ export default function ClientNav() {
       document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
         const txt = (el as HTMLElement).textContent?.toLowerCase().trim() || '';
         const attr = (el as HTMLElement).getAttribute('data-radix-collection-item') || '';
-        if (txt.includes('fotos') || txt.includes('inbody') || /Fotos|InBody/i.test(attr)) {
+        // Apenas esconder itens legados do InBody; manter itens de Fotos
+        if (txt.includes('inbody') || /InBody/i.test(attr)) {
           (el as HTMLElement).remove();
         }
       });
@@ -76,6 +77,7 @@ export default function ClientNav() {
         <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
+        <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
         {showPowerlifting && (
           <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
         )}

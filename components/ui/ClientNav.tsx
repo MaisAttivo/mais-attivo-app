@@ -50,8 +50,9 @@ export default function ClientNav() {
       document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
         const txt = (el as HTMLElement).textContent?.toLowerCase().trim() || '';
         const attr = (el as HTMLElement).getAttribute('data-radix-collection-item') || '';
-        // Apenas esconder itens legados do InBody; manter itens de Fotos
-        if (txt.includes('inbody') || /InBody/i.test(attr)) {
+        const keep = (el as HTMLElement).getAttribute('data-keep') === 'true';
+        // Esconder apenas itens legados do InBody; preservar itens marcados com data-keep
+        if (!keep && (txt.includes('inbody') || /InBody/i.test(attr))) {
           (el as HTMLElement).remove();
         }
       });
@@ -78,6 +79,7 @@ export default function ClientNav() {
         <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
         <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
+        <DropdownMenuItem data-keep="true" onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
         {showPowerlifting && (
           <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
         )}

@@ -92,45 +92,50 @@ function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; di
     setProgress(0);
     setErr(null);
     try {
-      const fd = new FormData();
-      files.forEach((f) => fd.append("files", f));
       const token = await auth?.currentUser?.getIdToken();
-
-      const resJson: any = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/storage/photos");
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.floor((e.loaded / e.total) * 100);
-            setProgress(pct);
-          }
-        };
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
-            try {
-              const json = JSON.parse(xhr.responseText || "{}");
-              if (xhr.status >= 200 && xhr.status < 300) resolve(json);
-              else if (json?.error === "weekly_limit") reject(new Error("Já enviaste fotos esta semana"));
-              else reject(new Error(json?.error === "max_4" ? "Máximo 4 imagens" : json?.message || "Falha ao enviar"));
-            } catch (e) {
-              if (xhr.status >= 200 && xhr.status < 300) resolve({});
-              else reject(new Error("Falha ao enviar"));
+      let lastJson: any = null;
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append("files", files[i]);
+        // progress total = (i completed + current file progress) / total
+        lastJson = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "/api/storage/photos");
+          if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const currentPct = Math.floor((e.loaded / e.total) * 100);
+              const overall = Math.floor(((i + currentPct / 100) / files.length) * 100);
+              setProgress(overall);
             }
-          }
-        };
-        xhr.onerror = () => reject(new Error("Falha de rede"));
-        xhr.send(fd);
-      });
+          };
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === 4) {
+              try {
+                const json = JSON.parse(xhr.responseText || "{}");
+                if (xhr.status >= 200 && xhr.status < 300) resolve(json);
+                else if (json?.error === "too_large") reject(new Error("Máx. 10MB por foto"));
+                else if (json?.error === "weekly_limit") reject(new Error("Já enviaste fotos esta semana"));
+                else reject(new Error(json?.error === "max_4" ? "Máximo 4 imagens/semana" : json?.message || "Falha ao enviar"));
+              } catch (e) {
+                if (xhr.status >= 200 && xhr.status < 300) resolve({});
+                else reject(new Error("Falha ao enviar"));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error("Falha de rede"));
+          xhr.send(fd);
+        });
+      }
 
-      if (typeof coverIdx === "number" && Array.isArray(resJson?.urls) && resJson?.weekId) {
-        const chosenUrl = resJson.urls[coverIdx] || resJson.urls[0];
+      if (typeof coverIdx === "number" && Array.isArray(lastJson?.urls) && lastJson?.weekId) {
+        const chosenUrl = lastJson.urls[coverIdx] || lastJson.urls[0];
         try {
           const t = await auth?.currentUser?.getIdToken();
           await fetch("/api/storage/photos", {
             method: "PATCH",
             headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
-            body: JSON.stringify({ weekId: String(resJson.weekId), coverUrl: String(chosenUrl) }),
+            body: JSON.stringify({ weekId: String(lastJson.weekId), coverUrl: String(chosenUrl) }),
           });
         } catch {}
       }

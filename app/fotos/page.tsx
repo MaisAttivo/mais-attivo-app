@@ -225,10 +225,24 @@ export default function FotosPage() {
   const search = useSearchParams();
   const { loading, sets, setSets, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
-  const [showWelcome, setShowWelcome] = useState<boolean>(() => !!search?.get("welcome"));
+  const [showWelcome, setShowWelcome] = useState<boolean>(false);
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
+
+  useEffect(() => {
+    if (!search) return;
+    const hasWelcome = !!search.get("welcome");
+    if (!hasWelcome) return;
+    try {
+      const key = `welcome_shown_${uid || "anon"}`;
+      const seen = typeof window !== "undefined" ? window.localStorage.getItem(key) : "1";
+      if (!seen) {
+        setShowWelcome(true);
+        window.localStorage.setItem(key, "1");
+      }
+    } catch {}
+  }, [search, uid]);
 
   async function setCover(weekId: string, coverUrl: string) {
     try {

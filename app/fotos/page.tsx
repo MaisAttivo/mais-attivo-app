@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatLisbonDate } from "@/lib/utils";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type PhotoSet = { id: string; createdAt: Date | null; urls: string[]; coverUrl: string | null };
 

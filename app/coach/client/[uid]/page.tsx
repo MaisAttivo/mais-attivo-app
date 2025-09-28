@@ -496,6 +496,15 @@ export default function CoachClientProfilePage() {
         setInbodyLoading(false);
       }
 
+      // Ler consentimento de fotos do utilizador
+      try {
+        const s = await getDoc(doc(db, "users", uid));
+        const d: any = s.data() || {};
+        setPhotoConsentActive(typeof d.photoConsentActive === 'boolean' ? d.photoConsentActive : null);
+        const ts = d.photoConsentUpdatedAt?.toDate ? d.photoConsentUpdatedAt.toDate() : (d.photoConsentUpdatedAt ? new Date(d.photoConsentUpdatedAt) : null);
+        setPhotoConsentAt(ts || null);
+      } catch {}
+
       await loadPlAll(uid);
 
       setLoading(false);

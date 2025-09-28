@@ -162,6 +162,20 @@ export default function CoachClientProfilePage() {
   const [photoConsentActive, setPhotoConsentActive] = useState<boolean | null>(null);
   const [photoConsentAt, setPhotoConsentAt] = useState<Date | null>(null);
 
+  function downloadUrl(url: string, filename: string) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ try{ document.body.removeChild(a); }catch{} }, 0);
+  }
+  function downloadAll(urls: string[], base: string) {
+    const ts = new Date();
+    urls.forEach((u, i) => downloadUrl(u, `${base}-${String(i+1).padStart(2,'0')}.jpg`));
+  }
+
 
   // Powerlifting flag
   const [plEnabled, setPlEnabled] = useState<boolean>(false);
@@ -832,7 +846,7 @@ export default function CoachClientProfilePage() {
                         <div className="font-medium mb-1">{ymd(toDate(d.date ?? null))}</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div><span className="text-muted-foreground">Peso:</span> {w != null ? w : "—"}</div>
-                          <div><span className="text-muted-foreground">��gua:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
+                          <div><span className="text-muted-foreground">Água:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
                           <div><span className="text-muted-foreground">Passos:</span> {num(d.steps) ?? num(d.passos) ?? "—"}</div>
                           <div><span className="text-muted-foreground">Treino:</span> {(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</div>
                           <div><span className="text-muted-foreground">Alim.:</span> {d.alimentacao100 ? "Sim" : "—"}</div>
@@ -1275,6 +1289,7 @@ export default function CoachClientProfilePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="secondary" onClick={()=>setOpenSet({ id: s.id, urls: s.urls })}>Ver</Button>
+                      <Button size="sm" variant="outline" onClick={()=>downloadAll(s.urls, `fotos-${s.id}`)}>Download</Button>
                     </div>
                   </div>
                 ))}
@@ -1286,12 +1301,18 @@ export default function CoachClientProfilePage() {
         {openSet && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
             <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
-              <div className="sticky top-2 right-2 flex justify-end">
+              <div className="sticky top-2 right-2 flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={()=>downloadAll(openSet.urls, `fotos-${openSet.id}`)}>Download todas</Button>
                 <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {openSet.urls.map((u, i)=> (
-                  <img key={i} src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                  <div key={i} className="relative">
+                    <img src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
+                    <div className="mt-2 flex justify-center">
+                      <Button size="sm" variant="outline" onClick={()=>downloadUrl(u, `fotos-${openSet.id}-${String(i+1).padStart(2,'0')}.jpg`)}>Download</Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

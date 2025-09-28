@@ -221,8 +221,11 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
 
 export default function FotosPage() {
   const { uid } = useSession();
+  const router = useRouter();
+  const search = useSearchParams();
   const { loading, sets, setSets, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => !!search?.get("welcome"));
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
@@ -255,7 +258,7 @@ export default function FotosPage() {
             <CardTitle>Atualização Fotos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Uploader onUploaded={reload} />
+            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} />
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
@@ -329,6 +332,19 @@ export default function FotosPage() {
             onClose={() => setOpen(null)}
             onSetCover={(url) => { setCover(open.id, url); setOpen({ ...open, coverUrl: url }); }}
           />
+        )}
+        {showWelcome && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 text-center">
+              <h2 className="text-xl font-semibold mb-2">Bem‑vindo ao +ATTIVO!</h2>
+              <p className="text-sm text-slate-700 leading-relaxed">
+                Para concluir o registo, envia até 4 fotos (frente, lado e trás). Estas imagens registam o teu ponto de partida e ajudam-nos a personalizar o teu acompanhamento.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <Button size="sm" variant="secondary" onClick={()=>setShowWelcome(false)}>Entendi</Button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </ClientGuard>

@@ -1,28 +1,23 @@
 import "server-only";
 
-import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+import { applicationDefault, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
-// Parse service account JSON from env (provided in hosting environment)
-const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-let credentials: { project_id?: string; client_email?: string; private_key?: string } | undefined;
-try {
-  credentials = raw ? JSON.parse(raw) : undefined;
-} catch {
-  credentials = undefined;
-}
-
+// Initialize Admin SDK with explicit storage bucket
 export const adminApp: App =
   getApps()[0] ||
   initializeApp({
-    // If credentials are missing, Firebase Admin will try ADC/emulators where applicable
-    credential: credentials ? cert({
-      projectId: credentials.project_id,
-      clientEmail: credentials.client_email,
-      privateKey: credentials.private_key,
-    }) : undefined,
-    projectId: credentials?.project_id,
+    credential: applicationDefault(),
+    storageBucket: "mais-attivo-ofc.appspot.com",
   });
 
 export const adminDb = getFirestore(adminApp);
 adminDb.settings({ ignoreUndefinedProperties: true });
+
+// Export the bucket explicitly pointing to the correct bucket
+export const bucket = getStorage(adminApp).bucket("mais-attivo-ofc.appspot.com");
+
+// Temporary validation log
+// eslint-disable-next-line no-console
+console.log("[AdminStorage CHECK]", bucket.name);

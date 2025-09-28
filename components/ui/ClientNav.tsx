@@ -98,7 +98,6 @@ export default function ClientNav() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <InbodyModal open={showInbody} onClose={() => setShowInbody(false)} />
     </>
   );
 }

@@ -229,8 +229,6 @@ export default function FotosPage() {
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
-  const thisWeekId = useMemo(() => isoWeekId(new Date()), []);
-  const hasThisWeek = useMemo(() => sets.some((s) => s.id === thisWeekId), [sets, thisWeekId]);
 
   async function setCover(weekId: string, coverUrl: string) {
     try {

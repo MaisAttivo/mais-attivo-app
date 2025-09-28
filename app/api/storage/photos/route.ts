@@ -114,6 +114,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Collect existing URLs to support multiple sequential uploads within the same week
+    const prevDoc = await setRef.get();
+    const prevData: any = prevDoc.exists ? (prevDoc.data() || {}) : {};
+    const prevUrls: string[] = Array.isArray(prevData.urls) ? prevData.urls.filter((u: any) => typeof u === "string") : [];
+
+    // Also count already present files in the bucket for this week (idempotency when users retry)
+    const prefix = `users/${targetUid}/photos/${weekId}-`;
+    let existingCount = 0;
+    try {
+      const [existing] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: 50 }).catch(() => [ [] ]);
+      existingCount = Array.isArray(existing) ? existing.length : 0;
+    } catch {}
+
     const uploadedUrls: string[] = [];
     for (const anyFile of files) {
       const file = anyFile as unknown as File;
@@ -123,7 +136,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "only_images" }, { status: 400 });
       }
       const buf = Buffer.from(await file.arrayBuffer());
-      if (buf.length > 30 * 1024 * 1024) return NextResponse.json({ error: "too_large" }, { status: 413 });
+      // Enforce 10MB per photo
+      if (buf.length > 10 * 1024 * 1024) return NextResponse.json({ error: "too_large" }, { status: 413 });
+
+      // Enforce global limit of 4 photos per week across multiple requests
+      if (existingCount + prevUrls.length + uploadedUrls.length >= 4) {
+        break;
+      }
 
       const ext = ct === "image/png" ? "png" : "jpg";
       const objectPath = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -143,19 +162,20 @@ export async function POST(req: NextRequest) {
       uploadedUrls.push(signed);
     }
 
-    const urls = uploadedUrls.slice(0, 4);
-    const coverUrl = urls[0] || null;
+    // Merge with previous URLs, keeping only up to 4 total
+    const merged = [...prevUrls, ...uploadedUrls].slice(0, 4);
+    const coverUrl = prevData.coverUrl && typeof prevData.coverUrl === "string" ? prevData.coverUrl : (merged[0] || null);
     await setRef.set(
       {
-        urls,
+        urls: merged,
         coverUrl,
-        createdAt: new Date(),
+        createdAt: prevData.createdAt || new Date(),
         updatedAt: new Date(),
       },
       { merge: true }
     );
 
-    return NextResponse.json({ weekId, urls, coverUrl });
+    return NextResponse.json({ weekId, urls: merged, coverUrl });
   } catch (e: any) {
     return NextResponse.json(
       { error: "server_error", message: e?.message || String(e) },

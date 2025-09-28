@@ -1317,7 +1317,7 @@ export default function CoachClientProfilePage() {
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
             <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
               <div className="sticky top-2 right-2 flex justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={()=>downloadAll(openSet.urls, `fotos-${openSet.id}`)}>Download todas</Button>
+                <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(openSet.urls, `fotos-${openSet.id}`); }}>Download todas</Button>
                 <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

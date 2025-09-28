@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Info, Upload, FileText, X, ArrowLeft } from "lucide-react";
+import ZoomViewer from "@/components/ZoomViewer";
 import SwitchableEvolution, { type EvolutionData } from "@/components/SwitchableEvolution";
 import SwitchableCalendar from "@/components/SwitchableCalendar";
 import { pushPagamento, pushMarcarCheckin, pushRegistosDiarios, pushRegistoSemanal, pushFotos, pushHidratacao, pushPlanosAnexados } from "@/lib/push";
@@ -800,6 +801,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
+          <Button size="sm" variant={visibleSection === "inbody" ? "default" : "outline"} onClick={() => setVisibleSection("inbody")}>InBody</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
           <Button size="sm" variant={visibleSection === "notificacoes" ? "default" : "outline"} onClick={() => setVisibleSection("notificacoes")}>Notificações</Button>
           <Button size="sm" variant={visibleSection === "checkins" ? "default" : "outline"} onClick={() => setVisibleSection("checkins")}>Check-ins</Button>
@@ -1231,24 +1233,7 @@ export default function CoachClientProfilePage() {
         </Card>
 
         {preview && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
-            <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl flex-1 overflow-hidden">
-              <div className="absolute top-3 right-3 flex gap-2">
-                <Button size="sm" variant="outline" asChild><a href={preview.url} download>Download</a></Button>
-                <Button size="sm" variant="secondary" onClick={()=>setPreview(null)}><X className="h-4 w-4" />Fechar</Button>
-              </div>
-              {preview.kind === "pdf" ? (
-                <object data={preview.url} type="application/pdf" className="w-full h-full" aria-label="Pré-visualizaç��o PDF">
-                  <iframe className="w-full h-full" src={"https://drive.google.com/viewerng/viewer?embedded=true&url="+encodeURIComponent(preview.url)} title="Pré-visualização PDF (alternativa)"></iframe>
-                  <div className="p-6 text-sm">Não foi possível embutir o PDF. <a className="underline" href={preview.url} target="_blank" rel="noopener noreferrer">Abrir numa nova janela</a>.</div>
-                </object>
-              ) : (
-                <div className="w-full h-full overflow-auto bg-black/5 flex items-center justify-center p-4">
-                  <img src={preview.url} alt="InBody" className="max-w-full max-h-full rounded-lg shadow" />
-                </div>
-              )}
-            </div>
-          </div>
+          <ZoomViewer url={preview.url} kind={preview.kind} onClose={()=>setPreview(null)} />
         )}
 
 
@@ -1353,7 +1338,7 @@ export default function CoachClientProfilePage() {
                       <div className="text-xs text-muted-foreground">{f.createdAt ? f.createdAt.toLocaleString() : "—"}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={()=>setPreview({ url: f.url, kind: "image" })}>Ver</Button>
+                      <Button size="sm" variant="secondary" onClick={()=>setPreview({ url: f.url, kind: (/\.pdf($|\?)/i.test(f.url)) ? "pdf" : "image" })}>Ver</Button>
                       <Button asChild size="sm" variant="outline"><a href={f.url} target="_blank" rel="noopener noreferrer">Abrir</a></Button>
                     </div>
                   </div>

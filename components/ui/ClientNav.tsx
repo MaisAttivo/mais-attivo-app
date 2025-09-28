@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
@@ -50,8 +52,9 @@ export default function ClientNav() {
       document.querySelectorAll('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]').forEach((el) => {
         const txt = (el as HTMLElement).textContent?.toLowerCase().trim() || '';
         const attr = (el as HTMLElement).getAttribute('data-radix-collection-item') || '';
-        // Apenas esconder itens legados do InBody; manter itens de Fotos
-        if (txt.includes('inbody') || /InBody/i.test(attr)) {
+        const keep = (el as HTMLElement).getAttribute('data-keep') === 'true';
+        // Esconder apenas itens legados do InBody; preservar itens marcados com data-keep
+        if (!keep && (txt.includes('inbody') || /InBody/i.test(attr))) {
           (el as HTMLElement).remove();
         }
       });
@@ -64,34 +67,37 @@ export default function ClientNav() {
   }, []);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" aria-label="Menu">
-          <Menu className="h-5 w-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Navegação</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
-        <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
-        {showPowerlifting && (
-          <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
-        )}
-        <DropdownMenuItem onClick={openCoachWhatsApp}>Contactar Treinador</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={() => {
-            signOut(auth).finally(() => router.replace("/login"));
-          }}
-        >
-          Terminar Sessão
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" aria-label="Menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Navegação</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
+          <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
+          <DropdownMenuItem data-keep="true" onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
+          {showPowerlifting && (
+            <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={openCoachWhatsApp}>Contactar Treinador</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => {
+              signOut(auth).finally(() => router.replace("/login"));
+            }}
+          >
+            Terminar Sessão
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

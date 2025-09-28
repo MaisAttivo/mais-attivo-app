@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { Geist, Geist_Mono } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth";

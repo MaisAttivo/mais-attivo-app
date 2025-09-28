@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatLisbonDate } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type PhotoSet = { id: string; createdAt: Date | null; urls: string[]; coverUrl: string | null };
 
@@ -158,7 +160,7 @@ function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; di
       </div>
 
       {disabledNow && (
-        <div className="mt-2 text-xs text-muted-foreground">Já enviaste fotos esta semana{weekId ? ` (${weekId})` : ""}.</div>
+        <div className="mt-2 text-xs text-muted-foreground">{weekId ? `Já enviaste fotos esta semana${weekId ? ` (${weekId})` : ""}.` : "Permissão de fotos desativada."}</div>
       )}
 
       {typeof progress === "number" && (
@@ -226,6 +228,8 @@ export default function FotosPage() {
   const { loading, sets, setSets, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
+  const [consentActive, setConsentActive] = useState<boolean>(false);
+  const [consentAt, setConsentAt] = useState<Date | null>(null);
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
@@ -243,6 +247,31 @@ export default function FotosPage() {
       }
     } catch {}
   }, [search, uid]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!uid || !db) return;
+        const s = await getDoc(doc(db, "users", uid));
+        const d: any = s.data() || {};
+        setConsentActive(!!d.photoConsentActive);
+        const ts = d.photoConsentUpdatedAt?.toDate ? d.photoConsentUpdatedAt.toDate() : (d.photoConsentUpdatedAt ? new Date(d.photoConsentUpdatedAt) : null);
+        setConsentAt(ts || null);
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [uid]);
+
+  async function toggleConsent() {
+    if (!uid || !db) return;
+    const next = !consentActive;
+    setConsentActive(next);
+    try {
+      await updateDoc(doc(db, "users", uid), { photoConsentActive: next, photoConsentUpdatedAt: serverTimestamp() });
+      setConsentAt(new Date());
+    } catch {}
+  }
 
   async function setCover(weekId: string, coverUrl: string) {
     try {
@@ -270,12 +299,27 @@ export default function FotosPage() {
             <CardTitle>Atualização Fotos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} />
+            <div className="rounded-2xl border p-4 bg-background">
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!consentActive} onChange={toggleConsent} className="h-4 w-4" />
+                  <span>Permissão para uso de fotos</span>
+                </label>
+                <div className="text-xs text-muted-foreground">
+                  {consentAt ? `Atualizado em ${consentAt.toLocaleString()}` : "Nunca definido"}
+                </div>
+              </div>
+              {!consentActive && (
+                <div className="text-xs text-amber-700 mt-2">Ativa a permissão para poderes enviar fotos.</div>
+              )}
+            </div>
+
+            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} disabled={!consentActive} />
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
             ) : sets.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Início</div>
                 {loading ? (

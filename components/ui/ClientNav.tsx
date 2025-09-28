@@ -67,35 +67,38 @@ export default function ClientNav() {
   }, []);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" aria-label="Menu">
-          <Menu className="h-5 w-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Navegação</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
-        <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
-        <DropdownMenuItem data-keep="true" onClick={() => setShowInbody(true)}>InBody</DropdownMenuItem>
-        {showPowerlifting && (
-          <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
-        )}
-        <DropdownMenuItem onClick={openCoachWhatsApp}>Contactar Treinador</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={() => {
-            signOut(auth).finally(() => router.replace("/login"));
-          }}
-        >
-          Terminar Sessão
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" aria-label="Menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Navegação</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push("/dashboard")}>Painel Principal</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/daily")}>Feedback Diário</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/weekly")}>Feedback Semanal</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
+          <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
+          <DropdownMenuItem data-keep="true" onClick={() => setShowInbody(true)}>InBody</DropdownMenuItem>
+          {showPowerlifting && (
+            <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={openCoachWhatsApp}>Contactar Treinador</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => {
+              signOut(auth).finally(() => router.replace("/login"));
+            }}
+          >
+            Terminar Sessão
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <InbodyModal open={showInbody} onClose={() => setShowInbody(false)} />
+    </>
   );
 }

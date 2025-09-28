@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatLisbonDate } from "@/lib/utils";
+import ZoomViewer from "@/components/ZoomViewer";
 
 function isoWeekId(d: Date): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -165,6 +166,7 @@ function Uploader({ disabled, onUploaded }: { disabled?: boolean; onUploaded: ()
 
 export default function InbodyPage() {
   const { items, loading, reload } = useInbody();
+  const [preview, setPreview] = useState<{ url: string; kind: "image" | "pdf" } | null>(null);
   const alreadyThisWeek = useMemo(() => {
     if (!items.length) return false;
     const created = items[0]?.createdAt || null;
@@ -195,6 +197,7 @@ export default function InbodyPage() {
                         <div className="text-xs text-muted-foreground">{f.createdAt ? formatLisbonDate(f.createdAt, { dateStyle: "medium", timeStyle: "short" }) : "—"}</div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={()=> setPreview({ url: f.url, kind: (/\.pdf($|\?)/i.test(f.url) || f.contentType === 'application/pdf') ? 'pdf' : 'image' })}>Ver</Button>
                         <Button size="sm" variant="secondary" asChild>
                           <a href={f.url} target="_blank" rel="noopener noreferrer">Abrir</a>
                         </Button>
@@ -208,6 +211,9 @@ export default function InbodyPage() {
             )}
           </CardContent>
         </Card>
+      {preview && (
+        <ZoomViewer url={preview.url} kind={preview.kind} onClose={()=>setPreview(null)} />
+      )}
       </main>
     </ClientGuard>
   );

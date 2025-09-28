@@ -159,6 +159,8 @@ export default function CoachClientProfilePage() {
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
   const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
+  const [photoConsentActive, setPhotoConsentActive] = useState<boolean | null>(null);
+  const [photoConsentAt, setPhotoConsentAt] = useState<Date | null>(null);
 
 
   // Powerlifting flag
@@ -872,7 +874,7 @@ export default function CoachClientProfilePage() {
                   "Detalhes atividade": onboarding.otherActivityDetails,
                   "Treinos/semana": onboarding.workoutFrequency,
                   "Lesão": onboarding.hasInjury === true ? "Sim" : onboarding.hasInjury === false ? "Não" : onboarding.hasInjury,
-                  "Local les��o": onboarding.injuryDetails,
+                  "Local lesão": onboarding.injuryDetails,
                   "Mobilidade": onboarding.mobilityIssues === true ? "Sim" : onboarding.mobilityIssues === false ? "Não" : onboarding.mobilityIssues,
                   "Detalhes mobilidade": onboarding.mobilityDetails,
                   "Dores": onboarding.hasPain === true ? "Sim" : onboarding.hasPain === false ? "Não" : onboarding.hasPain,

@@ -34,12 +34,13 @@ if (typeof window !== "undefined") {
     } catch {}
     dbInstance = initializeFirestore(appInstance, { experimentalForceLongPolling: true });
 
-    // Explicitly select the bucket only if it's valid; ignore firebasestorage.app hostnames
-    const bucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
+    // Explicitly select the bucket only if it's the canonical appspot.com domain
+    const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
     let gsUrl: string | undefined = undefined;
-    if (bucket) {
-      const isValid = bucket.startsWith("gs://") || bucket.endsWith(".appspot.com");
-      if (isValid) gsUrl = bucket.startsWith("gs://") ? bucket : `gs://${bucket}`;
+    if (rawBucket) {
+      const name = rawBucket.replace(/^gs:\/\//, "");
+      const isAppspot = name.endsWith(".appspot.com");
+      if (isAppspot) gsUrl = `gs://${name}`;
     }
     try {
       storageInstance = gsUrl ? getStorage(appInstance, gsUrl) : getStorage(appInstance);

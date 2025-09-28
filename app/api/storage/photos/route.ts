@@ -44,7 +44,8 @@ function initAdmin() {
 }
 
 function mapBucketName(name?: string) {
-  const n = (name || "").trim().replace(/^gs:\/\//, "");
+  let n = (name || "").trim().replace(/^gs:\/\//, "");
+  if (n.endsWith(".firebasestorage.app")) n = n.replace(/\.firebasestorage\.app$/, ".appspot.com");
   return n;
 }
 

@@ -755,7 +755,7 @@ export default function CoachClientProfilePage() {
           <Button size="sm" variant={visibleSection === "daily" ? "default" : "outline"} onClick={() => setVisibleSection("daily")}>Diários</Button>
           <Button size="sm" variant={visibleSection === "weekly" ? "default" : "outline"} onClick={() => setVisibleSection("weekly")}>Semanais</Button>
           <Button size="sm" variant={visibleSection === "evolucao" ? "default" : "outline"} onClick={() => setVisibleSection("evolucao")}>Evolução</Button>
-          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calendário</Button>
+          <Button size="sm" variant={visibleSection === "calendario" ? "default" : "outline"} onClick={() => setVisibleSection("calendario")}>Calend��rio</Button>
           <Button size="sm" variant={visibleSection === "planos" ? "default" : "outline"} onClick={() => setVisibleSection("planos")}>Planos</Button>
           <Button size="sm" variant={visibleSection === "fotos" ? "default" : "outline"} onClick={() => setVisibleSection("fotos")}>Fotos</Button>
           <Button size="sm" variant={visibleSection === "onboarding" ? "default" : "outline"} onClick={() => setVisibleSection("onboarding")}>Onboarding</Button>
@@ -1216,6 +1216,18 @@ export default function CoachClientProfilePage() {
             <CardTitle>Fotos</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="rounded-2xl border p-4 bg-background mb-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">Permissão para uso de fotos</div>
+                <div className="text-sm font-medium">
+                  {photoConsentActive === null ? "—" : photoConsentActive ? "Ativo" : "Inativo"}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {photoConsentAt ? `Atualizado em ${photoConsentAt.toLocaleString()}` : "Sem registo"}
+              </div>
+            </div>
+
             {photosLoading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
             ) : photoSets.length === 0 ? (

@@ -469,9 +469,16 @@ export default function CoachClientProfilePage() {
           const sets: Array<{ id: string; createdAt?: any; urls?: string[]; coverUrl?: string | null }> = Array.isArray(data.sets) ? data.sets : [];
           if (sets.length > 0) {
             arrFinal = sets.map((s)=>{
-              const created = s.createdAt ? (s.createdAt.toDate ? s.createdAt.toDate() : new Date(s.createdAt)) : null;
+              let created: Date | null = null;
+              const c: any = (s as any).createdAt;
+              if (c) {
+                if (typeof c.toDate === 'function') created = c.toDate();
+                else if (typeof c === 'string' || typeof c === 'number') created = new Date(c as any);
+                else if (typeof c.seconds === 'number') created = new Date(c.seconds * 1000);
+                else if (typeof c._seconds === 'number') created = new Date(c._seconds * 1000);
+              }
               const urls = Array.isArray(s.urls) ? s.urls.filter((u)=> typeof u === 'string') : [];
-              const main = typeof s.coverUrl === 'string' ? s.coverUrl : (urls[0] || "");
+              const main = typeof (s as any).coverUrl === 'string' ? (s as any).coverUrl : (urls[0] || "");
               return { id: String(s.id), createdAt: created, mainUrl: main, urls };
             }).sort((a,b)=> (a.createdAt?.getTime()||0)-(b.createdAt?.getTime()||0));
           } else {
@@ -825,7 +832,7 @@ export default function CoachClientProfilePage() {
                         <div className="font-medium mb-1">{ymd(toDate(d.date ?? null))}</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div><span className="text-muted-foreground">Peso:</span> {w != null ? w : "—"}</div>
-                          <div><span className="text-muted-foreground">Água:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
+                          <div><span className="text-muted-foreground">��gua:</span> {agua != null ? agua : "—"}{num(d.metaAgua) != null && ` / ${d.metaAgua}`}</div>
                           <div><span className="text-muted-foreground">Passos:</span> {num(d.steps) ?? num(d.passos) ?? "—"}</div>
                           <div><span className="text-muted-foreground">Treino:</span> {(d.didWorkout ?? d.treinou) ? "Sim" : "—"}</div>
                           <div><span className="text-muted-foreground">Alim.:</span> {d.alimentacao100 ? "Sim" : "—"}</div>

@@ -44,7 +44,8 @@ function initAdmin() {
 }
 
 function mapBucketName(name?: string) {
-  const n = (name || "").trim().replace(/^gs:\/\//, "");
+  let n = (name || "").trim().replace(/^gs:\/\//, "");
+  if (n.endsWith(".firebasestorage.app")) n = n.replace(/\.firebasestorage\.app$/, ".appspot.com");
   return n;
 }
 
@@ -71,6 +72,24 @@ async function saveToAnyBucketDirect(pathName: string, buf: Buffer, contentType:
     }
   }
   throw lastErr || new Error('no_bucket_available');
+}
+
+async function countFilesForPrefix(prefix: string): Promise<number> {
+  const cred = getCred();
+  const projectId = (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || cred.project_id || "").trim();
+  const storage = new Storage({ projectId, credentials: { client_email: cred.client_email, private_key: cred.private_key } });
+  const primary = mapBucketName(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+  const alt = mapBucketName(process.env.FIREBASE_ALT_BUCKET);
+  const candidates = [primary, alt].filter(Boolean);
+  let total = 0;
+  for (const name of candidates) {
+    try {
+      const b = storage.bucket(name);
+      const [files] = await b.getFiles({ prefix, autoPaginate: false, maxResults: 10 });
+      total += (files || []).length;
+    } catch {}
+  }
+  return total;
 }
 
 async function ensureCoachOrSelf(userId: string, targetUid: string): Promise<boolean> {
@@ -111,6 +130,7 @@ export async function GET(req: NextRequest) {
     const ref = db.collection("users").doc(targetUid).collection("photoSets");
     const snap = await ref.orderBy("createdAt","asc").limit(120).get();
     let sets = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    sets = sets.filter((s: any) => Array.isArray(s.urls) && s.urls.length > 0);
 
     let items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
     if (sets.length > 0) {
@@ -186,6 +206,23 @@ export async function POST(req: NextRequest) {
     const weekId = String(form.get("weekId") || isoWeekId(new Date()));
     const uploadedUrls: string[] = [];
 
+    // Weekly limit: only one upload per week per user (tolerate manual deletions in storage)
+    const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);
+    const existing = await setRef.get();
+    if (existing.exists) {
+      const data: any = existing.data() || {};
+      const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
+      if (prev.length > 0) {
+        const prefix = `users/${targetUid}/photos/${weekId}-`;
+        const count = await countFilesForPrefix(prefix).catch(() => 0);
+        if (count > 0) {
+          return NextResponse.json({ error: 'weekly_limit' }, { status: 409 });
+        } else {
+          await setRef.set({ urls: [], coverUrl: null, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        }
+      }
+    }
+
     for (const anyFile of files) {
       const file = anyFile as unknown as File;
       if (typeof (file as any).arrayBuffer !== 'function') continue;
@@ -203,16 +240,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const setRef = db.collection('users').doc(targetUid).collection('photoSets').doc(weekId);
-    const doc = await setRef.get();
+    // Create or update this week's set (first upload wins; subsequent uploads blocked above)
     let urls: string[] = uploadedUrls.slice(0,4);
     let coverUrl: string | null = uploadedUrls[0] || null;
-    if (doc.exists) {
-      const data: any = doc.data() || {};
-      const prev: string[] = Array.isArray(data.urls) ? data.urls : [];
-      urls = [...prev, ...uploadedUrls].slice(0,4);
-      coverUrl = (data.coverUrl && urls.includes(data.coverUrl)) ? data.coverUrl : (coverUrl || urls[0] || null);
-    }
 
     await setRef.set({
       urls,

@@ -15,7 +15,8 @@ function initAdmin() {
   if (admin.apps.length) return admin.app();
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || "").trim();
   const rawBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim();
-  const bucketName = rawBucket.replace(/^gs:\/\//, "");
+  let bucketName = rawBucket.replace(/^gs:\/\//, "");
+  if (bucketName.endsWith(".firebasestorage.app")) bucketName = bucketName.replace(/\.firebasestorage\.app$/, ".appspot.com");
   let credObj: any = null;
   if (raw) {
     let text = raw;
@@ -58,8 +59,13 @@ export async function POST(req: NextRequest) {
   try {
     const app = initAdmin();
     const auth = app.auth();
-    const envPrimary = (process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "").trim().replace(/^gs:\/\//, "");
-    const envAlt = (process.env.FIREBASE_ALT_BUCKET || "").trim().replace(/^gs:\/\//, "");
+    const norm = (v?: string) => {
+      let n = (v || "").trim().replace(/^gs:\/\//, "");
+      if (n.endsWith(".firebasestorage.app")) n = n.replace(/\.firebasestorage\.app$/, ".appspot.com");
+      return n;
+    };
+    const envPrimary = norm(process.env.FIREBASE_UPLOAD_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const envAlt = norm(process.env.FIREBASE_ALT_BUCKET);
     const candidates = [envPrimary, envAlt].filter(Boolean);
     if (candidates.length === 0) return NextResponse.json({ error: 'no_bucket_configured' }, { status: 500 });
 

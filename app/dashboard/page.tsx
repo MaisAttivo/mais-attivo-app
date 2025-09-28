@@ -1,14 +1,11 @@
 "use client";
 
-"use client";
-
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { lisbonYMD, lisbonTodayYMD } from "@/lib/utils";
-import EmojiCalendar from "@/components/EmojiCalendar";
 import SwitchableCalendar from "@/components/SwitchableCalendar";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -23,6 +20,10 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
+
+// 👇 se quiseres também o botão que já tinhas criado em separado, descomenta a linha seguinte
+// import InstallButton from "@/app/components/InstallButton";
+import InstallPrompt from "@/app/components/InstallPrompt";
 
 /** ===== Helpers de datas (Portugal/Lisboa) ===== */
 function ymdUTC(d = new Date()) {
@@ -112,19 +113,19 @@ export default function DashboardPage() {
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
-  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
-  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
-
-  useEffect(() => {
-    if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);
-  }, [isPastCheckin, isTodayCheckin]);
-
   const todayId = useMemo(() => ymdUTC(new Date()), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
   const isoEnd = useMemo(() => endOfISOWeekUTC(new Date()), []);
 
   // WhatsApp do coach para marcação
   const COACH_WHATSAPP = "351963032907";
+
+  const isPastCheckin = !!nextCheckin && nextCheckin < lisbonTodayYMD();
+  const isTodayCheckin = !!nextCheckin && nextCheckin === lisbonTodayYMD();
+
+  useEffect(() => {
+    if (isPastCheckin || isTodayCheckin) setShowCheckinModal(true);
+  }, [isPastCheckin, isTodayCheckin]);
 
   /** Auth */
   useEffect(() => {
@@ -139,7 +140,7 @@ export default function DashboardPage() {
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [router]);
 
   /** Carregar dados */
   useEffect(() => {
@@ -293,7 +294,12 @@ export default function DashboardPage() {
         let qs = await getDocs(q);
         if (qs.empty) {
           try {
-            q = query(collection(db, `users/${uid}/coachNotifications`), where("read", "==", false), orderBy("createdAt", "desc"), limit(5));
+            q = query(
+              collection(db, `users/${uid}/coachNotifications`),
+              where("read", "==", false),
+              orderBy("createdAt", "desc"),
+              limit(5)
+            );
             qs = await getDocs(q);
           } catch {}
         }
@@ -349,11 +355,8 @@ export default function DashboardPage() {
     }
   })();
 
-  // Streak alimentação — decoração
-  const streakBadge = streakAlimentacao >= 2 ? "🔥" : "";
-  const streakClass = streakAlimentacao === 0 ? "text-rose-600" : "text-gray-900";
-
   const waPhone = process.env.NEXT_PUBLIC_WHATSAPP_PHONE;
+
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -421,11 +424,11 @@ export default function DashboardPage() {
                 href={waOverdueHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-[#25D366] hover:bg-[#1fb65a] text-white"
                 title="Marcar avaliação (WhatsApp)"
               >
-                <span aria-hidden>��</span>
-                <span>WhatsApp</span>
+                <span className="inline-block" aria-hidden>🟢</span>
+                <span className="ml-0.5">WhatsApp</span>
               </a>
             )}
           </div>
@@ -444,7 +447,9 @@ export default function DashboardPage() {
           </div>
           <div className="text-xs text-slate-500 mt-1">
             média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
-            <div className="text-xs text-slate-500 mt-0.5">semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : <>—{fallbackPrevAvg != null ? ` (${fallbackPrevAvg} kg)` : null}</>}</div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : <>—{fallbackPrevAvg != null ? ` (${fallbackPrevAvg} kg)` : null}</>}
+            </div>
           </div>
         </div>
       </div>
@@ -472,7 +477,6 @@ export default function DashboardPage() {
           <div className="text-2xl font-semibold">{passosMedia7 ?? "—"}</div>
         </div>
       </div>
-
 
       {/* Daily hoje */}
       {!needsDaily && (
@@ -541,9 +545,11 @@ export default function DashboardPage() {
                   href={waOverdueHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-[#D4AF37] text-white shadow hover:bg-[#BE9B2F]"
+                  className="px-4 py-2 rounded-xl bg-[#25D366] text-white shadow hover:bg-[#1fb65a]"
+                  title="Abrir WhatsApp"
                 >
-                  WhatsApp
+                  <span className="inline-block" aria-hidden>🟢</span>
+                  <span className="ml-1">WhatsApp</span>
                 </a>
                 <button
                   type="button"
@@ -557,6 +563,13 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Prompt de instalação (Android/desktop com botão + iOS com instruções).
+          O próprio componente decide quando aparecer (só no /dashboard e role=client) */}
+      <InstallPrompt />
+
+      {/* Se preferires também o teu botão antigo em separado, podes renderizar aqui:
+         <InstallButton /> */}
     </div>
   );
 }

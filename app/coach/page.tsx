@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ChevronDown, Filter as FilterIcon, Search, RefreshCw } from "lucide-react";
+import { ChevronDown, Filter as FilterIcon, Search, RefreshCw, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -457,6 +457,11 @@ function CoachDashboard() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl md:text-3xl font-bold">Dashboard do Coach</h1>
         <div className="flex items-center gap-2">
+          <Link href="/coach/alunos">
+            <Button variant="secondary">
+              <Users className="mr-2 h-4 w-4" /> Alunos
+            </Button>
+          </Link>
           <Button variant="outline" onClick={fetchClientes} disabled={loading}>
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Atualizar
           </Button>

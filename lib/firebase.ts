@@ -4,7 +4,7 @@ import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth"
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Initialize Firebase only in the browser to avoid SSR crashes when env vars are missing
+// Inicializar Firebase só no browser para evitar crashes em SSR quando faltam envs
 let appInstance: any = undefined;
 let authInstance: any = undefined;
 let dbInstance: any = undefined;
@@ -15,25 +15,29 @@ if (typeof window !== "undefined") {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    // Force the correct bucket regardless of older envs/configs
+    // Forçar o bucket correto independentemente de envs antigas
     storageBucket: "mais-attivo-ofc.appspot.com",
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
   } as const;
 
   appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
   authInstance = getAuth(appInstance);
   try {
-    // Garantir sessão persiste após fechar o browser
-    // Nota: não bloquear UI se falhar (navegador sem storage)
+    // Garantir que a sessão persiste após fechar o browser
+    // (não bloquear UI se falhar por políticas do navegador)
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     setPersistence(authInstance, browserLocalPersistence);
   } catch {}
+
+  // Forçar long polling para evitar issues de rede/firewall em alguns ambientes
   dbInstance = initializeFirestore(appInstance, { experimentalForceLongPolling: true });
 
-  // Force the correct bucket (ignores outdated configs)
+  // Forçar explicitamente o bucket correto (ignora configs herdadas erradas)
   storageInstance = getStorage(appInstance, "gs://mais-attivo-ofc.appspot.com");
-  // Temporary validation log
+
+  // (Opcional) Log temporário de validação — comentar/remover após verificar nos logs
   // eslint-disable-next-line no-console
   console.log("[Storage CHECK]", (storageInstance as any)?.app?.options?.storageBucket);
 }

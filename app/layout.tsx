@@ -20,12 +20,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
   const { uid, role, active, loading } = useSession();
@@ -40,10 +37,20 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased attivo-bg min-h-screen`}
-      >
+    <html lang="pt">
+      <head>
+        {/* Manifesto PWA */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        {/* Cores PWA */}
+        <meta name="theme-color" content="#d4af37" />
+        <meta name="background-color" content="#ffffff" />
+        {/* Ícones Apple (iOS não lê o manifest) */}
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
+
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased attivo-bg min-h-screen`}>
         {showHeader && (
           <>
             <header className="w-full py-3">
@@ -63,45 +70,57 @@ export default function RootLayout({
                 />
               )}
             </header>
+
             {uid && role === "client" && (
-              <div className="fixed right-4 top-4 z-50 flex items-center gap-2" aria-label="Navegação do cliente">
-                {/* Toggle de notificações no canto superior */}
-                {/* Mantém estilo discreto e pequeno */}
+              <div
+                className="fixed right-4 top-4 z-50 flex items-center gap-2"
+                aria-label="Navegação do cliente"
+              >
                 <EnablePushButton />
                 <ClientNav />
               </div>
             )}
           </>
         )}
+
         {uid && role !== "coach" && active === false ? (
-          <>
-            <main className="max-w-xl mx-auto p-6">
-              <div
-                className="rounded-2xl bg-white shadow-lg ring-2 ring-rose-400 p-6 text-center"
-                role="button"
-                tabIndex={0}
-                aria-label="Terminar sessão"
-                onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); signOut(auth).finally(() => router.replace("/login")); } }}
-                title="Clicar para terminar sessão"
-              >
-                <h2 className="text-xl font-semibold text-rose-700 mb-2">Conta inativa</h2>
-                <p className="text-sm text-rose-700">A tua conta está inativa. Fala com o teu coach para voltar a ativá-la.</p>
-                <div className="mt-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); signOut(auth).finally(() => router.replace("/login")); }}
-                    className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
-                  >
-                    Terminar sessão
-                  </button>
-                </div>
+          <main className="max-w-xl mx-auto p-6">
+            <div
+              className="rounded-2xl bg-white shadow-lg ring-2 ring-rose-400 p-6 text-center"
+              role="button"
+              tabIndex={0}
+              aria-label="Terminar sessão"
+              onClick={() => { signOut(auth).finally(() => router.replace("/login")); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  signOut(auth).finally(() => router.replace("/login"));
+                }
+              }}
+              title="Clicar para terminar sessão"
+            >
+              <h2 className="text-xl font-semibold text-rose-700 mb-2">Conta inativa</h2>
+              <p className="text-sm text-rose-700">
+                A tua conta está inativa. Fala com o teu coach para voltar a ativá-la.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    signOut(auth).finally(() => router.replace("/login"));
+                  }}
+                  className="rounded-[20px] overflow-hidden border-[3px] border-[#706800] text-[#706800] bg-white px-4 py-2 shadow hover:bg-[#FFF4D1]"
+                >
+                  Terminar sessão
+                </button>
               </div>
-            </main>
-          </>
+            </div>
+          </main>
         ) : (
           children
         )}
+
         <OneSignalInit />
       </body>
     </html>

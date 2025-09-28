@@ -16,13 +16,11 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useSession } from "@/lib/auth";
-import InbodyModal from "@/components/InbodyModal";
 
 export default function ClientNav() {
   const router = useRouter();
   const { uid } = useSession();
   const [showPowerlifting, setShowPowerlifting] = useState(false);
-  const [showInbody, setShowInbody] = useState(false);
   const DEFAULT_COACH_WHATSAPP = "351963032907";
 
   useEffect(() => {
@@ -82,7 +80,7 @@ export default function ClientNav() {
           <DropdownMenuItem onClick={() => router.push("/plans")}>Planos</DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/evolucao")}>Evolução</DropdownMenuItem>
           <DropdownMenuItem data-keep="true" onClick={() => router.push("/fotos")}>Atualização Fotos</DropdownMenuItem>
-          <DropdownMenuItem data-keep="true" onClick={() => setShowInbody(true)}>InBody</DropdownMenuItem>
+          <DropdownMenuItem data-keep="true" onClick={() => router.push("/inbody")}>InBody</DropdownMenuItem>
           {showPowerlifting && (
             <DropdownMenuItem onClick={() => router.push("/powerlifting")}>Powerlifting</DropdownMenuItem>
           )}

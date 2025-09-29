@@ -233,11 +233,7 @@ export default function CoachClientProfilePage() {
   }
 
   // Evolução (gráficos)
-  const [evoData, setEvoData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [] });
-  const lastGorduraPercent = useMemo(() => {
-    const v = (checkins && checkins[0]) ? (checkins[0] as any).gorduraPercent : null;
-    return typeof v === 'number' ? v : null;
-  }, [checkins]);
+  const [evoData, setEvoData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [], gorduraPercent: [] });
 
   function parseWeekMondayFromId(id: string): Date | null {
     const m = id.match(/^(\d{4})-W(\d{2})$/);
@@ -332,6 +328,7 @@ export default function CoachClientProfilePage() {
         const massaMuscular: { x: number; y: number }[] = [];
         const massaGorda: { x: number; y: number }[] = [];
         const gorduraVisceral: { x: number; y: number }[] = [];
+        const gorduraPercent: { x: number; y: number }[] = [];
 
         // Weekly average from dailies for a cleaner chart
         let qD = query(collection(db, `users/${uid}/dailyFeedback`), orderBy("date", "asc"), limit(400));
@@ -385,11 +382,12 @@ export default function CoachClientProfilePage() {
           if (typeof d.massaMuscular === "number") massaMuscular.push({ x: t, y: d.massaMuscular });
           if (typeof d.massaGorda === "number") massaGorda.push({ x: t, y: d.massaGorda });
           if (typeof d.gorduraVisceral === "number") gorduraVisceral.push({ x: t, y: d.gorduraVisceral });
+          if (typeof d.gorduraPercent === "number") gorduraPercent.push({ x: t, y: d.gorduraPercent });
         });
 
         const asc = (a: { x: number }, b: { x: number }) => a.x - b.x;
-        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc);
-        setEvoData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral });
+        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc); gorduraPercent.sort(asc);
+        setEvoData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral, gorduraPercent });
       } catch (e) {
         console.error("evolução load falhou", e);
       }
@@ -895,9 +893,6 @@ export default function CoachClientProfilePage() {
               <SwitchableEvolution data={evoData} />
             </div>
             <div className="text-xs text-muted-foreground mt-2">Podes deslizar para ver outros gráficos.</div>
-            <div className="mt-3 text-sm">
-              %Gordura (último CI): <span className="font-medium">{lastGorduraPercent != null ? `${lastGorduraPercent}%` : "—"}</span>
-            </div>
           </CardContent>
         </Card>
 

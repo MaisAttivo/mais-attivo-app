@@ -107,6 +107,7 @@ export default function EvolucaoPage() {
             if (typeof d.massaMuscular === "number") massaMuscular.push({ x: t, y: d.massaMuscular });
             if (typeof d.massaGorda === "number") massaGorda.push({ x: t, y: d.massaGorda });
             if (typeof d.gorduraVisceral === "number") gorduraVisceral.push({ x: t, y: d.gorduraVisceral });
+            if (typeof d.gorduraPercent === "number") gorduraPercent.push({ x: t, y: d.gorduraPercent });
             if (typeof d.gorduraPercent === "number") latest = d.gorduraPercent;
           });
           setLastGorduraPercent(latest);

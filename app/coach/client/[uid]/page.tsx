@@ -234,6 +234,10 @@ export default function CoachClientProfilePage() {
 
   // Evolução (gráficos)
   const [evoData, setEvoData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [] });
+  const lastGorduraPercent = useMemo(() => {
+    const v = (checkins && checkins[0]) ? (checkins[0] as any).gorduraPercent : null;
+    return typeof v === 'number' ? v : null;
+  }, [checkins]);
 
   function parseWeekMondayFromId(id: string): Date | null {
     const m = id.match(/^(\d{4})-W(\d{2})$/);
@@ -891,6 +895,9 @@ export default function CoachClientProfilePage() {
               <SwitchableEvolution data={evoData} />
             </div>
             <div className="text-xs text-muted-foreground mt-2">Podes deslizar para ver outros gráficos.</div>
+            <div className="mt-3 text-sm">
+              %Gordura (último CI): <span className="font-medium">{lastGorduraPercent != null ? `${lastGorduraPercent}%` : "—"}</span>
+            </div>
           </CardContent>
         </Card>
 

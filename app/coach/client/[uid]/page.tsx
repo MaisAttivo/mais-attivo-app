@@ -160,6 +160,8 @@ export default function CoachClientProfilePage() {
   const [photosLoading, setPhotosLoading] = useState<boolean>(true);
   const [photoSets, setPhotoSets] = useState<Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }>>([]);
   const [openSet, setOpenSet] = useState<{ id: string; urls: string[] } | null>(null);
+  const [photoItems, setPhotoItems] = useState<Array<{ url: string; createdAt: Date | null }>>([]);
+  const [openDay, setOpenDay] = useState<{ date: string; urls: string[] } | null>(null);
   const [photoConsentActive, setPhotoConsentActive] = useState<boolean | null>(null);
   const [photoConsentAt, setPhotoConsentAt] = useState<Date | null>(null);
 
@@ -202,6 +204,18 @@ export default function CoachClientProfilePage() {
 
   const [plPrs, setPlPrs] = useState<Record<PLExercise, PR[]>>({ agachamento: [], supino: [], levantamento: [] });
   const [plShowCount, setPlShowCount] = useState<Record<PLExercise, number>>({ agachamento: 10, supino: 10, levantamento: 10 });
+
+  const groupsByDay = useMemo(() => {
+    const by: Record<string, string[]> = {};
+    for (const it of photoItems) {
+      const d = it.createdAt ? new Date(it.createdAt) : null;
+      const key = d ? d.toISOString().slice(0,10) : "";
+      if (!key) continue;
+      if (!by[key]) by[key] = [];
+      by[key].push(it.url);
+    }
+    return Object.entries(by).sort((a,b)=> a[0] < b[0] ? 1 : -1).map(([date, urls])=>({ date, urls }));
+  }, [photoItems]);
 
   async function loadPlAll(userId: string) {
     try {
@@ -498,6 +512,9 @@ export default function CoachClientProfilePage() {
         let arrFinal: Array<{ id: string; createdAt: Date | null; mainUrl: string; urls: string[] }> = [];
         if (res.ok) {
           const data = await res.json();
+          const rawItems: Array<{ url: string; name: string; createdAt?: string | null }> = Array.isArray(data.items) ? data.items : [];
+          const mappedItems = rawItems.map(it => ({ url: String(it.url), createdAt: it.createdAt ? new Date(it.createdAt) : null }));
+          setPhotoItems(mappedItems);
           const sets: Array<{ id: string; createdAt?: any; urls?: string[]; coverUrl?: string | null }> = Array.isArray(data.sets) ? data.sets : [];
           if (sets.length > 0) {
             arrFinal = sets.map((s)=>{
@@ -725,7 +742,7 @@ export default function CoachClientProfilePage() {
               </Badge>
               {nextDue && phone && (
                 <a
-                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
+                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Est�� na hora do teu check-in. Consegues marcar a avaliação?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -1259,60 +1276,69 @@ export default function CoachClientProfilePage() {
 
             {photosLoading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
-            ) : photoSets.length === 0 ? (
+            ) : groupsByDay.length === 0 ? (
               <div className="text-sm text-muted-foreground">Sem fotos.</div>
             ) : (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Início</div>
-                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[0].id, urls: photoSets[0].urls })}>
-                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                        <img src={photoSets[0].mainUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">{photoSets[0].createdAt?.toLocaleString() ?? "—"}</div>
-                    </button>
+                    {(function(){ const oldest = groupsByDay[groupsByDay.length-1]; const cover = oldest?.urls?.[0]; return (
+                      <button className="w-full text-left" onClick={()=> oldest && setOpenDay(oldest)}>
+                        <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                          {cover ? <img src={cover} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" /> : <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{oldest ? new Date(oldest.date+"T00:00:00").toLocaleDateString() : "—"}</div>
+                      </button>
+                    ); })()}
                   </div>
                   <div className="rounded-2xl border p-4 bg-background">
                     <div className="text-sm text-slate-700 mb-2">Atual</div>
-                    <button className="w-full text-left" onClick={()=>setOpenSet({ id: photoSets[photoSets.length-1].id, urls: photoSets[photoSets.length-1].urls })}>
-                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                        <img src={photoSets[photoSets.length-1].mainUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">{photoSets[photoSets.length-1].createdAt?.toLocaleString() ?? "—"}</div>
-                    </button>
+                    {(function(){ const newest = groupsByDay[0]; const cover = newest?.urls?.[0]; return (
+                      <button className="w-full text-left" onClick={()=> newest && setOpenDay(newest)}>
+                        <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                          {cover ? <img src={cover} alt="Atual" className="absolute inset-0 w-full h-full object-contain" /> : <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{newest ? new Date(newest.date+"T00:00:00").toLocaleDateString() : "—"}</div>
+                      </button>
+                    ); })()}
                   </div>
                 </div>
-                {photoSets.map((s)=> (
-                  <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">{s.createdAt?.toLocaleString() ?? s.id}</div>
-                      <div className="text-xs text-muted-foreground">{s.urls.length} imagem(s)</div>
+
+                <div className="text-sm font-medium">Histórico</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {groupsByDay.map((g)=> (
+                    <div key={g.date} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium">{new Date(g.date+"T00:00:00").toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground">{g.urls.length} imagem(s)</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={()=>setOpenDay(g)}>Ver</Button>
+                        <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(g.urls, `fotos-${g.date}`); }}>Download</Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={()=>setOpenSet({ id: s.id, urls: s.urls })}>Ver</Button>
-                      <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(s.urls, `fotos-${s.id}`); }}>Download</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {openSet && (
+        {openDay && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
             <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
               <div className="sticky top-2 right-2 flex justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(openSet.urls, `fotos-${openSet.id}`); }}>Download todas</Button>
-                <Button size="sm" variant="secondary" onClick={()=>setOpenSet(null)}>Fechar</Button>
+                <Button size="sm" variant="outline" onClick={async ()=>{ await downloadAll(openDay.urls, `fotos-${openDay.date}`); }}>Download todas</Button>
+                <Button size="sm" variant="secondary" onClick={()=>setOpenDay(null)}>Fechar</Button>
               </div>
+              <div className="mb-2 font-medium">{new Date(openDay.date+"T00:00:00").toLocaleDateString()}</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {openSet.urls.map((u, i)=> (
+                {openDay.urls.map((u, i)=> (
                   <div key={i} className="relative">
                     <img src={u} alt={`Foto ${i+1}`} className="w-full rounded-xl object-contain" />
                     <div className="mt-2 flex justify-center">
-                      <Button size="sm" variant="outline" onClick={()=>downloadUrl(u, `fotos-${openSet.id}-${String(i+1).padStart(2,'0')}.jpg`)}>Download</Button>
+                      <Button size="sm" variant="outline" onClick={()=>downloadUrl(u, `fotos-${openDay.date}-${String(i+1).padStart(2,'0')}.jpg`)}>Download</Button>
                     </div>
                   </div>
                 ))}

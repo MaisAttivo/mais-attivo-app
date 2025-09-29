@@ -36,7 +36,7 @@ export default function EvolucaoPage() {
   const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [] });
+  const [data, setData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [], gorduraPercent: [] });
   const [lastGorduraPercent, setLastGorduraPercent] = useState<number | null>(null);
 
   useEffect(() => {

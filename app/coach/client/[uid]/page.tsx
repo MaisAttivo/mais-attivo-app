@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, useMemo, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {

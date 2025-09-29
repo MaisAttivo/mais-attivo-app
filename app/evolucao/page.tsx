@@ -37,7 +37,6 @@ export default function EvolucaoPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [], gorduraPercent: [] });
-  const [lastGorduraPercent, setLastGorduraPercent] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -97,7 +96,6 @@ export default function EvolucaoPage() {
           if (snap.empty) {
             try { qy = query(collection(db, `users/${u.uid}/checkins`), orderBy("__name__", "asc"), limit(100)); snap = await getDocs(qy); } catch {}
           }
-          let latest: number | null = null;
           snap.forEach((docSnap) => {
             const d: any = docSnap.data();
             const dt: Date | null = d.date?.toDate?.() || null;
@@ -108,9 +106,7 @@ export default function EvolucaoPage() {
             if (typeof d.massaGorda === "number") massaGorda.push({ x: t, y: d.massaGorda });
             if (typeof d.gorduraVisceral === "number") gorduraVisceral.push({ x: t, y: d.gorduraVisceral });
             if (typeof d.gorduraPercent === "number") gorduraPercent.push({ x: t, y: d.gorduraPercent });
-            if (typeof d.gorduraPercent === "number") latest = d.gorduraPercent;
           });
-          setLastGorduraPercent(latest);
         } catch {}
 
         // Sort
@@ -138,7 +134,6 @@ export default function EvolucaoPage() {
 
       <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
         <SwitchableEvolution data={data} />
-        <div className="mt-3 text-sm">%Gordura (último CI): <span className="font-medium">{lastGorduraPercent != null ? `${lastGorduraPercent}%` : "—"}</span></div>
       </div>
 
       <div className="text-xs text-slate-500">Podes deslizar para ver outros gráficos.</div>

@@ -244,11 +244,32 @@ function SetModal({ set, onClose, onSetCover, onDelete, canEdit }: { set: PhotoS
   );
 }
 
+function DayModal({ group, onClose }: { group: { date: string; urls: string[] }; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+      <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
+        <div className="sticky top-2 right-2 flex justify-end">
+          <Button size="sm" variant="secondary" onClick={onClose}>Fechar</Button>
+        </div>
+        <div className="mb-3 font-medium">{new Date(group.date+"T00:00:00").toLocaleDateString()}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {group.urls.map((u, i) => (
+            <div key={i} className="relative h-64 w-full bg-muted rounded-lg overflow-hidden">
+              <img src={u} alt={`Foto ${i + 1}`} className="absolute inset-0 h-full w-full object-contain" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FotosPage() {
   const { uid } = useSession();
   const router = useRouter();
   const { loading, sets, setSets, items, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
+  const [openDay, setOpenDay] = useState<{ date: string; urls: string[] } | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
   const [consentActive, setConsentActive] = useState<boolean>(false);
   const [consentAt, setConsentAt] = useState<Date | null>(null);
@@ -403,38 +424,19 @@ export default function FotosPage() {
             </div>
             ) : null}
 
-            {sets.length > 0 && (
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Histórico (semanas)</div>
-              <div className="grid grid-cols-1 gap-3">
-                  {sets.map((s) => (
-                    <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium">{s.createdAt ? formatLisbonDate(s.createdAt, { dateStyle: "medium", timeStyle: "short" }) : s.id}</div>
-                        <div className="text-xs text-muted-foreground">{s.urls.length} imagem(s)</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => setOpen(s)}>Ver</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-            </div>
-            )}
 
             {groupsByDay.length > 0 && (
               <div className="space-y-3">
-                <div className="text-sm font-medium">Histórico por dia</div>
+                <div className="text-sm font-medium">Histórico</div>
                 <div className="grid grid-cols-1 gap-3">
-                  {groupsByDay.map((g) => (
-                    <div key={g.date} className="rounded-2xl border p-4 bg-background">
-                      <div className="font-medium mb-2">{new Date(g.date+"T00:00:00").toLocaleDateString()}</div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {g.urls.map((u, i)=>(
-                          <div key={i} className="relative h-24 w-full bg-muted rounded-lg overflow-hidden">
-                            <img src={u} alt="Foto" className="absolute inset-0 h-full w-full object-cover" />
-                          </div>
-                        ))}
+                  {groupsByDay.filter((g)=>g.urls.length>0).map((g) => (
+                    <div key={g.date} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-medium">{new Date(g.date+"T00:00:00").toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground">{g.urls.length} imagem(s)</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setOpenDay(g)}>Ver</Button>
                       </div>
                     </div>
                   ))}
@@ -462,6 +464,9 @@ export default function FotosPage() {
               } catch {}
             }}
           />
+        )}
+        {openDay && (
+          <DayModal group={openDay} onClose={()=>setOpenDay(null)} />
         )}
         {showWelcome && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">

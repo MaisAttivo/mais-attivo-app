@@ -742,7 +742,7 @@ export default function CoachClientProfilePage() {
               </Badge>
               {nextDue && phone && (
                 <a
-                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Est�� na hora do teu check-in. Consegues marcar a avaliação?`)}`}
+                  href={`https://wa.me/${(phone || '').replace(/[^\d]/g, '')}?text=${encodeURIComponent(`Olá ${name.split(' ')[0] || ''}! Está na hora do teu check-in. Consegues marcar a avaliação?`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -962,7 +962,7 @@ export default function CoachClientProfilePage() {
                   "Qual alergia": onboarding.foodAllergy,
                   "Alimentos que não gosta": onboarding.foodsDisliked,
                   "Alimentos preferidos": onboarding.foodsLiked,
-                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "N��o" : onboarding.takesSupplements,
+                  "Suplementos": onboarding.takesSupplements === true ? "Sim" : onboarding.takesSupplements === false ? "Não" : onboarding.takesSupplements,
                   "Quais suplementos": onboarding.supplements,
                   "Água (L/dia)": onboarding.waterLitersPerDay,
                   "Qualidade do sono": onboarding.sleepQuality,
@@ -1441,7 +1441,7 @@ export default function CoachClientProfilePage() {
 
                   {c.commentPublic && (
                     <div className="mt-2 text-sm">
-                      <span className="font-medium">Comentário p��blico: </span>{c.commentPublic}
+                      <span className="font-medium">Comentário público: </span>{c.commentPublic}
                     </div>
                   )}
 
@@ -1490,7 +1490,7 @@ function K({
 }) {
   const arrow = (() => {
     if (delta == null) return null;
-    if (delta > 0) return "���";
+    if (delta > 0) return "↑";
     if (delta < 0) return "↓";
     return "→";
   })();

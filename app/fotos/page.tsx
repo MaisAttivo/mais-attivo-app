@@ -25,6 +25,7 @@ function isoWeekId(d: Date): string {
 function usePhotoSets() {
   const [loading, setLoading] = useState(true);
   const [sets, setSets] = useState<PhotoSet[]>([]);
+  const [items, setItems] = useState<Array<{ url: string; createdAt: Date | null }>>([]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
@@ -50,17 +51,31 @@ function usePhotoSets() {
         return { id: String(s.id), createdAt: created, urls, coverUrl } as PhotoSet;
       });
       setSets(mapped.filter((s) => Array.isArray(s.urls) && s.urls.length > 0));
+
+      const rawItems: any[] = Array.isArray(data.items) ? data.items : [];
+      const parsedItems = rawItems.map((it) => ({
+        url: String(it.url),
+        createdAt: it.createdAt ? new Date(it.createdAt) : null,
+      }));
+      setItems(parsedItems);
     } catch (e: any) {
       setError(e?.message || "Erro");
       setSets([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    try {
+      const unsub = (auth as any)?.onIdTokenChanged?.(() => reload());
+      return () => { try { unsub && unsub(); } catch {} };
+    } catch {}
+  }, []);
 
-  return { loading, sets, setSets, error, reload };
+  return { loading, sets, setSets, items, error, reload };
 }
 
 function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; disabled?: boolean; weekId?: string }) {
@@ -202,7 +217,7 @@ function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; di
   );
 }
 
-function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => void; onSetCover: (url: string) => void }) {
+function SetModal({ set, onClose, onSetCover, onDelete, canEdit }: { set: PhotoSet; onClose: () => void; onSetCover: (url: string) => void; onDelete: (url: string) => void; canEdit: boolean }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
       <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
@@ -213,11 +228,14 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
           {set.urls.map((u, i) => (
             <div key={i} className="flex flex-col gap-2">
               <img src={u} alt={`Foto ${i + 1}`} className="w-full rounded-xl object-contain" />
-              {set.coverUrl !== u && (
-                <div className="flex">
+              <div className="flex gap-2">
+                {set.coverUrl !== u && (
                   <Button size="sm" variant="outline" onClick={() => onSetCover(u)}>Definir como capa</Button>
-                </div>
-              )}
+                )}
+                {canEdit && (
+                  <Button size="sm" variant="destructive" onClick={() => onDelete(u)}>Remover</Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -229,7 +247,7 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
 export default function FotosPage() {
   const { uid } = useSession();
   const router = useRouter();
-  const { loading, sets, setSets, reload } = usePhotoSets();
+  const { loading, sets, setSets, items, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
   const [consentActive, setConsentActive] = useState<boolean>(false);
@@ -237,6 +255,26 @@ export default function FotosPage() {
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
+  const currentWeekId = useMemo(() => isoWeekId(new Date()), []);
+  const thisWeekCount = useMemo(() => {
+    const s = sets.find((x) => x.id === currentWeekId);
+    return s ? s.urls.length : 0;
+  }, [sets, currentWeekId]);
+
+  const groupsByDay = useMemo(() => {
+    const by: Record<string, string[]> = {};
+    // incluir itens do bucket (uploads diretos ou via app)
+    for (const it of items) {
+      const d = it.createdAt ? new Date(it.createdAt) : null;
+      const key = d ? d.toISOString().slice(0,10) : "";
+      if (!key) continue;
+      if (!by[key]) by[key] = [];
+      by[key].push(it.url);
+    }
+    return Object.entries(by)
+      .sort((a,b)=> a[0]<b[0]?1:-1) // desc
+      .map(([date, urls]) => ({ date, urls }));
+  }, [items]);
 
   useEffect(() => {
     try {
@@ -318,7 +356,7 @@ export default function FotosPage() {
               )}
             </div>
 
-            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} disabled={!consentActive} />
+            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} disabled={!consentActive || thisWeekCount >= 4} weekId={currentWeekId} />
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
@@ -367,7 +405,7 @@ export default function FotosPage() {
 
             {sets.length > 0 && (
             <div className="space-y-3">
-              <div className="text-sm font-medium">Histórico de Updates</div>
+              <div className="text-sm font-medium">Histórico (semanas)</div>
               <div className="grid grid-cols-1 gap-3">
                   {sets.map((s) => (
                     <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
@@ -383,6 +421,26 @@ export default function FotosPage() {
                 </div>
             </div>
             )}
+
+            {groupsByDay.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium">Histórico por dia</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {groupsByDay.map((g) => (
+                    <div key={g.date} className="rounded-2xl border p-4 bg-background">
+                      <div className="font-medium mb-2">{new Date(g.date+"T00:00:00").toLocaleDateString()}</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {g.urls.map((u, i)=>(
+                          <div key={i} className="relative h-24 w-full bg-muted rounded-lg overflow-hidden">
+                            <img src={u} alt="Foto" className="absolute inset-0 h-full w-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -391,6 +449,18 @@ export default function FotosPage() {
             set={open}
             onClose={() => setOpen(null)}
             onSetCover={(url) => { setCover(open.id, url); setOpen({ ...open, coverUrl: url }); }}
+            canEdit={open.id === currentWeekId}
+            onDelete={async (url)=>{
+              try {
+                const t = await auth?.currentUser?.getIdToken();
+                const res = await fetch("/api/storage/photos", { method: "DELETE", headers: { "Content-Type": "application/json", ...(t?{ Authorization: `Bearer ${t}` }: {}) }, body: JSON.stringify({ uid, weekId: open.id, url }) });
+                if (res.ok) {
+                  const j = await res.json();
+                  setSets((arr)=>arr.map((s)=> s.id===open.id ? { ...s, urls: j.urls || [], coverUrl: j.coverUrl ?? null } : s));
+                  setOpen((prev)=> prev && prev.id===open.id ? { ...prev, urls: (j.urls || []), coverUrl: j.coverUrl ?? null } : prev);
+                }
+              } catch {}
+            }}
           />
         )}
         {showWelcome && (

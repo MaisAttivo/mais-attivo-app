@@ -115,9 +115,9 @@ export default function EvolucaoPage() {
 
         // Sort
         const asc = (a: { x: number }, b: { x: number }) => a.x - b.x;
-        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc);
+        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc); gorduraPercent.sort(asc);
 
-        setData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral });
+        setData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral, gorduraPercent });
       } catch (e) {
         console.error(e);
       }

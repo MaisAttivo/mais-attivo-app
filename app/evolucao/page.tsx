@@ -50,6 +50,7 @@ export default function EvolucaoPage() {
         const massaMuscular: { x: number; y: number }[] = [];
         const massaGorda: { x: number; y: number }[] = [];
         const gorduraVisceral: { x: number; y: number }[] = [];
+        const gorduraPercent: { x: number; y: number }[] = [];
 
         // Weekly average from dailies (cleaner): group dailyFeedback by ISO week (Monday) and average weight
         try {

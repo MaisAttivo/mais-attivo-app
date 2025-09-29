@@ -44,33 +44,30 @@ export async function GET(req: NextRequest) {
     let sets = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
     sets = sets.filter((s: any) => Array.isArray(s.urls) && s.urls.length > 0);
 
-    // Fallback: listar diretamente do bucket se ainda não houver coleção
-    let items: Array<{ url: string; name: string; createdAt?: string | null }> = [];
-    if (sets.length === 0) {
-      const prefixes = [
-        `users/${targetUid}/photos/`,
-        `fotos/${targetUid}/`,
-        `photos/${targetUid}/`,
-      ];
-      let found: any[] = [];
-      for (const p of prefixes) {
-        const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 200 }).catch(() => [ [] ]);
-        if (files && files.length) { found = files; break; }
-      }
-      const unique = new Map<string, any>();
-      for (const f of found) unique.set(f.name, f);
-      const imgs = Array.from(unique.values()).filter((f: any) =>
-        String((f.metadata?.contentType) || "").startsWith("image/")
-      );
-      items = await Promise.all(
-        imgs.map(async (f: any) => {
-          const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 3600 * 1000 });
-          const createdAt = f.metadata?.timeCreated || null;
-          return { url, name: f.name.split("/").pop() || f.name, createdAt };
-        })
-      );
-      items.sort((a, b) => (new Date(a.createdAt || 0).getTime()) - (new Date(b.createdAt || 0).getTime()));
+    // Listar diretamente do bucket (sempre), para incluir uploads feitos fora da app
+    const prefixes = [
+      `users/${targetUid}/photos/`,
+      `fotos/${targetUid}/`,
+      `photos/${targetUid}/`,
+    ];
+    let found: any[] = [];
+    for (const p of prefixes) {
+      const [files] = await bucket.getFiles({ prefix: p, autoPaginate: false, maxResults: 400 }).catch(() => [ [] ]);
+      if (files && files.length) { found = files; break; }
     }
+    const unique = new Map<string, any>();
+    for (const f of found) unique.set(f.name, f);
+    const imgs = Array.from(unique.values()).filter((f: any) =>
+      String((f.metadata?.contentType) || "").startsWith("image/")
+    );
+    const items: Array<{ url: string; name: string; createdAt?: string | null }> = await Promise.all(
+      imgs.map(async (f: any) => {
+        const [url] = await f.getSignedUrl({ action: "read", expires: Date.now() + 7 * 24 * 3600 * 1000 });
+        const createdAt = f.metadata?.timeCreated || null;
+        return { url, name: f.name.split("/").pop() || f.name, createdAt };
+      })
+    );
+    items.sort((a, b) => (new Date(a.createdAt || 0).getTime()) - (new Date(b.createdAt || 0).getTime()));
 
     return NextResponse.json({ sets, items });
   } catch (e: any) {
@@ -96,44 +93,34 @@ export async function POST(req: NextRequest) {
 
     const weekId = String(form.get("weekId") || isoWeekId(new Date()));
 
-    // Limite semanal: agora permitimos múltiplos uploads na mesma semana até 4 fotos no total.
+    // Limite semanal: permitir múltiplos uploads na mesma semana até 4 fotos no total
     const setRef = adminDb.collection("users").doc(targetUid).collection("photoSets").doc(weekId);
     const existing = await setRef.get();
     if (!existing.exists) {
       await setRef.set({ urls: [], coverUrl: null, createdAt: new Date(), updatedAt: new Date() }, { merge: true });
     }
 
-    // Collect existing URLs to support multiple sequential uploads within the same week
+    // URLs já existentes para somar ao limite
     const prevDoc = await setRef.get();
     const prevData: any = prevDoc.exists ? (prevDoc.data() || {}) : {};
     const prevUrls: string[] = Array.isArray(prevData.urls) ? prevData.urls.filter((u: any) => typeof u === "string") : [];
-
-    // Also count already present files in the bucket for this week (idempotency when users retry)
-    const prefix = `users/${targetUid}/photos/${weekId}-`;
-    let existingCount = 0;
-    try {
-      const [existing] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: 50 }).catch(() => [ [] ]);
-      existingCount = Array.isArray(existing) ? existing.length : 0;
-    } catch {}
 
     const uploadedUrls: string[] = [];
     for (const anyFile of files) {
       const file = anyFile as unknown as File;
       if (typeof (file as any).arrayBuffer !== "function") continue;
       const ct = file.type || "image/jpeg";
-      if (!(ct === "image/jpeg" || ct === "image/png")) {
+      if (!String(ct).startsWith("image/")) {
         return NextResponse.json({ error: "only_images" }, { status: 400 });
       }
       const buf = Buffer.from(await file.arrayBuffer());
-      // Enforce 10MB per photo
-      if (buf.length > 10 * 1024 * 1024) return NextResponse.json({ error: "too_large" }, { status: 413 });
 
-      // Enforce global limit of 4 photos per week across multiple requests
-      if (existingCount + prevUrls.length + uploadedUrls.length >= 4) {
+      // Limite global de 4 fotos por semana (considerando já existentes + enviadas nesta requisição)
+      if (prevUrls.length + uploadedUrls.length >= 4) {
         break;
       }
 
-      const ext = ct === "image/png" ? "png" : "jpg";
+      const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : ct.includes("heic") ? "heic" : ct.includes("jpeg") || ct.includes("jpg") ? "jpg" : "jpg";
       const objectPath = `users/${targetUid}/photos/${weekId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const fileRef = bucket.file(objectPath);
 
@@ -151,7 +138,7 @@ export async function POST(req: NextRequest) {
       uploadedUrls.push(signed);
     }
 
-    // Merge with previous URLs, keeping only up to 4 total
+    // Merge com as URLs anteriores, mantendo no máximo 4
     const merged = [...prevUrls, ...uploadedUrls].slice(0, 4);
     const coverUrl = prevData.coverUrl && typeof prevData.coverUrl === "string" ? prevData.coverUrl : (merged[0] || null);
     await setRef.set(
@@ -170,6 +157,42 @@ export async function POST(req: NextRequest) {
       { error: "server_error", message: e?.message || String(e) },
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const authz = req.headers.get("authorization") || "";
+    const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
+    if (!idToken) return NextResponse.json({ error: "missing_token" }, { status: 401 });
+    const decoded = await getAuth().verifyIdToken(idToken);
+
+    const body = await req.json();
+    const targetUid = String(body.uid || decoded.uid);
+    const { weekId, url } = body || {};
+    const ok = await ensureCoachOrSelf(decoded.uid, targetUid);
+    if (!ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    if (!weekId || !url) return NextResponse.json({ error: "missing_params" }, { status: 400 });
+
+    // Apenas permitir editar a semana corrente
+    const currentWeek = isoWeekId(new Date());
+    if (String(weekId) !== currentWeek) return NextResponse.json({ error: "locked_past_week" }, { status: 409 });
+
+    const setRef = adminDb.collection("users").doc(targetUid).collection("photoSets").doc(String(weekId));
+    const doc = await setRef.get();
+    if (!doc.exists) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+    const data: any = doc.data() || {};
+    const urls: string[] = Array.isArray(data.urls) ? data.urls.filter((x:any)=>typeof x === 'string') : [];
+    const nextUrls = urls.filter((u) => u !== String(url));
+    const nextCover = data.coverUrl && nextUrls.includes(String(data.coverUrl)) ? data.coverUrl : (nextUrls[0] || null);
+
+    await setRef.set({ urls: nextUrls, coverUrl: nextCover, updatedAt: new Date() }, { merge: true });
+
+    // Nota: não removemos do bucket para evitar inconsistências; limite semanal usa a coleção
+    return NextResponse.json({ ok: true, urls: nextUrls, coverUrl: nextCover });
+  } catch (e: any) {
+    return NextResponse.json({ error: "server_error", message: e?.message || String(e) }, { status: 500 });
   }
 }
 

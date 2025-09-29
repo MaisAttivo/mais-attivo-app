@@ -9,15 +9,17 @@ export type EvolutionData = {
   massaMuscular: { x: number; y: number }[];
   massaGorda: { x: number; y: number }[];
   gorduraVisceral: { x: number; y: number }[];
+  gorduraPercent: { x: number; y: number }[];
 };
 
-type Mode = "peso" | "musculo" | "gordura" | "visceral";
+type Mode = "peso" | "musculo" | "gordura" | "visceral" | "percent";
 
 const MODES: { key: Mode; label: string; emoji: string }[] = [
   { key: "peso", label: "Peso", emoji: "⚖️" },
   { key: "musculo", label: "Massa Muscular", emoji: "💪" },
   { key: "gordura", label: "Massa Gorda", emoji: "🔥" },
   { key: "visceral", label: "Gordura Visceral", emoji: "🧬" },
+  { key: "percent", label: "% Gordura", emoji: "📈" },
 ];
 
 export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
@@ -57,11 +59,12 @@ export default function SwitchableEvolution({ data }: { data: EvolutionData }) {
     }
     if (mode.key === "musculo") return [{ name: "Massa Muscular (kg)", color: "#7c3aed", points: data.massaMuscular }];
     if (mode.key === "gordura") return [{ name: "Massa Gorda (kg)", color: "#dc2626", points: data.massaGorda }];
+    if (mode.key === "percent") return [{ name: "% Gordura", color: "#f59e0b", points: data.gorduraPercent }];
     return [{ name: "Gordura Visceral", color: "#0ea5e9", points: data.gorduraVisceral }];
   }, [mode.key, data]);
 
-  const yUnit = mode.key === "visceral" ? undefined : "kg";
-  const yLabel = mode.key === "visceral" ? "Índice" : "Kg";
+  const yUnit = mode.key === "visceral" ? undefined : (mode.key === "percent" ? "%" : "kg");
+  const yLabel = mode.key === "visceral" ? "Índice" : (mode.key === "percent" ? "%" : "Kg");
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="flex flex-col gap-2">

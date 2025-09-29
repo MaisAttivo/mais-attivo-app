@@ -381,45 +381,51 @@ export default function FotosPage() {
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
-            ) : sets.length > 0 ? (
+            ) : groupsByDay.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Início</div>
                 {loading ? (
                   <div className="text-sm text-muted-foreground">A carregar…</div>
-                ) : !firstSet ? (
-                  <div className="text-sm text-muted-foreground">Sem registos.</div>
-                ) : (
-                  <button className="w-full text-left" onClick={() => setOpen(firstSet)}>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      {firstSet.coverUrl ? (
-                        <img src={firstSet.coverUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{firstSet.createdAt ? formatLisbonDate(firstSet.createdAt, { dateStyle: "medium", timeStyle: "short" }) : firstSet.id}</div>
-                  </button>
-                )}
+                ) : (()=>{
+                  const oldest = groupsByDay[groupsByDay.length - 1];
+                  if (!oldest) return <div className="text-sm text-muted-foreground">Sem registos.</div>;
+                  const cover = oldest.urls[0];
+                  return (
+                    <button className="w-full text-left" onClick={() => setOpenDay(oldest)}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        {cover ? (
+                          <img src={cover} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{new Date(oldest.date+"T00:00:00").toLocaleDateString()}</div>
+                    </button>
+                  );
+                })()}
               </div>
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Atual</div>
                 {loading ? (
                   <div className="text-sm text-muted-foreground">A carregar…</div>
-                ) : !lastSet ? (
-                  <div className="text-sm text-muted-foreground">Sem registos.</div>
-                ) : (
-                  <button className="w-full text-left" onClick={() => setOpen(lastSet)}>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      {lastSet.coverUrl ? (
-                        <img src={lastSet.coverUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{lastSet.createdAt ? formatLisbonDate(lastSet.createdAt, { dateStyle: "medium", timeStyle: "short" }) : lastSet.id}</div>
-                  </button>
-                )}
+                ) : (()=>{
+                  const newest = groupsByDay[0];
+                  if (!newest) return <div className="text-sm text-muted-foreground">Sem registos.</div>;
+                  const cover = newest.urls[0];
+                  return (
+                    <button className="w-full text-left" onClick={() => setOpenDay(newest)}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        {cover ? (
+                          <img src={cover} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{new Date(newest.date+"T00:00:00").toLocaleDateString()}</div>
+                    </button>
+                  );
+                })()}
               </div>
             </div>
             ) : null}

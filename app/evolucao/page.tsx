@@ -36,7 +36,7 @@ export default function EvolucaoPage() {
   const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [] });
+  const [data, setData] = useState<EvolutionData>({ pesoSemanal: [], pesoCheckin: [], massaMuscular: [], massaGorda: [], gorduraVisceral: [], gorduraPercent: [] });
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -49,6 +49,7 @@ export default function EvolucaoPage() {
         const massaMuscular: { x: number; y: number }[] = [];
         const massaGorda: { x: number; y: number }[] = [];
         const gorduraVisceral: { x: number; y: number }[] = [];
+        const gorduraPercent: { x: number; y: number }[] = [];
 
         // Weekly average from dailies (cleaner): group dailyFeedback by ISO week (Monday) and average weight
         try {
@@ -104,14 +105,15 @@ export default function EvolucaoPage() {
             if (typeof d.massaMuscular === "number") massaMuscular.push({ x: t, y: d.massaMuscular });
             if (typeof d.massaGorda === "number") massaGorda.push({ x: t, y: d.massaGorda });
             if (typeof d.gorduraVisceral === "number") gorduraVisceral.push({ x: t, y: d.gorduraVisceral });
+            if (typeof d.gorduraPercent === "number") gorduraPercent.push({ x: t, y: d.gorduraPercent });
           });
         } catch {}
 
         // Sort
         const asc = (a: { x: number }, b: { x: number }) => a.x - b.x;
-        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc);
+        pesoSemanal.sort(asc); pesoCheckin.sort(asc); massaMuscular.sort(asc); massaGorda.sort(asc); gorduraVisceral.sort(asc); gorduraPercent.sort(asc);
 
-        setData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral });
+        setData({ pesoSemanal, pesoCheckin, massaMuscular, massaGorda, gorduraVisceral, gorduraPercent });
       } catch (e) {
         console.error(e);
       }

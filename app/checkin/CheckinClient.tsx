@@ -67,6 +67,7 @@ export default function CheckinClient() {
   const [massaMuscular, setMassaMuscular] = useState<string>("");
   const [massaGorda, setMassaGorda] = useState<string>("");
   const [gorduraVisceral, setGorduraVisceral] = useState<string>("");
+  const [gorduraPercent, setGorduraPercent] = useState<string>("");
 
   const [objetivoPeso, setObjetivoPeso] = useState<"perda" | "ganho">("perda");
 
@@ -161,6 +162,7 @@ export default function CheckinClient() {
           setMassaMuscular(d.massaMuscular != null ? String(d.massaMuscular) : "");
           setMassaGorda(d.massaGorda != null ? String(d.massaGorda) : "");
           setGorduraVisceral(d.gorduraVisceral != null ? String(d.gorduraVisceral) : "");
+          setGorduraPercent(d.gorduraPercent != null ? String(d.gorduraPercent) : "");
           setObjetivoPeso((d.objetivoPeso as "perda" | "ganho") ?? "perda");
         }
 
@@ -208,6 +210,7 @@ export default function CheckinClient() {
         massaMuscular: massaMuscular === "" ? null : Number(massaMuscular),
         massaGorda: massaGorda === "" ? null : Number(massaGorda),
         gorduraVisceral: gorduraVisceral === "" ? null : Number(gorduraVisceral),
+        gorduraPercent: gorduraPercent === "" ? null : Number(gorduraPercent),
         objetivoPeso,
       };
 
@@ -257,6 +260,7 @@ export default function CheckinClient() {
         setMassaMuscular("");
         setMassaGorda("");
         setGorduraVisceral("");
+        setGorduraPercent("");
       }
     } catch (e: any) {
       console.error(e);
@@ -347,7 +351,7 @@ export default function CheckinClient() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Peso (kg)</label>
             <input type="number" step="0.1" value={peso} onChange={(e) => setPeso(e.target.value)} placeholder="ex: 74.5" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
@@ -363,6 +367,10 @@ export default function CheckinClient() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Gordura Visceral</label>
             <input type="number" step="0.1" value={gorduraVisceral} onChange={(e) => setGorduraVisceral(e.target.value)} placeholder="ex: 8" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">% Gordura</label>
+            <input type="number" step="0.1" value={gorduraPercent} onChange={(e) => setGorduraPercent(e.target.value)} placeholder="ex: 18.5" className="w-full rounded-xl border border-slate-400 bg-white shadow-sm px-3 py-2" />
           </div>
         </div>
 

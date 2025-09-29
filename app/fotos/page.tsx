@@ -25,6 +25,7 @@ function isoWeekId(d: Date): string {
 function usePhotoSets() {
   const [loading, setLoading] = useState(true);
   const [sets, setSets] = useState<PhotoSet[]>([]);
+  const [items, setItems] = useState<Array<{ url: string; createdAt: Date | null }>>([]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
@@ -50,17 +51,31 @@ function usePhotoSets() {
         return { id: String(s.id), createdAt: created, urls, coverUrl } as PhotoSet;
       });
       setSets(mapped.filter((s) => Array.isArray(s.urls) && s.urls.length > 0));
+
+      const rawItems: any[] = Array.isArray(data.items) ? data.items : [];
+      const parsedItems = rawItems.map((it) => ({
+        url: String(it.url),
+        createdAt: it.createdAt ? new Date(it.createdAt) : null,
+      }));
+      setItems(parsedItems);
     } catch (e: any) {
       setError(e?.message || "Erro");
       setSets([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    try {
+      const unsub = (auth as any)?.onIdTokenChanged?.(() => reload());
+      return () => { try { unsub && unsub(); } catch {} };
+    } catch {}
+  }, []);
 
-  return { loading, sets, setSets, error, reload };
+  return { loading, sets, setSets, items, error, reload };
 }
 
 function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; disabled?: boolean; weekId?: string }) {
@@ -202,7 +217,7 @@ function Uploader({ onUploaded, disabled, weekId }: { onUploaded: () => void; di
   );
 }
 
-function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => void; onSetCover: (url: string) => void }) {
+function SetModal({ set, onClose, onSetCover, onDelete, canEdit }: { set: PhotoSet; onClose: () => void; onSetCover: (url: string) => void; onDelete: (url: string) => void; canEdit: boolean }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
       <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
@@ -213,11 +228,34 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
           {set.urls.map((u, i) => (
             <div key={i} className="flex flex-col gap-2">
               <img src={u} alt={`Foto ${i + 1}`} className="w-full rounded-xl object-contain" />
-              {set.coverUrl !== u && (
-                <div className="flex">
+              <div className="flex gap-2">
+                {set.coverUrl !== u && (
                   <Button size="sm" variant="outline" onClick={() => onSetCover(u)}>Definir como capa</Button>
-                </div>
-              )}
+                )}
+                {canEdit && (
+                  <Button size="sm" variant="destructive" onClick={() => onDelete(u)}>Remover</Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DayModal({ group, onClose }: { group: { date: string; urls: string[] }; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col">
+      <div className="relative m-4 md:m-10 bg-white rounded-xl shadow-xl overflow-auto p-4">
+        <div className="sticky top-2 right-2 flex justify-end">
+          <Button size="sm" variant="secondary" onClick={onClose}>Fechar</Button>
+        </div>
+        <div className="mb-3 font-medium">{new Date(group.date+"T00:00:00").toLocaleDateString()}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {group.urls.map((u, i) => (
+            <div key={i} className="relative h-64 w-full bg-muted rounded-lg overflow-hidden">
+              <img src={u} alt={`Foto ${i + 1}`} className="absolute inset-0 h-full w-full object-contain" />
             </div>
           ))}
         </div>
@@ -229,14 +267,35 @@ function SetModal({ set, onClose, onSetCover }: { set: PhotoSet; onClose: () => 
 export default function FotosPage() {
   const { uid } = useSession();
   const router = useRouter();
-  const { loading, sets, setSets, reload } = usePhotoSets();
+  const { loading, sets, setSets, items, reload } = usePhotoSets();
   const [open, setOpen] = useState<PhotoSet | null>(null);
+  const [openDay, setOpenDay] = useState<{ date: string; urls: string[] } | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
   const [consentActive, setConsentActive] = useState<boolean>(false);
   const [consentAt, setConsentAt] = useState<Date | null>(null);
 
   const firstSet = useMemo(() => (sets.length ? sets[0] : null), [sets]);
   const lastSet = useMemo(() => (sets.length ? sets[sets.length - 1] : null), [sets]);
+  const currentWeekId = useMemo(() => isoWeekId(new Date()), []);
+  const thisWeekCount = useMemo(() => {
+    const s = sets.find((x) => x.id === currentWeekId);
+    return s ? s.urls.length : 0;
+  }, [sets, currentWeekId]);
+
+  const groupsByDay = useMemo(() => {
+    const by: Record<string, string[]> = {};
+    // incluir itens do bucket (uploads diretos ou via app)
+    for (const it of items) {
+      const d = it.createdAt ? new Date(it.createdAt) : null;
+      const key = d ? d.toISOString().slice(0,10) : "";
+      if (!key) continue;
+      if (!by[key]) by[key] = [];
+      by[key].push(it.url);
+    }
+    return Object.entries(by)
+      .sort((a,b)=> a[0]<b[0]?1:-1) // desc
+      .map(([date, urls]) => ({ date, urls }));
+  }, [items]);
 
   useEffect(() => {
     try {
@@ -318,70 +377,77 @@ export default function FotosPage() {
               )}
             </div>
 
-            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} disabled={!consentActive} />
+            <Uploader onUploaded={async ()=>{ await reload(); if (showWelcome) router.replace("/dashboard"); }} disabled={!consentActive || thisWeekCount >= 4} weekId={currentWeekId} />
 
             {loading ? (
               <div className="text-sm text-muted-foreground">A carregar…</div>
-            ) : sets.length > 0 ? (
+            ) : groupsByDay.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Início</div>
                 {loading ? (
                   <div className="text-sm text-muted-foreground">A carregar…</div>
-                ) : !firstSet ? (
-                  <div className="text-sm text-muted-foreground">Sem registos.</div>
-                ) : (
-                  <button className="w-full text-left" onClick={() => setOpen(firstSet)}>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      {firstSet.coverUrl ? (
-                        <img src={firstSet.coverUrl} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{firstSet.createdAt ? formatLisbonDate(firstSet.createdAt, { dateStyle: "medium", timeStyle: "short" }) : firstSet.id}</div>
-                  </button>
-                )}
+                ) : (()=>{
+                  const oldest = groupsByDay[groupsByDay.length - 1];
+                  if (!oldest) return <div className="text-sm text-muted-foreground">Sem registos.</div>;
+                  const cover = oldest.urls[0];
+                  return (
+                    <button className="w-full text-left" onClick={() => setOpenDay(oldest)}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        {cover ? (
+                          <img src={cover} alt="Inicio" className="absolute inset-0 w-full h-full object-contain" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{new Date(oldest.date+"T00:00:00").toLocaleDateString()}</div>
+                    </button>
+                  );
+                })()}
               </div>
               <div className="rounded-2xl border p-4 bg-background">
                 <div className="text-sm text-slate-700 mb-2">Atual</div>
                 {loading ? (
                   <div className="text-sm text-muted-foreground">A carregar…</div>
-                ) : !lastSet ? (
-                  <div className="text-sm text-muted-foreground">Sem registos.</div>
-                ) : (
-                  <button className="w-full text-left" onClick={() => setOpen(lastSet)}>
-                    <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
-                      {lastSet.coverUrl ? (
-                        <img src={lastSet.coverUrl} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">{lastSet.createdAt ? formatLisbonDate(lastSet.createdAt, { dateStyle: "medium", timeStyle: "short" }) : lastSet.id}</div>
-                  </button>
-                )}
+                ) : (()=>{
+                  const newest = groupsByDay[0];
+                  if (!newest) return <div className="text-sm text-muted-foreground">Sem registos.</div>;
+                  const cover = newest.urls[0];
+                  return (
+                    <button className="w-full text-left" onClick={() => setOpenDay(newest)}>
+                      <div className="relative w-full h-48 bg-muted rounded-xl overflow-hidden">
+                        {cover ? (
+                          <img src={cover} alt="Atual" className="absolute inset-0 w-full h-full object-contain" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Sem capa</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{new Date(newest.date+"T00:00:00").toLocaleDateString()}</div>
+                    </button>
+                  );
+                })()}
               </div>
             </div>
             ) : null}
 
-            {sets.length > 0 && (
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Histórico de Updates</div>
-              <div className="grid grid-cols-1 gap-3">
-                  {sets.map((s) => (
-                    <div key={s.id} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
+
+            {groupsByDay.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium">Histórico</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {groupsByDay.filter((g)=>g.urls.length>0).map((g) => (
+                    <div key={g.date} className="rounded-2xl border p-4 bg-background flex items-center justify-between gap-3">
                       <div>
-                        <div className="font-medium">{s.createdAt ? formatLisbonDate(s.createdAt, { dateStyle: "medium", timeStyle: "short" }) : s.id}</div>
-                        <div className="text-xs text-muted-foreground">{s.urls.length} imagem(s)</div>
+                        <div className="font-medium">{new Date(g.date+"T00:00:00").toLocaleDateString()}</div>
+                        <div className="text-xs text-muted-foreground">{g.urls.length} imagem(s)</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => setOpen(s)}>Ver</Button>
+                        <Button size="sm" variant="secondary" onClick={() => setOpenDay(g)}>Ver</Button>
                       </div>
                     </div>
                   ))}
                 </div>
-            </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -391,7 +457,22 @@ export default function FotosPage() {
             set={open}
             onClose={() => setOpen(null)}
             onSetCover={(url) => { setCover(open.id, url); setOpen({ ...open, coverUrl: url }); }}
+            canEdit={open.id === currentWeekId}
+            onDelete={async (url)=>{
+              try {
+                const t = await auth?.currentUser?.getIdToken();
+                const res = await fetch("/api/storage/photos", { method: "DELETE", headers: { "Content-Type": "application/json", ...(t?{ Authorization: `Bearer ${t}` }: {}) }, body: JSON.stringify({ uid, weekId: open.id, url }) });
+                if (res.ok) {
+                  const j = await res.json();
+                  setSets((arr)=>arr.map((s)=> s.id===open.id ? { ...s, urls: j.urls || [], coverUrl: j.coverUrl ?? null } : s));
+                  setOpen((prev)=> prev && prev.id===open.id ? { ...prev, urls: (j.urls || []), coverUrl: j.coverUrl ?? null } : prev);
+                }
+              } catch {}
+            }}
           />
+        )}
+        {openDay && (
+          <DayModal group={openDay} onClose={()=>setOpenDay(null)} />
         )}
         {showWelcome && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">

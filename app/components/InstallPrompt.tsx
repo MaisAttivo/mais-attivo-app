@@ -144,7 +144,7 @@ export default function InstallPrompt() {
     return (
       <button
         onClick={handleInstall}
-        className="fixed bottom-4 right-4 z-50 rounded-xl bg-[#706800] text-white px-4 py-2 shadow-lg hover:bg-[#8c7c00]"
+        className="fixed top-4 right-4 z-50 rounded-xl bg-[#706800] text-white px-4 py-2 shadow-lg hover:bg-[#8c7c00]"
         aria-label="Instalar aplicação"
         title="Instalar aplicação"
       >
@@ -156,7 +156,7 @@ export default function InstallPrompt() {
   // Caso 2: iOS Safari — instruções
   if (isIOS() && isSafari() && !isStandalone()) {
     return (
-      <div className="fixed bottom-4 inset-x-4 md:right-4 md:left-auto z-50 max-w-sm rounded-2xl bg-white shadow-lg ring-1 ring-black/10 p-4">
+      <div className="fixed top-4 inset-x-4 md:right-4 md:left-auto z-50 max-w-sm rounded-2xl bg-white shadow-lg ring-1 ring-black/10 p-4">
         <div className="flex items-start gap-3 text-slate-800">
           <div className="text-2xl" aria-hidden>📲</div>
           <div className="text-sm">
@@ -177,7 +177,7 @@ export default function InstallPrompt() {
   if (androidFallback && !dismissed) {
     const samsung = isSamsungInternet();
     return (
-      <div className="fixed bottom-4 inset-x-4 md:right-4 md:left-auto z-50 max-w-sm rounded-2xl bg-white shadow-lg ring-1 ring-black/10 p-4">
+      <div className="fixed top-4 inset-x-4 md:right-4 md:left-auto z-50 max-w-sm rounded-2xl bg-white shadow-lg ring-1 ring-black/10 p-4">
         <div className="flex items-start gap-3 text-slate-800">
           <div className="text-2xl" aria-hidden>📲</div>
           <div className="text-sm">

@@ -113,6 +113,9 @@ export default function DashboardPage() {
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
 
+  // 👉 ADICIONADO: peso atual mais recente entre daily e check-in
+  const [latestPesoKg, setLatestPesoKg] = useState<number | null>(null);
+
   const todayId = useMemo(() => ymdUTC(new Date()), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
   const isoEnd = useMemo(() => endOfISOWeekUTC(new Date()), []);
@@ -244,9 +247,49 @@ export default function DashboardPage() {
       setAguaMedia7(aguaVals.length ? +(aguaVals.reduce((a, b) => a + b, 0) / aguaVals.length).toFixed(2) : null);
       setPassosMedia7(passosVals.length ? Math.round(passosVals.reduce((a, b) => a + b, 0) / passosVals.length) : null);
 
-      // pesos médios por semana
-      const pesosSemanaAtual = semanaAtualDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
-      const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
+      // 👉 ADICIONADO: ler check-ins recentes (para peso atual e para médias semanais)
+      const cSnapList = await getDocs(
+        query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(12))
+      );
+      const checkins: { dateYMD: string; weight: number | null }[] = [];
+      cSnapList.forEach((cs) => {
+        const c: any = cs.data();
+        const dateYMD = toYMD(c.date);
+        const w = num(c.weight) ?? num(c.peso);
+        if (dateYMD) checkins.push({ dateYMD, weight: w ?? null });
+      });
+
+      // 👉 ADICIONADO: PESO ATUAL = mais recente entre DAILY e CHECK-IN
+      const latestDailyWithWeight = dailies.find((d) => d.weight != null) || null; // dailies em ordem desc
+      const latestCheckinWithWeight = checkins.find((c) => c.weight != null) || null; // check-ins em ordem desc
+
+      let chosen: number | null = null;
+      if (latestDailyWithWeight?.id && latestDailyWithWeight.weight != null && latestCheckinWithWeight?.dateYMD && latestCheckinWithWeight.weight != null) {
+        chosen = latestDailyWithWeight.id >= latestCheckinWithWeight.dateYMD
+          ? latestDailyWithWeight.weight!
+          : latestCheckinWithWeight.weight!;
+      } else if (latestDailyWithWeight?.weight != null) {
+        chosen = latestDailyWithWeight.weight!;
+      } else if (latestCheckinWithWeight?.weight != null) {
+        chosen = latestCheckinWithWeight.weight!;
+      }
+      setLatestPesoKg(chosen);
+
+      // 👉 ADICIONADO: pesos médios por semana incluindo check-ins que caiam na semana
+      const pesosSemanaAtualDaily = semanaAtualDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
+      const pesosSemanaAnteriorDaily = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
+
+      const pesosSemanaAtualCheckin = checkins
+        .filter((c) => c.dateYMD >= startYMD && c.dateYMD <= endYMD && c.weight != null)
+        .map((c) => c.weight!) as number[];
+
+      const pesosSemanaAnteriorCheckin = checkins
+        .filter((c) => c.dateYMD >= startPrevYMD && c.dateYMD <= endPrevYMD && c.weight != null)
+        .map((c) => c.weight!) as number[];
+
+      const pesosSemanaAtual = [...pesosSemanaAtualDaily, ...pesosSemanaAtualCheckin];
+      const pesosSemanaAnterior = [...pesosSemanaAnteriorDaily, ...pesosSemanaAnteriorCheckin];
+
       setPesoMedioSemanaAtual(pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null);
       setPesoMedioSemanaAnterior(pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null);
 
@@ -443,7 +486,8 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Peso</div>
           <div className="text-2xl font-semibold">
-            {todayDaily?.weight != null ? `${todayDaily.weight} kg` : lastDaily?.weight != null ? `${lastDaily.weight} kg` : "—"}
+            {/* 👉 SUBSTITUÍDO: usar mais recente entre daily/check-in */}
+            {latestPesoKg != null ? `${latestPesoKg} kg` : "—"}
           </div>
           <div className="text-xs text-slate-500 mt-1">
             média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>

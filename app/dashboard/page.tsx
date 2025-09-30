@@ -21,10 +21,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-// 👇 se quiseres também o botão que já tinhas criado em separado, descomenta a linha seguinte
-// import InstallButton from "@/app/components/InstallButton";
-import InstallPrompt from "@/app/components/InstallPrompt";
-
 /** ===== Helpers de datas (Portugal/Lisboa) ===== */
 function ymdUTC(d = new Date()) {
   return lisbonYMD(d);
@@ -56,7 +52,16 @@ function toYMD(value: any): string | null {
     value instanceof Date ? value : null;
   return dt ? ymdUTC(dt) : null;
 }
-const num = (v: any) => (typeof v === "number" && !Number.isNaN(v) ? v : null);
+const num = (v: any) => {
+  // Aceita números e strings tipo "84,2" / "84.2"
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const s = v.replace(",", ".").trim();
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
 
 /** ===== Tipos ===== */
 type Daily = {
@@ -75,6 +80,11 @@ type Daily = {
   alimentacao100?: boolean | null;
 };
 type WeeklyStatus = { done: boolean };
+type Checkin = {
+  id: string;        // doc id
+  dateYMD: string;   // YYYY-MM-DD
+  weight?: number|null; // weight/peso
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -112,6 +122,11 @@ export default function DashboardPage() {
 
   // Meta de água (única fonte = users/{uid}.metaAgua)
   const [latestMetaAgua, setLatestMetaAgua] = useState<number | null>(null);
+
+  // Check-ins lidos (para integrar pesos e datas)
+  const [checkins, setCheckins] = useState<Checkin[]>([]);
+  const [latestPesoKg, setLatestPesoKg] = useState<number | null>(null); // novo: peso atual cruzado
+  const [latestPesoFonte, setLatestPesoFonte] = useState<"daily" | "checkin" | null>(null);
 
   const todayId = useMemo(() => ymdUTC(new Date()), []);
   const isoStart = useMemo(() => startOfISOWeekUTC(new Date()), []);
@@ -196,7 +211,6 @@ export default function DashboardPage() {
           waterLiters: num(d.waterLiters) ?? num(d.aguaLitros),
           steps: num(d.steps) ?? num(d.passos),
           metaAgua: num(d.metaAgua),
-          // legado já mapeado acima
           alimentacao100: d.alimentacao100 ?? d.alimentacaoOk ?? null,
         });
       });
@@ -208,7 +222,27 @@ export default function DashboardPage() {
       // hoje
       setTodayDaily(dailies.find((x) => x.id === todayId) || null);
 
-      // semana atual e anterior
+      // ======= Check-ins (para peso e datas) =======
+      const cSnap = await getDocs(query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(12)));
+      const cis: Checkin[] = [];
+      cSnap.forEach((cs) => {
+        const c: any = cs.data();
+        const dateYMD = toYMD(c.date);
+        const weight = num(c.weight) ?? num(c.peso);
+        if (dateYMD) {
+          cis.push({ id: cs.id, dateYMD, weight: weight ?? null });
+        }
+      });
+      setCheckins(cis);
+
+      // fallback de last/next checkin se users ainda não tiver (mantido do teu código)
+      if (!cSnap.empty) {
+        const c0: any = cSnap.docs[0].data();
+        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
+        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
+      }
+
+      // ======= Construção de semanas (com check-ins) =======
       const startYMD = ymdUTC(isoStart);
       const endYMD = ymdUTC(isoEnd);
       const prevStart = addDaysUTC(isoStart, -7);
@@ -244,13 +278,64 @@ export default function DashboardPage() {
       setAguaMedia7(aguaVals.length ? +(aguaVals.reduce((a, b) => a + b, 0) / aguaVals.length).toFixed(2) : null);
       setPassosMedia7(passosVals.length ? Math.round(passosVals.reduce((a, b) => a + b, 0) / passosVals.length) : null);
 
-      // pesos médios por semana
-      const pesosSemanaAtual = semanaAtualDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
-      const pesosSemanaAnterior = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
-      setPesoMedioSemanaAtual(pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null);
-      setPesoMedioSemanaAnterior(pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null);
+      // ======= PESO ATUAL (mais recente entre DAILY e CHECK-IN) =======
+      // Daily mais recente COM peso
+      const latestDailyWithWeight = dailies.find((d) => d.weight != null) || null; // já vêm em ordem desc
+      const latestDailyYMD = latestDailyWithWeight?.id ?? null;
+      const latestDailyWeight = latestDailyWithWeight?.weight ?? null;
 
-      // fallback para "semana anterior" sem dados: procurar última média registada noutras semanas anteriores
+      // Check-in mais recente COM peso
+      const latestCheckinWithWeight = cis.find((c) => c.weight != null) || null; // já em ordem desc
+      const latestCheckinYMD = latestCheckinWithWeight?.dateYMD ?? null;
+      const latestCheckinWeight = latestCheckinWithWeight?.weight ?? null;
+
+      // Comparar por YMD (lexicograficamente funciona em YYYY-MM-DD)
+      let chosenWeight: number | null = null;
+      let chosenFonte: "daily" | "checkin" | null = null;
+      if (latestDailyYMD && latestDailyWeight != null && latestCheckinYMD && latestCheckinWeight != null) {
+        if (latestDailyYMD >= latestCheckinYMD) {
+          chosenWeight = latestDailyWeight;
+          chosenFonte = "daily";
+        } else {
+          chosenWeight = latestCheckinWeight;
+          chosenFonte = "checkin";
+        }
+      } else if (latestDailyYMD && latestDailyWeight != null) {
+        chosenWeight = latestDailyWeight;
+        chosenFonte = "daily";
+      } else if (latestCheckinYMD && latestCheckinWeight != null) {
+        chosenWeight = latestCheckinWeight;
+        chosenFonte = "checkin";
+      } else {
+        chosenWeight = null;
+        chosenFonte = null;
+      }
+      setLatestPesoKg(chosenWeight);
+      setLatestPesoFonte(chosenFonte);
+
+      // ======= MÉDIAS SEMANAIS (incluindo pesos de check-in da mesma semana) =======
+      const pesosSemanaAtualDaily = semanaAtualDocs.map((d) => d.weight).filter((v): v is number => v != null);
+      const pesosSemanaAnteriorDaily = semanaAnteriorDocs.map((d) => d.weight).filter((v): v is number => v != null);
+
+      const pesosSemanaAtualCheckin = cis
+        .filter((c) => c.dateYMD >= startYMD && c.dateYMD <= endYMD && c.weight != null)
+        .map((c) => c.weight!) as number[];
+
+      const pesosSemanaAnteriorCheckin = cis
+        .filter((c) => c.dateYMD >= startPrevYMD && c.dateYMD <= endPrevYMD && c.weight != null)
+        .map((c) => c.weight!) as number[];
+
+      const pesosSemanaAtual = [...pesosSemanaAtualDaily, ...pesosSemanaAtualCheckin];
+      const pesosSemanaAnterior = [...pesosSemanaAnteriorDaily, ...pesosSemanaAnteriorCheckin];
+
+      setPesoMedioSemanaAtual(
+        pesosSemanaAtual.length ? +(pesosSemanaAtual.reduce((a, b) => a + b, 0) / pesosSemanaAtual.length).toFixed(1) : null
+      );
+      setPesoMedioSemanaAnterior(
+        pesosSemanaAnterior.length ? +(pesosSemanaAnterior.reduce((a, b) => a + b, 0) / pesosSemanaAnterior.length).toFixed(1) : null
+      );
+
+      // fallback para "semana anterior" sem dados: procurar última média registada noutras semanas anteriores (incluindo check-ins)
       let fb: number | null = null;
       if (pesosSemanaAnterior.length === 0) {
         for (let k = 2; k <= 12; k++) {
@@ -259,7 +344,11 @@ export default function DashboardPage() {
           const wsY = ymdUTC(ws);
           const weY = ymdUTC(we);
           const docs = dailies.filter((d) => d.id >= wsY && d.id <= weY);
-          const arr = docs.map((d) => d.weight).filter((v): v is number => v !== null && v !== undefined);
+          const arrDaily = docs.map((d) => d.weight).filter((v): v is number => v != null);
+          const arrCheckin = cis
+            .filter((c) => c.dateYMD >= wsY && c.dateYMD <= weY && c.weight != null)
+            .map((c) => c.weight!) as number[];
+          const arr = [...arrDaily, ...arrCheckin];
           if (arr.length) { fb = +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1); break; }
         }
       }
@@ -274,15 +363,7 @@ export default function DashboardPage() {
       const wSnap = await getDoc(doc(db, `users/${uid}/weeklyFeedback/${weekId}`));
       setWeekly({ done: wSnap.exists() });
 
-      // fallback de datas de check-in se users ainda não tiver
-      const cSnap = await getDocs(query(collection(db, `users/${uid}/checkins`), orderBy("date", "desc"), limit(1)));
-      if (!cSnap.empty) {
-        const c0: any = cSnap.docs[0].data();
-        if (!toYMD(udata.lastCheckinDate)) setLastCheckin(toYMD(c0.date));
-        if (!toYMD(udata.nextCheckinDate)) setNextCheckin(toYMD(c0.nextDate));
-      }
-
-      // Notificação de planos atualizados (não lida)
+      // Notificação de planos atualizados (não lida) (mantido)
       try {
         let q = query(
           collection(db, `users/${uid}/coachNotifications`),
@@ -443,9 +524,12 @@ export default function DashboardPage() {
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5">
           <div className="text-sm text-slate-700">Peso</div>
           <div className="text-2xl font-semibold">
-            {todayDaily?.weight != null ? `${todayDaily.weight} kg` : lastDaily?.weight != null ? `${lastDaily.weight} kg` : "—"}
+            {latestPesoKg != null ? `${latestPesoKg} kg` : "—"}
           </div>
           <div className="text-xs text-slate-500 mt-1">
+            {latestPesoFonte === "checkin" ? "fonte: check-in" : latestPesoFonte === "daily" ? "fonte: daily" : ""}
+          </div>
+          <div className="text-xs text-slate-500 mt-2">
             média semana atual: <span className={`${pesoAlignClass}`}>{pesoMedioSemanaAtual != null ? `${pesoMedioSemanaAtual} kg` : "—"}</span>
             <div className="text-xs text-slate-500 mt-0.5">
               semana anterior: {pesoMedioSemanaAnterior != null ? `${pesoMedioSemanaAnterior} kg` : <>—{fallbackPrevAvg != null ? ` (${fallbackPrevAvg} kg)` : null}</>}
@@ -479,7 +563,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Daily hoje */}
-      {!needsDaily && (
+      {!( !todayDaily ) && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
             <div className="text-sm text-slate-700">Feedback Diário de hoje ({todayId})</div>
@@ -489,8 +573,7 @@ export default function DashboardPage() {
             {todayDaily ? (
               <Link
                 href="/daily"
-                className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${canEditDaily ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
-                onClick={(e) => { if (!canEditDaily) e.preventDefault(); }}
+                className={`px-4 py-2 rounded-[20px] overflow-hidden border-[3px] ${true ? "border-[#706800] text-[#706800] bg-white hover:bg-[#FFF4D1]" : "border-slate-400 text-slate-500 bg-white opacity-60 cursor-not-allowed"} shadow`}
               >
                 Editar
               </Link>
@@ -504,7 +587,7 @@ export default function DashboardPage() {
       )}
 
       {/* Weekly */}
-      {!needsWeekly && (
+      {!(!isWeekend || weekly.done) && (
         <div className="rounded-2xl bg-white shadow-lg ring-2 ring-slate-400 p-5 flex flex-wrap gap-3 items-center justify-between">
           <div>
             <div className="text-sm text-slate-700">Feedback Semanal</div>
@@ -564,12 +647,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Prompt de instalação (Android/desktop com botão + iOS com instruções).
-          O próprio componente decide quando aparecer (só no /dashboard e role=client) */}
+      {/* Prompt de instalação (Android/desktop com botão + iOS com instruções). */}
       <InstallPrompt />
-
-      {/* Se preferires também o teu botão antigo em separado, podes renderizar aqui:
-         <InstallButton /> */}
     </div>
   );
 }

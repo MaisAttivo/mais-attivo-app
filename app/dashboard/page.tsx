@@ -195,7 +195,8 @@ export default function DashboardPage() {
           id: docSnap.id,
           createdAt: d.createdAt?.toDate?.() || null,
           didWorkout: d.didWorkout ?? d.treinou ?? null,
-          weight: num(d.weight) ?? num(d.peso),
+          // 👇 ALTERADO: tratar peso=0 como null para NÃO contar em peso atual/médias
+          weight: (() => { const w = (num(d.weight) ?? num(d.peso)); return w === 0 ? null : w; })(),
           waterLiters: num(d.waterLiters) ?? num(d.aguaLitros),
           steps: num(d.steps) ?? num(d.passos),
           metaAgua: num(d.metaAgua),

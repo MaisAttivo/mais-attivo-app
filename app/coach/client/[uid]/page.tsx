@@ -903,7 +903,7 @@ export default function CoachClientProfilePage() {
         {/* Evolução */}
         <Card className={"shadow-sm " + (visibleSection !== "evolucao" ? "hidden" : "")}>
           <CardHeader>
-            <CardTitle>Evolução teste</CardTitle>
+            <CardTitle>Evolução</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-2xl border p-4 bg-background">

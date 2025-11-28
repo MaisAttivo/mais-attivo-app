@@ -495,8 +495,9 @@ export default function CoachClientProfilePage() {
         const a = aR.status === "fulfilled" ? aR.value as any : {};
         const b = bR.status === "fulfilled" ? bR.value as any : {};
         const c = cR.status === "fulfilled" ? cR.value as any : {};
-        const trainingUrl = a.trainingUrl || b.trainingUrl || c.trainingUrl || null;
-        const dietUrl = a.dietUrl || b.dietUrl || c.dietUrl || null;
+        const trainingUrl = c.trainingUrl || a.trainingUrl || b.trainingUrl || null;
+        const dietUrl     = c.dietUrl     || a.dietUrl     || b.dietUrl     || null;
+
         setTrainingUrl(trainingUrl);
         setDietUrl(dietUrl);
         setTrainingAt(toDate(a.trainingUpdatedAt ?? b.trainingUpdatedAt ?? null));
